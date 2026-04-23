@@ -29,7 +29,9 @@ response = client.models.generate_content(
     model="gemini-3-flash-preview",
     contents="Summarize the pdf",
     config=types.GenerateContentConfig(
-        cached_content=content_cache.name
+
+cached_content=content_cache.name
+cached_content=content_cache
     ),
 )
 ```
