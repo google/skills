@@ -19,19 +19,19 @@ repo to install.
 
 ## Available Skills
 
-- [**Gemini API in Agent Platform**](./cloud/products/agent-platform/gemini-api)
-- [**AlloyDB Basics**](./cloud/products/alloydb/alloydb-basics)
-- [**BigQuery Basics**](./cloud/products/bigquery/bigquery-basics)
-- [**Cloud Run Basics**](./cloud/products/cloud-run/cloud-run-basics)
-- [**Cloud SQL Basics**](./cloud/products/cloud-sql/cloud-sql-basics)
-- [**Firebase Basics**](./cloud/products/firebase/firebase-basics)
-- [**Kubernetes Engine (GKE) Basics**](./cloud/products/kubernetes-engine/gke-basics)
-- [**Recipe: Onboarding to Google Cloud**](./cloud/recipes/google-cloud-recipe-onboarding)
-- [**Recipe: Authenticating to Google Cloud**](./cloud/recipes/google-cloud-recipe-auth)
-- [**Recipe: Google Cloud Network Observability**](./cloud/recipes/google-cloud-networking-observability)
-- [**Google Cloud Well-Architected Framework: Security**](./cloud/well-architected-framework/google-cloud-waf-security)
-- [**Google Cloud Well-Architected Framework: Reliability**](./cloud/well-architected-framework/google-cloud-waf-reliability)
-- [**Google Cloud Well-Architected Framework: Cost Optimization**](./cloud/well-architected-framework/google-cloud-waf-cost-optimization)
+- [**Gemini API in Agent Platform**](./cloud/gemini-api)
+- [**AlloyDB Basics**](./cloud/alloydb-basics)
+- [**BigQuery Basics**](./cloud/bigquery-basics)
+- [**Cloud Run Basics**](./cloud/cloud-run-basics)
+- [**Cloud SQL Basics**](./cloud/cloud-sql-basics)
+- [**Firebase Basics**](./cloud/firebase-basics)
+- [**Kubernetes Engine (GKE) Basics**](./cloud/gke-basics)
+- [**Recipe: Onboarding to Google Cloud**](./cloud/google-cloud-recipe-onboarding)
+- [**Recipe: Authenticating to Google Cloud**](./cloud/google-cloud-recipe-auth)
+- [**Recipe: Google Cloud Network Observability**](./cloud/google-cloud-networking-observability)
+- [**Google Cloud Well-Architected Framework: Security**](./cloud/google-cloud-waf-security)
+- [**Google Cloud Well-Architected Framework: Reliability**](./cloud/google-cloud-waf-reliability)
+- [**Google Cloud Well-Architected Framework: Cost Optimization**](./cloud/google-cloud-waf-cost-optimization)
 
 ## Support
 
