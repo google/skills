@@ -24,7 +24,7 @@ data management and analysis.
 2.  Use `list_table_ids` to find the relevant log table.
 3.  Use `get_table_info` to verify field names (for example, `jsonPayload`
     versus `json_payload`).
-4.  Use `execute_sql_readonly` for the final analysis.
+4.  Use `execute_sql` for the final analysis.
 
 ## Cloud Logging MCP
 

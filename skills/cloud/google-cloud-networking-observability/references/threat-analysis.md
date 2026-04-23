@@ -35,7 +35,7 @@ jsonPayload.action="DENY"
 
 ### 2. Aggregate Threat Trends ([BigQuery MCP](mcp-usage.md#bigquery-mcp))
 
-**Tool**: `query_sql`
+**Tool**: `execute_sql`
 
 **SQL Pattern**: **Note**: In BigQuery, the top-level column name is
 `json_payload` (snake_case). However, fields extracted from inside the JSON

@@ -17,7 +17,7 @@ high-volume trends. Fallback to the CLI if the MCP tools are not available.
     distributions, or find "top talkers." This usually involves SQL queries to
     summarize data rather than inspecting individual logs.
 
-### 1. View Logs ([Cloud Logging MCP](mcp-usage.md#cloudloggingmcp))
+### 1. View Logs ([Cloud Logging MCP](mcp-usage.md#cloud-logging-mcp))
 
 **Tool**: `list_log_entries`
 
@@ -29,7 +29,7 @@ logName:"projects/{project_id}/logs/networkmanagement.googleapis.com%2Fvpc_flows
 resource.type="gce_subnetwork"
 ```
 
-### 2. Aggregate Trends ([BigQuery MCP](mcp-usage.md#bigquerymcp))
+### 2. Aggregate Trends ([BigQuery MCP](mcp-usage.md#bigquery-mcp))
 
 **Tool**: `execute_sql`
 

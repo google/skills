@@ -28,7 +28,7 @@ jsonPayload.allocation_status="DROPPED"
 
 ### 2. Aggregate Trends ([BigQuery MCP](mcp-usage.md#bigquery-mcp))
 
-**Tool**: `query_sql`
+**Tool**: `execute_sql`
 
 **SQL Pattern**:
 

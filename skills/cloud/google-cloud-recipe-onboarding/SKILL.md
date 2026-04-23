@@ -95,20 +95,24 @@ default](https://docs.cloud.google.com/service-usage/docs/enabled-service#defaul
 
 ### 6. Deploy Your First Resource
 
-Choose a simple entry point based on your needs: -
-**[Cloud Run](https://docs.cloud.google.com/run/docs) (Recommended for Apps):**
-Deploy a containerized "Hello World" app. -
-**[Compute Engine](https://docs.cloud.google.com/compute/docs):** Create a small
-Linux VM (e.g., `e2-micro` which is part of the Always Free tier in certain
-regions). - **[Cloud Storage](https://docs.cloud.google.com/storage/docs):**
-Create a bucket to store files.
+Choose a simple entry point based on your needs:
 
-Example (Cloud Run): 
+-   **[Cloud Run](https://docs.cloud.google.com/run/docs) (Recommended for Apps):**
+    Deploy a containerized "Hello World" app.
+-   **[Compute Engine](https://docs.cloud.google.com/compute/docs):** Create a small
+    Linux VM (e.g., `e2-micro` which is part of the Always Free tier in certain
+    regions).
+-   **[Cloud Storage](https://docs.cloud.google.com/storage/docs):** Create a bucket
+    to store files.
 
-```bash 
-    gcloud run deploy hello-world \
-    --image=gcr.io/cloudrun/hello \ --platform=managed \ --region=us-central1 \
-    --allow-unauthenticated
+Example (Cloud Run):
+
+```bash
+gcloud run deploy hello-world \
+  --image=gcr.io/cloudrun/hello \
+  --platform=managed \
+  --region=us-central1 \
+  --allow-unauthenticated
 ```
 
 This command will output a public URL, that you can reach in a web browser.
