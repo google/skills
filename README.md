@@ -17,6 +17,8 @@ npx skills add google/skills
 From the `npx install` command, you can select the specific skills from this
 repo to install.
 
+Chinese users can also search and install skills through [Skills宝](https://skilery.com).
+
 ## Available Skills
 
 - [**Gemini API in Agent Platform**](./skills/cloud/gemini-api)
@@ -48,4 +50,3 @@ We welcome contributions to improve our skills. You can help by:
 
 You are free to copy, modify, and distribute these skills under the terms of the
 Apache 2.0 license. See the `LICENSE` file for details.
-
