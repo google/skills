@@ -30,8 +30,8 @@ types:
     gcloud services enable run.googleapis.com cloudbuild.googleapis.com
     ```
 
-1.  If you are under a domain restriction organization policy [restricting](https://docs.cloud.google.com/organization-policy/restrict-domains)
-   unauthenticated invocations for your project, you will need to access your
+2.  If you are under a domain restriction organization policy [restricting](https://docs.cloud.google.com/organization-policy/restrict-domains)
+    unauthenticated invocations for your project, you will need to access your
     deployed service as described under [Testing private
     services](https://docs.cloud.google.com/run/docs/triggering/https-request#testing-private).
 
