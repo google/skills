@@ -1,7 +1,6 @@
 ---
-name: google-cloud-recipe-networking-observability
-description: >-
-  Investigates Google Cloud networking issues by analyzing logs, metrics, and diagnostics. Use when investigating VPC Flow Logs, NAT, firewall, or threat logs, querying latency and throughput metrics, or running Connectivity Tests for path diagnostics.
+name: google-cloud-networking-observability
+description: "**ANALYSIS SKILL** — Investigate Google Cloud networking issues by analyzing VPC Flow Logs, firewall logs, Cloud NAT logs, threat logs, metrics, and Connectivity Tests. WHEN: \"VPC Flow Logs\", \"Cloud NAT logs\", \"firewall logs Google Cloud\", \"Cloud Armor threat\", \"network latency Google Cloud\", \"Connectivity Test\", \"BigQuery network logs\". INVOKES: Cloud Monitoring MCP, BigQuery MCP, Cloud Logging MCP, gcloud CLI, bq."
 ---
 
 # Google Cloud Networking Observability Expert

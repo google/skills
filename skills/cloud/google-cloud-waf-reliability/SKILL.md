@@ -1,6 +1,6 @@
 ---
 name: google-cloud-waf-reliability
-description: Generates reliability-focused guidance for Google Cloud workloads based on the design principles and recommendations in the Google Cloud Well-Architected Framework. Use this skill to evaluate a workload, identify reliability requirements, and provide actionable recommendations for build, deploy, and manage the workload reliably in Google Cloud.
+description: "**ANALYSIS SKILL** — Evaluate Google Cloud workloads against the Reliability pillar of the Well-Architected Framework; recommend SLOs, redundancy, autoscaling, graceful degradation, and DR practices. WHEN: \"Google Cloud reliability\", \"GCP SLO\", \"GCP high availability\", \"GCP autoscaling\", \"WAF reliability\", \"GCP disaster recovery\", \"chaos engineering GCP\". INVOKES: Cloud Monitoring, Backup and DR Service."
 ---
 
 # Google Cloud Well-Architected Framework skill for the Reliability pillar

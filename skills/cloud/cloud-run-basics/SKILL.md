@@ -1,9 +1,6 @@
 ---
 name: cloud-run-basics
-description: >-
-  Manages Cloud Run services, jobs, and worker pools. Use when you need to deploy applications
-  responding to HTTP requests (services), run event-triggered or scheduled tasks (jobs),
-  or handle always-on pull-based background processing (worker pools).
+description: "**WORKFLOW SKILL** — Deploy Cloud Run services (HTTP), jobs (scheduled/event), and worker pools (always-on pull-based) on Google Cloud's managed container platform. WHEN: \"deploy Cloud Run\", \"Cloud Run service\", \"Cloud Run job\", \"Cloud Run worker pool\", \"serverless container Google Cloud\", \"Cloud Run from source\", \"Cloud Run MCP\". INVOKES: Cloud Run MCP server, gcloud CLI, Cloud Build."
 ---
 
 # Cloud Run Basics

@@ -1,8 +1,6 @@
 ---
 name: alloydb-basics
-description: >-
-  Manages clusters, instances, and backups for AlloyDB for PostgreSQL, and
-  integrates with AlloyDB model context protocol (MCP) tools for automated database operations.
+description: "**WORKFLOW SKILL** — Create and manage AlloyDB for PostgreSQL clusters, instances, and backups, including AlloyDB AI features (vector and hybrid search, NL, forecasting, model endpoint management). WHEN: \"create AlloyDB cluster\", \"AlloyDB instance\", \"PostgreSQL on Google Cloud\", \"AlloyDB AI\", \"vector search AlloyDB\", \"AlloyDB Terraform\", \"AlloyDB MCP\". INVOKES: AlloyDB MCP server, gcloud CLI, Developer Knowledge MCP."
 ---
 
 # AlloyDB Basics

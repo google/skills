@@ -1,6 +1,6 @@
 ---
 name: google-cloud-waf-cost-optimization
-description: Generates cost optimization guidance for Google Cloud workloads based on the Google Cloud Well-Architected Framework (WAF). Use this skill to evaluate a workload, identify cost requirements and constraints, and provide actionable recommendations for build, deploy, and manage the workload cost-efficiently in Google Cloud.
+description: "**ANALYSIS SKILL** — Evaluate Google Cloud workloads against the Cost Optimization pillar of the Well-Architected Framework; recommend FinOps practices, rightsizing, CUDs, and storage lifecycle policies. WHEN: \"Google Cloud cost optimization\", \"FinOps Google Cloud\", \"Committed Use Discount\", \"GCP rightsizing\", \"GCP cost review\", \"WAF cost\", \"Cloud Hub Optimization\". INVOKES: Active Assist Recommender, BigQuery billing export, Cloud Billing reports."
 ---
 
 # Google Cloud Well-Architected Framework skill for the Cost Optimization pillar

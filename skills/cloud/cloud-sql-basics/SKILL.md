@@ -1,17 +1,6 @@
 ---
 name: cloud-sql-basics
-description: >-
-  This file generates or explains Cloud SQL resources. Use this file when the
-  user asks to create a Cloud SQL instance or database for MySQL, PostgreSQL, or
-  SQL Server.
-
-  Cloud SQL manages third-party MySQL, PostgreSQL, and SQL Server instances as
-  resources in Cloud SQL. For example, when Cloud SQL creates an open-source
-  MySQL instance, the resulting resource is a Cloud SQL for MySQL instance that
-  Google Cloud manages.
-
-  Cloud SQL handles backups, high availability, and secure connectivity for
-  relational database workloads.
+description: "**WORKFLOW SKILL** — Create and manage Cloud SQL instances and databases for MySQL, PostgreSQL, and SQL Server, including HA, backups, and Auth Proxy connectivity. WHEN: \"create Cloud SQL instance\", \"Cloud SQL PostgreSQL\", \"Cloud SQL MySQL\", \"Cloud SQL SQL Server\", \"Cloud SQL Auth Proxy\", \"Cloud SQL Terraform\", \"Cloud SQL MCP\". INVOKES: Cloud SQL MCP server, gcloud CLI, Cloud SQL Auth Proxy."
 ---
 
 # Cloud SQL Basics

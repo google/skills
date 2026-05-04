@@ -1,6 +1,6 @@
 ---
 name: gemini-api
-description: Guides the usage of the Gemini API on Agent Platform with the Google Gen AI SDK. Use when the user asks about using Gemini in an enterprise environment or explicitly mentions Vertex AI, Google Cloud, or Agent Platform. Covers SDK usage (Python, JS/TS, Go, Java, C#), capabilities like Live API, tools, multimedia generation, caching, and batch prediction.
+description: "**UTILITY SKILL** — Use the Gemini API on Agent Platform (formerly Vertex AI) via the Google Gen AI SDK for text, multimodal, embeddings, function calling, Live API, and batch prediction. WHEN: \"Gemini API\", \"Vertex AI Gemini\", \"Agent Platform Gemini\", \"Gen AI SDK\", \"google-genai\", \"Gemini Live API\", \"Gemini batch prediction\". INVOKES: google-genai SDK, gcloud auth."
 compatibility: Requires active Google Cloud credentials and Agent Platform API enabled.
 ---
 
