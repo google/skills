@@ -15,7 +15,7 @@ intelligence capabilities.
 
 1.  **Enable the BigQuery API:**
     ```bash
-    gcloud services enable bigquery.googleapis.com
+    gcloud services enable bigquery.googleapis.com --quiet
     ```
 
 2.  **Create a Dataset:**

@@ -18,14 +18,15 @@ endpoint management to help developers build AI apps faster.
 1.  **Enable the AlloyDB API:**
 
     ```bash
-    gcloud services enable alloydb.googleapis.com
+    gcloud services enable alloydb.googleapis.com --quiet
     ```
 
 2.  **Create a Cluster:**
 
     ```bash
     gcloud alloydb clusters create my-cluster --region=us-central1 \
-        --password=my-password --network=my-vpc
+        --password=my-password --network=my-vpc \
+        --quiet
     ```
 
     *Note: For production, we recommend using IAM database authentication
@@ -37,7 +38,8 @@ endpoint management to help developers build AI apps faster.
 
     ```bash
     gcloud alloydb instances create my-primary --cluster=my-cluster \
-        --region=us-central1 --instance-type=PRIMARY --cpu-count=2
+        --region=us-central1 --instance-type=PRIMARY --cpu-count=2 \
+        --quiet
     ```
 
 ## Reference Directory

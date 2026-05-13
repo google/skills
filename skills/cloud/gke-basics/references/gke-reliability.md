@@ -26,7 +26,8 @@ get_cluster(name="projects/<PROJECT>/locations/<REGION>/clusters/<CLUSTER>",
 
 # gcloud fallback
 gcloud container clusters describe <CLUSTER> --region <REGION> \
-  --format="json(location, locations)"
+  --format="json(location, locations)" \
+  --quiet
 ```
 
 - If `location` is a region (e.g., `us-central1`), the control plane is regional

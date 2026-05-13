@@ -109,7 +109,7 @@ Example (Cloud Run):
 ```bash
     gcloud run deploy hello-world \
     --image=gcr.io/cloudrun/hello \ --platform=managed \ --region=us-central1 \
-    --allow-unauthenticated
+    --allow-unauthenticated --quiet
 ```
 
 This command will output a public URL, that you can reach in a web browser.

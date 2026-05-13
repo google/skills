@@ -47,7 +47,8 @@ gcloud container clusters create-auto <CLUSTER_NAME> \
   --enable-secret-manager \
   --secret-manager-rotation-interval=120s \
   --scoped-rbs-bindings \
-  --monitoring=SYSTEM,API_SERVER,SCHEDULER,CONTROLLER_MANAGER,STORAGE,POD,DEPLOYMENT,STATEFULSET,DAEMONSET,HPA,CADVISOR,KUBELET,DCGM
+  --monitoring=SYSTEM,API_SERVER,SCHEDULER,CONTROLLER_MANAGER,STORAGE,POD,DEPLOYMENT,STATEFULSET,DAEMONSET,HPA,CADVISOR,KUBELET,DCGM \
+  --quiet
 ```
 
 **Via MCP (`create_cluster`):**
@@ -83,7 +84,8 @@ Relaxes some golden path defaults for cost savings and easier access in non-prod
 gcloud container clusters create-auto <CLUSTER_NAME> \
   --region <REGION> \
   --project <PROJECT_ID> \
-  --release-channel rapid
+  --release-channel rapid \
+  --quiet
 ```
 
 > **Warning**: This does not apply golden path security hardening. Suitable for dev/test only.
@@ -104,7 +106,8 @@ gcloud container clusters create <CLUSTER_NAME> \
   --enable-master-authorized-networks \
   --enable-vertical-pod-autoscaling \
   --enable-dataplane-v2 \
-  --release-channel regular
+  --release-channel regular \
+  --quiet
 ```
 
 ### 4. GPU/AI Workloads (Autopilot with ComputeClass)
@@ -116,14 +119,15 @@ Create a golden path Autopilot cluster, then apply a ComputeClass for GPU worklo
 gcloud container clusters create-auto <CLUSTER_NAME> \
   --region <REGION> --project <PROJECT_ID> \
   --enable-private-nodes --enable-master-authorized-networks \
-  --enable-dns-access --enable-secret-manager --scoped-rbs-bindings
+  --enable-dns-access --enable-secret-manager --scoped-rbs-bindings \
+  --quiet
 
 # 2. Apply GPU ComputeClass (see gke-compute-classes.md)
 kubectl apply -f gpu-compute-class.yaml
 
 # 3. Or use GIQ for inference (see gke-inference.md)
 gcloud container ai profiles manifests create \
-  --model=gemma-2-9b-it --model-server=vllm --accelerator-type=nvidia-l4 > inference.yaml
+  --model=gemma-2-9b-it --model-server=vllm --accelerator-type=nvidia-l4 --quiet > inference.yaml
 kubectl apply -f inference.yaml
 ```
 

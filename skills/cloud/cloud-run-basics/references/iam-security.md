@@ -97,5 +97,6 @@ gcloud run deploy SERVICE_NAME \
   --region=REGION \
   --image=IMAGE_URL \
   --no-allow-unauthenticated \
-  --iap
+  --iap \
+  --quiet
 ```

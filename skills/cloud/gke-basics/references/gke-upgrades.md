@@ -26,11 +26,13 @@ This reference covers upgrade strategy, maintenance windows, and release channel
 ```bash
 # Check current channel
 gcloud container clusters describe <CLUSTER_NAME> --region <REGION> \
-  --format="value(releaseChannel.channel)"
+  --format="value(releaseChannel.channel)" \
+  --quiet
 
 # Change channel (Day-1)
 gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
-  --release-channel <CHANNEL>
+  --release-channel <CHANNEL> \
+  --quiet
 ```
 
 ## Maintenance Windows
@@ -42,7 +44,8 @@ Control when GKE can perform automatic maintenance (upgrades, patches).
 gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
   --maintenance-window-start "2026-01-01T02:00:00Z" \
   --maintenance-window-end "2026-01-01T06:00:00Z" \
-  --maintenance-window-recurrence "FREQ=WEEKLY;BYDAY=SA,SU"
+  --maintenance-window-recurrence "FREQ=WEEKLY;BYDAY=SA,SU" \
+  --quiet
 ```
 
 ### Maintenance Exclusions
@@ -55,11 +58,13 @@ gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
   --add-maintenance-exclusion-name "freeze-1" \
   --add-maintenance-exclusion-start "2026-04-11T00:00:00Z" \
   --add-maintenance-exclusion-end "2027-04-11T00:00:00Z" \
-  --add-maintenance-exclusion-scope NO_MINOR_UPGRADES
+  --add-maintenance-exclusion-scope NO_MINOR_UPGRADES \
+  --quiet
 
 # Remove exclusion
 gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
-  --remove-maintenance-exclusion "freeze-1"
+  --remove-maintenance-exclusion "freeze-1" \
+  --quiet
 ```
 
 **Exclusion scopes:**
@@ -77,7 +82,8 @@ Rolling upgrade with configurable surge capacity:
 # Default: maxSurge=1 (one extra node during upgrade)
 gcloud container node-pools update <POOL_NAME> \
   --cluster <CLUSTER_NAME> --region <REGION> \
-  --max-surge-upgrade 1 --max-unavailable-upgrade 0
+  --max-surge-upgrade 1 --max-unavailable-upgrade 0 \
+  --quiet
 ```
 
 ### Blue-Green (For Zero-Downtime Critical Workloads)
@@ -86,7 +92,8 @@ gcloud container node-pools update <POOL_NAME> \
 gcloud container node-pools update <POOL_NAME> \
   --cluster <CLUSTER_NAME> --region <REGION> \
   --enable-blue-green-upgrade \
-  --node-pool-soak-duration "3600s"
+  --node-pool-soak-duration "3600s" \
+  --quiet
 ```
 
 ## Pre-Upgrade Checklist
@@ -100,11 +107,13 @@ gcloud container node-pools update <POOL_NAME> \
 ```bash
 # Check current versions
 gcloud container clusters describe <CLUSTER_NAME> --region <REGION> \
-  --format="table(currentMasterVersion, nodePools[].version)"
+  --format="table(currentMasterVersion, nodePools[].version)" \
+  --quiet
 
 # Check available upgrades
 gcloud container get-server-config --region <REGION> \
-  --format="yaml(channels)"
+  --format="yaml(channels)" \
+  --quiet
 
 # List deprecation warnings
 kubectl get --raw /metrics | grep apiserver_requested_deprecated_apis
@@ -115,11 +124,13 @@ kubectl get --raw /metrics | grep apiserver_requested_deprecated_apis
 ```bash
 # Upgrade control plane
 gcloud container clusters upgrade <CLUSTER_NAME> --region <REGION> \
-  --master --cluster-version <VERSION>
+  --master --cluster-version <VERSION> \
+  --quiet
 
 # Upgrade node pool
 gcloud container clusters upgrade <CLUSTER_NAME> --region <REGION> \
-  --node-pool <POOL_NAME>
+  --node-pool <POOL_NAME> \
+  --quiet
 ```
 
 ## Best Practices

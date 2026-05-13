@@ -47,13 +47,13 @@ If MCP tools are unavailable, use the following `gcloud` and `bq` commands:
 **View Logs (gcloud)**
 
 ```bash
-gcloud logging read 'resource.type="nat_gateway" AND logName="projects/{project_id}/logs/compute.googleapis.com%2Fnat_flows"' --project {project_id} --limit 10 --format json
+gcloud logging read 'resource.type="nat_gateway" AND logName="projects/{project_id}/logs/compute.googleapis.com%2Fnat_flows"' --project {project_id} --limit 10 --format json --quiet
 ```
 
 To filter for dropped packets:
 
 ```bash
-gcloud logging read 'resource.type="nat_gateway" AND logName="projects/{project_id}/logs/compute.googleapis.com%2Fnat_flows" AND jsonPayload.allocation_status="DROPPED"' --project {project_id} --limit 10 --format json
+gcloud logging read 'resource.type="nat_gateway" AND logName="projects/{project_id}/logs/compute.googleapis.com%2Fnat_flows" AND jsonPayload.allocation_status="DROPPED"' --project {project_id} --limit 10 --format json --quiet
 ```
 
 **Aggregate Trends (bq)**
@@ -79,7 +79,7 @@ To get the status of the router used by the NAT gateway:
 
 ```bash
 gcloud compute
-routers get-status {router_name} --region {region}
+routers get-status {router_name} --region {region} --quiet
 ```
 
 ## Key Fields

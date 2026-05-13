@@ -1,7 +1,7 @@
 # Media Generation
 
 ## Image Generation
-Generate images using `gemini-2.5-flash-image`.
+Generate images using `gemini-3.1-flash-image-preview`.
 
 ```python
 from google import genai
@@ -10,7 +10,7 @@ from google.genai import types
 client = genai.Client()
 
 response = client.models.generate_content(
-    model="gemini-2.5-flash-image",
+    model="gemini-3.1-flash-image-preview",
     contents="A dog reading a newspaper",
 )
 
@@ -50,7 +50,7 @@ for part in response.parts:
 ```
 
 ## Image Editing
-Editing images is better done using the Gemini native image generation model, and it is recommended to use chat mode.
+It is recommended to use chat mode for editing images.
 
 ```python
 from google import genai
@@ -62,7 +62,7 @@ prompt = "A small white ceramic bowl with lemons and limes"
 image = Image.open('fruit.png')
 
 # Create the chat
-chat = client.chats.create(model='gemini-2.5-flash-image')
+chat = client.chats.create(model='gemini-3.1-flash-image-preview')
 
 # Send the image and ask for it to be edited
 response = chat.send_message([prompt, image])

@@ -32,15 +32,18 @@ These are critical for diagnosing cluster-level issues (slow API responses, sche
 ```bash
 # Enable golden path monitoring suite
 gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
-  --monitoring=SYSTEM,API_SERVER,SCHEDULER,CONTROLLER_MANAGER,STORAGE,POD,DEPLOYMENT,STATEFULSET,DAEMONSET,HPA,CADVISOR,KUBELET,DCGM
+  --monitoring=SYSTEM,API_SERVER,SCHEDULER,CONTROLLER_MANAGER,STORAGE,POD,DEPLOYMENT,STATEFULSET,DAEMONSET,HPA,CADVISOR,KUBELET,DCGM \
+  --quiet
 
 # Enable Managed Prometheus
 gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
-  --enable-managed-prometheus
+  --enable-managed-prometheus \
+  --quiet
 
 # Enable Dataplane V2 observability metrics
 gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
-  --enable-dataplane-v2-flow-observability
+  --enable-dataplane-v2-flow-observability \
+  --quiet
 ```
 
 ## Managed Prometheus
@@ -82,17 +85,20 @@ kubectl top pods --containers -n <NAMESPACE>  # per-container breakdown
 # System component logs
 gcloud logging read \
   'resource.type="k8s_cluster" AND resource.labels.cluster_name="<CLUSTER_NAME>"' \
-  --project <PROJECT_ID> --limit 50
+  --project <PROJECT_ID> --limit 50 \
+  --quiet
 
 # Workload logs for a specific namespace
 gcloud logging read \
   'resource.type="k8s_container" AND resource.labels.cluster_name="<CLUSTER_NAME>" AND resource.labels.namespace_name="<NAMESPACE>"' \
-  --project <PROJECT_ID> --limit 50
+  --project <PROJECT_ID> --limit 50 \
+  --quiet
 
 # Audit logs (who did what)
 gcloud logging read \
   'resource.type="k8s_cluster" AND logName:"cloudaudit.googleapis.com"' \
-  --project <PROJECT_ID> --limit 50
+  --project <PROJECT_ID> --limit 50 \
+  --quiet
 ```
 
 ## Diagnostic Settings
@@ -102,7 +108,8 @@ For security monitoring and troubleshooting, enable control-plane audit logs:
 ```bash
 # View current logging config
 gcloud container clusters describe <CLUSTER_NAME> --region <REGION> \
-  --format="yaml(loggingConfig)"
+  --format="yaml(loggingConfig)" \
+  --quiet
 ```
 
 ## Alerting
@@ -130,7 +137,8 @@ To reduce costs in non-production:
 ```bash
 # Reduce to system-only monitoring
 gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
-  --monitoring=SYSTEM
+  --monitoring=SYSTEM \
+  --quiet
 ```
 
 ## Distributed Tracing & Continuous Profiling (Recommended)

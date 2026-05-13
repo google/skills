@@ -30,11 +30,13 @@ The golden path creates a private cluster. Users access it via:
 ```bash
 # Access private cluster via DNS endpoint (golden path default)
 gcloud container clusters get-credentials <CLUSTER_NAME> \
-  --region <REGION> --dns-endpoint
+  --region <REGION> --dns-endpoint \
+  --quiet
 
 # Access via private endpoint (from within VPC)
 gcloud container clusters get-credentials <CLUSTER_NAME> \
-  --region <REGION> --internal-ip
+  --region <REGION> --internal-ip \
+  --quiet
 ```
 
 ## Bring-Your-Own VPC/Subnet
@@ -49,7 +51,8 @@ gcloud container clusters create-auto <CLUSTER_NAME> \
   --cluster-secondary-range-name <POD_RANGE> \
   --services-secondary-range-name <SVC_RANGE> \
   --enable-private-nodes \
-  --enable-master-authorized-networks
+  --enable-master-authorized-networks \
+  --quiet
 ```
 
 > **Day-0 Warning**: VPC, subnet, and IP ranges cannot be changed after cluster creation.

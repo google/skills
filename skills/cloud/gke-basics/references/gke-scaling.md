@@ -106,13 +106,15 @@ On Autopilot (golden path), node scaling is fully managed. NAP automatically cre
 # Enable cluster autoscaler on a node pool
 gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
   --enable-autoscaling --node-pool <POOL_NAME> \
-  --min-nodes <MIN> --max-nodes <MAX>
+  --min-nodes <MIN> --max-nodes <MAX> \
+  --quiet
 
 # Enable NAP
 gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
   --enable-autoprovisioning \
   --min-cpu <MIN_CPU> --max-cpu <MAX_CPU> \
-  --min-memory <MIN_MEM> --max-memory <MAX_MEM>
+  --min-memory <MIN_MEM> --max-memory <MAX_MEM> \
+  --quiet
 ```
 
 **Autoscaling profiles:**

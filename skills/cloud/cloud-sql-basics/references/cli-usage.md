@@ -17,25 +17,26 @@ gcloud sql [GROUP] [COMMAND] [FLAGS]
 
   ```bash
   gcloud sql instances create my-instance --database-version=MYSQL_8_0 \
-      --tier=db-f1-micro --region=us-central1
+      --tier=db-f1-micro --region=us-central1 \
+      --quiet
   ```
 
 - **List instances:**
 
   ```bash
-  gcloud sql instances list
+  gcloud sql instances list --quiet
   ```
 
 - **Describe an instance:**
 
   ```bash
-  gcloud sql instances describe my-instance
+  gcloud sql instances describe my-instance --quiet
   ```
 
 - **Restart an instance:**
 
   ```bash
-  gcloud sql instances restart my-instance
+  gcloud sql instances restart my-instance --quiet
   ```
 
 ### Database and User Management
@@ -43,14 +44,15 @@ gcloud sql [GROUP] [COMMAND] [FLAGS]
 - **Create a database:**
 
   ```bash
-  gcloud sql databases create my-db --instance=my-instance
+  gcloud sql databases create my-db --instance=my-instance --quiet
   ```
 
 - **Create a user:**
 
   ```bash
   gcloud sql users create my-user --instance=my-instance \
-      --password=my-password
+      --password=my-password \
+      --quiet
   ```
 
 ### Operations and Backups
@@ -58,19 +60,19 @@ gcloud sql [GROUP] [COMMAND] [FLAGS]
 - **List operations:**
 
   ```bash
-  gcloud sql operations list --instance=my-instance
+  gcloud sql operations list --instance=my-instance --quiet
   ```
 
 - **Create a backup:**
 
   ```bash
-  gcloud sql backups create --instance=my-instance
+  gcloud sql backups create --instance=my-instance --quiet
   ```
 
 - **Restore from a backup:**
 
   ```bash
-  gcloud sql backups restore backup_id --restore-instance=my-instance
+  gcloud sql backups restore backup_id --restore-instance=my-instance --quiet
   ```
 
 ## Common Flags

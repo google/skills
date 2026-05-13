@@ -20,7 +20,7 @@ access to Cloud SQL resources.
 
 1.  **Enable the API:**
     ```bash
-    gcloud services enable sqladmin.googleapis.com
+    gcloud services enable sqladmin.googleapis.com --quiet
     ```
 
 2.  **Create an Instance:**
@@ -29,7 +29,8 @@ access to Cloud SQL resources.
       --database-version=POSTGRES_18 \
       --cpu=2 \
       --memory=7680MiB \
-      --region=REGION
+      --region=REGION \
+      --quiet
     ```
 
 3.  **Set a password for the default user:**
@@ -38,13 +39,15 @@ access to Cloud SQL resources.
     is `postgres`:
     ```bash
     gcloud sql users set-password postgres \
-      --instance=INSTANCE_NAME --password=PASSWORD
+      --instance=INSTANCE_NAME --password=PASSWORD \
+      --quiet
     ```
 
 4.  **Create a database:**
     ```bash
     gcloud sql databases create DATABASE_NAME \
-      --instance=INSTANCE_NAME
+      --instance=INSTANCE_NAME \
+      --quiet
     ```
 
 5.  **Get the instance connection name:**
@@ -54,7 +57,8 @@ access to Cloud SQL resources.
     Proxy. Retrieve it with the following command:
     ```bash
     gcloud sql instances describe INSTANCE_NAME \
-      --format="value(connectionName)"
+      --format="value(connectionName)" \
+      --quiet
     ```
 
 6.  **Connect to the instance:**

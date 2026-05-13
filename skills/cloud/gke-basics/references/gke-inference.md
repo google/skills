@@ -23,13 +23,13 @@ This reference covers deploying AI/ML inference workloads on GKE using Google's 
 
 ```bash
 # List all supported models
-gcloud container ai profiles models list
+gcloud container ai profiles models list --quiet
 
 # Find valid accelerator/server combinations for a model
-gcloud container ai profiles list --model=<MODEL_NAME>
+gcloud container ai profiles list --model=<MODEL_NAME> --quiet
 
 # Example: what can run Gemma 2 9B?
-gcloud container ai profiles list --model=gemma-2-9b-it
+gcloud container ai profiles list --model=gemma-2-9b-it --quiet
 ```
 
 ### 2. Generate Manifest
@@ -39,7 +39,7 @@ gcloud container ai profiles manifests create \
   --model=<MODEL_NAME> \
   --model-server=<SERVER> \
   --accelerator-type=<ACCELERATOR> \
-  --target-ntpot-milliseconds=<NTPOT> > inference.yaml
+  --target-ntpot-milliseconds=<NTPOT> --quiet > inference.yaml
 ```
 
 **Parameters:**
@@ -55,7 +55,7 @@ gcloud container ai profiles manifests create \
   --model=gemma-2-9b-it \
   --model-server=vllm \
   --accelerator-type=nvidia-l4 \
-  --target-ntpot-milliseconds=50 > inference.yaml
+  --target-ntpot-milliseconds=50 --quiet > inference.yaml
 ```
 
 ### 3. Review and Deploy

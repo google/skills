@@ -56,13 +56,13 @@ If MCP tools are unavailable, use the following `gcloud` and `bq` commands:
 **View Logs (gcloud)**
 
 ```bash
-gcloud logging read 'resource.type="gce_subnetwork" AND logName="projects/{project_id}/logs/compute.googleapis.com%2Ffirewall"' --project {project_id} --limit 10 --format json
+gcloud logging read 'resource.type="gce_subnetwork" AND logName="projects/{project_id}/logs/compute.googleapis.com%2Ffirewall"' --project {project_id} --limit 10 --format json --quiet
 ```
 
 To filter for denied packets:
 
 ```bash
-gcloud logging read 'resource.type="gce_subnetwork" AND logName="projects/{project_id}/logs/compute.googleapis.com%2Ffirewall" AND jsonPayload.rule_details.action="DENY"' --project {project_id} --limit 10 --format json
+gcloud logging read 'resource.type="gce_subnetwork" AND logName="projects/{project_id}/logs/compute.googleapis.com%2Ffirewall" AND jsonPayload.rule_details.action="DENY"' --project {project_id} --limit 10 --format json --quiet
 ```
 
 **Aggregate Trends (bq)**

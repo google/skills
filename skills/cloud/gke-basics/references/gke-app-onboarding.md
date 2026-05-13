@@ -53,7 +53,7 @@ Build and store the container image:
 
 ```bash
 # Configure Docker for Artifact Registry
-gcloud auth configure-docker <REGION>-docker.pkg.dev
+gcloud auth configure-docker <REGION>-docker.pkg.dev --quiet
 
 # Build and push
 docker build -t <REGION>-docker.pkg.dev/<PROJECT>/<REPO>/<IMAGE>:<TAG> .
@@ -66,7 +66,8 @@ docker push <REGION>-docker.pkg.dev/<PROJECT>/<REPO>/<IMAGE>:<TAG>
 # Check scan results
 gcloud artifacts docker images describe \
   <REGION>-docker.pkg.dev/<PROJECT>/<REPO>/<IMAGE>:<TAG> \
-  --show-package-vulnerability
+  --show-package-vulnerability \
+  --quiet
 ```
 
 ### 4. Manifest Generation

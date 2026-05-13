@@ -60,17 +60,18 @@ create_cluster(
 
 ```bash
 # Get available Kubernetes versions (CLI-only)
-gcloud container get-server-config --region <REGION> --format="yaml(channels)"
+gcloud container get-server-config --region <REGION> --format="yaml(channels)" --quiet
 
 # Create golden path Autopilot cluster (see gke-cluster-creation.md for full templates)
 gcloud container clusters create-auto <CLUSTER_NAME> \
   --region <REGION> --project <PROJECT_ID> \
   --enable-private-nodes --enable-master-authorized-networks \
   --enable-dns-access --release-channel regular \
-  --enable-secret-manager --scoped-rbs-bindings
+  --enable-secret-manager --scoped-rbs-bindings \
+  --quiet
 
 # Get credentials (CLI-only)
-gcloud container clusters get-credentials <CLUSTER_NAME> --region <REGION> --project <PROJECT_ID>
+gcloud container clusters get-credentials <CLUSTER_NAME> --region <REGION> --project <PROJECT_ID> --quiet
 ```
 
 ## Node Pool Operations
@@ -110,7 +111,8 @@ update_cluster(
 ```bash
 # Update monitoring components (CLI-only)
 gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
-  --monitoring=SYSTEM,API_SERVER,SCHEDULER,CONTROLLER_MANAGER,STORAGE,POD,DEPLOYMENT,STATEFULSET,DAEMONSET,HPA
+  --monitoring=SYSTEM,API_SERVER,SCHEDULER,CONTROLLER_MANAGER,STORAGE,POD,DEPLOYMENT,STATEFULSET,DAEMONSET,HPA \
+  --quiet
 ```
 
 ## Kubernetes Resource Operations
@@ -185,12 +187,12 @@ get_operation(name="projects/<PROJECT_ID>/locations/<REGION>/operations/<OP_ID>"
 ## AI/ML Inference (GIQ) — CLI-Only
 
 ```bash
-gcloud container ai profiles models list
-gcloud container ai profiles list --model=<MODEL_NAME>
+gcloud container ai profiles models list --quiet
+gcloud container ai profiles list --model=<MODEL_NAME> --quiet
 gcloud container ai profiles manifests create \
   --model=<MODEL_NAME> --model-server=<SERVER> \
   --accelerator-type=<ACCELERATOR> \
-  --target-ntpot-milliseconds=<NTPOT> > inference.yaml
+  --target-ntpot-milliseconds=<NTPOT> --quiet > inference.yaml
 
 # Deploy generated manifest via MCP
 apply_k8s_manifest(parent="...", yamlManifest="<contents of inference.yaml>")

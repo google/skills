@@ -13,12 +13,14 @@ Backup for GKE must be enabled at the cluster level.
 ```bash
 # Check if enabled
 gcloud container clusters describe <CLUSTER_NAME> --region <REGION> \
-  --format="value(addonsConfig.gkeBackupAgentConfig.enabled)"
+  --format="value(addonsConfig.gkeBackupAgentConfig.enabled)" \
+  --quiet
 
 # Enable (Day-1 change)
 gcloud container clusters update <CLUSTER_NAME> \
   --enable-gke-backup \
-  --region <REGION>
+  --region <REGION> \
+  --quiet
 ```
 
 ### 2. Create a Backup Plan
@@ -31,7 +33,8 @@ gcloud container backup-restore backup-plans create <PLAN_NAME> \
   --location=<REGION> \
   --retention-days=<DAYS> \
   --cron-schedule="<CRON>" \
-  --all-namespaces
+  --all-namespaces \
+  --quiet
 ```
 
 **Options:**
@@ -46,7 +49,8 @@ Trigger a backup immediately outside the schedule:
 ```bash
 gcloud container backup-restore backups create <BACKUP_NAME> \
   --backup-plan=<PLAN_NAME> \
-  --location=<REGION>
+  --location=<REGION> \
+  --quiet
 ```
 
 ### 4. Restore from Backup
@@ -59,7 +63,8 @@ gcloud container backup-restore restore-plans create <RESTORE_PLAN_NAME> \
   --location=<REGION> \
   --backup-plan=<SOURCE_BACKUP_PLAN_NAME> \
   --cluster-resource-conflict-policy=USE_EXISTING_VERSION \
-  --namespaced-resource-restore-mode=FAIL_ON_CONFLICT
+  --namespaced-resource-restore-mode=FAIL_ON_CONFLICT \
+  --quiet
 ```
 
 **Execute the restore:**
@@ -68,7 +73,8 @@ gcloud container backup-restore restore-plans create <RESTORE_PLAN_NAME> \
 gcloud container backup-restore restores create <RESTORE_NAME> \
   --restore-plan=<RESTORE_PLAN_NAME> \
   --backup=<BACKUP_NAME> \
-  --location=<REGION>
+  --location=<REGION> \
+  --quiet
 ```
 
 ## Best Practices

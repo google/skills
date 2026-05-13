@@ -28,12 +28,14 @@ Workload Identity is the recommended way for pods to access Google Cloud APIs. I
 # 1. Create a Google Service Account (GSA)
 gcloud iam service-accounts create <GSA_NAME> \
   --project <PROJECT_ID> \
-  --display-name "Workload Identity SA"
+  --display-name "Workload Identity SA" \
+  --quiet
 
 # 2. Grant IAM roles to the GSA
 gcloud projects add-iam-policy-binding <PROJECT_ID> \
   --member "serviceAccount:<GSA_NAME>@<PROJECT_ID>.iam.gserviceaccount.com" \
-  --role "<ROLE>"
+  --role "<ROLE>" \
+  --quiet
 
 # 3. Create Kubernetes Service Account (KSA)
 kubectl create namespace <NAMESPACE>
@@ -43,7 +45,8 @@ kubectl create serviceaccount <KSA_NAME> --namespace <NAMESPACE>
 gcloud iam service-accounts add-iam-policy-binding \
   <GSA_NAME>@<PROJECT_ID>.iam.gserviceaccount.com \
   --role roles/iam.workloadIdentityUser \
-  --member "serviceAccount:<PROJECT_ID>.svc.id.goog[<NAMESPACE>/<KSA_NAME>]"
+  --member "serviceAccount:<PROJECT_ID>.svc.id.goog[<NAMESPACE>/<KSA_NAME>]" \
+  --quiet
 
 # 5. Annotate KSA
 kubectl annotate serviceaccount <KSA_NAME> \
@@ -59,7 +62,7 @@ kubectl annotate serviceaccount <KSA_NAME> \
 kubectl run workload-identity-test \
   --image=gcr.io/google.com/cloudsdktool/cloud-sdk:slim \
   --serviceaccount=<KSA_NAME> --namespace=<NAMESPACE> \
-  --rm -it -- gcloud auth list
+  --rm -it -- gcloud auth list --quiet
 ```
 
 ## Secret Manager Integration
@@ -69,12 +72,14 @@ The golden path enables Secret Manager with automatic rotation. Secrets are sync
 ```bash
 # Verify Secret Manager is enabled on cluster
 gcloud container clusters describe <CLUSTER_NAME> --region <REGION> \
-  --format="value(secretManagerConfig.enabled)"
+  --format="value(secretManagerConfig.enabled)" \
+  --quiet
 
 # Enable if not already (Day-1 change)
 gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
   --enable-secret-manager \
-  --secret-manager-rotation-interval=120s
+  --secret-manager-rotation-interval=120s \
+  --quiet
 ```
 
 ## RBAC Hardening
@@ -84,7 +89,8 @@ The golden path disables insecure legacy RBAC bindings that grant broad access t
 ```bash
 # Verify insecure bindings are disabled
 gcloud container clusters describe <CLUSTER_NAME> --region <REGION> \
-  --format="yaml(rbacBindingConfig)"
+  --format="yaml(rbacBindingConfig)" \
+  --quiet
 ```
 
 **Best practices for RBAC:**
@@ -102,7 +108,8 @@ Not enabled in golden path by default but recommended for production image prove
 ```bash
 # Enable Binary Authorization
 gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
-  --binauthz-evaluation-mode=PROJECT_SINGLETON_POLICY_ENFORCE
+  --binauthz-evaluation-mode=PROJECT_SINGLETON_POLICY_ENFORCE \
+  --quiet
 ```
 
 ## Network Policies
@@ -123,7 +130,7 @@ For running untrusted workloads in an isolated sandbox:
 
 ```bash
 # Enable on cluster (Standard clusters)
-gcloud container clusters update <CLUSTER_NAME> --region <REGION> --enable-gke-sandbox
+gcloud container clusters update <CLUSTER_NAME> --region <REGION> --enable-gke-sandbox --quiet
 
 # Use in pod spec
 # Add: runtimeClassName: gvisor
@@ -165,7 +172,8 @@ With Dataplane V2 (golden path), you can enable logging for Network Policy decis
 
 ```bash
 gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
-  --enable-network-policy-logging
+  --enable-network-policy-logging \
+  --quiet
 ```
 
 This logs allowed and denied connections, useful for troubleshooting Network Policy rules and auditing traffic flows.
@@ -198,17 +206,20 @@ Common patterns for granting GKE workloads access to other Google Cloud services
 # Grant a GKE workload access to Cloud Storage
 gcloud projects add-iam-policy-binding <PROJECT_ID> \
   --member "serviceAccount:<GSA_NAME>@<PROJECT_ID>.iam.gserviceaccount.com" \
-  --role "roles/storage.objectViewer"
+  --role "roles/storage.objectViewer" \
+  --quiet
 
 # Grant a GKE workload access to Cloud SQL
 gcloud projects add-iam-policy-binding <PROJECT_ID> \
   --member "serviceAccount:<GSA_NAME>@<PROJECT_ID>.iam.gserviceaccount.com" \
-  --role "roles/cloudsql.client"
+  --role "roles/cloudsql.client" \
+  --quiet
 
 # Grant a GKE workload access to Pub/Sub
 gcloud projects add-iam-policy-binding <PROJECT_ID> \
   --member "serviceAccount:<GSA_NAME>@<PROJECT_ID>.iam.gserviceaccount.com" \
-  --role "roles/pubsub.subscriber"
+  --role "roles/pubsub.subscriber" \
+  --quiet
 ```
 
 In all cases, the GSA must be bound to a KSA via Workload Identity (see setup above). The pod then uses the KSA to authenticate as the GSA.

@@ -135,7 +135,7 @@ For steady-state workloads, purchase 1-year or 3-year CUDs:
 
 ```bash
 # View cluster cost breakdown (requires Cost Management API)
-gcloud billing budgets list --billing-account=<BILLING_ACCOUNT>
+gcloud billing budgets list --billing-account=<BILLING_ACCOUNT> --quiet
 
 # View node utilization
 kubectl top nodes

@@ -83,13 +83,13 @@ If MCP tools are unavailable, use the following `gcloud` and `bq` commands:
 **View Threat Alerts (gcloud)**
 
 ```bash
-gcloud logging read 'logName:("projects/{project_id}/logs/networksecurity.googleapis.com%2Ffirewall_threat" OR "projects/{project_id}/logs/ids.googleapis.com%2Fthreat")' --project {project_id} --limit 10 --format json
+gcloud logging read 'logName:("projects/{project_id}/logs/networksecurity.googleapis.com%2Ffirewall_threat" OR "projects/{project_id}/logs/ids.googleapis.com%2Fthreat")' --project {project_id} --limit 10 --format json --quiet
 ```
 
 To filter for high-severity blocked threats:
 
 ```bash
-gcloud logging read 'logName:("projects/{project_id}/logs/networksecurity.googleapis.com%2Ffirewall_threat" OR "projects/{project_id}/logs/ids.googleapis.com%2Fthreat") AND jsonPayload.threatDetails.severity=("HIGH" OR "CRITICAL") AND jsonPayload.action="DENY"' --project {project_id} --limit 10 --format json
+gcloud logging read 'logName:("projects/{project_id}/logs/networksecurity.googleapis.com%2Ffirewall_threat" OR "projects/{project_id}/logs/ids.googleapis.com%2Fthreat") AND jsonPayload.threatDetails.severity=("HIGH" OR "CRITICAL") AND jsonPayload.action="DENY"' --project {project_id} --limit 10 --format json --quiet
 ```
 
 **Aggregate Threat Trends (bq)**

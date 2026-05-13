@@ -94,6 +94,7 @@ client = genai.Client(vertexai=True, project="your-project-id", location="global
 - Use `gemini-3.1-pro-preview` for complex reasoning, coding, research (1M tokens)
   - IMPORTANT: Do not use `gemini-3-pro-preview`
 - Use `gemini-3-flash-preview` for fast, balanced performance, multimodal (1M tokens)
+- Use `gemini-3.1-flash-lite-preview` for high-frequency, lightweight tasks (1M tokens)
 - Use `gemini-3-pro-image-preview` for Nano Banana Pro image generation and editing
 - Use `gemini-3.1-flash-image-preview` for Nano Banana 2 image generation and editing
 - Use `gemini-live-2.5-flash-native-audio` for Live Realtime API including native audio

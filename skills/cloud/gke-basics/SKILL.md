@@ -14,9 +14,9 @@ GKE is a managed Kubernetes platform on Google Cloud for deploying, scaling, and
 ## Quick Start
 
 ```bash
-gcloud services enable container.googleapis.com
-gcloud container clusters create-auto my-cluster --region=us-central1
-gcloud container clusters get-credentials my-cluster --region=us-central1
+gcloud services enable container.googleapis.com --quiet
+gcloud container clusters create-auto my-cluster --region=us-central1 --quiet
+gcloud container clusters get-credentials my-cluster --region=us-central1 --quiet
 kubectl create deployment hello-server \
   --image=us-docker.pkg.dev/google-samples/containers/gke/hello-app:1.0
 ```

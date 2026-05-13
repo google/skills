@@ -54,7 +54,7 @@ If MCP tools are unavailable, use the following `gcloud` and `bq` commands:
 **View Logs (gcloud)**
 
 ```bash
-gcloud logging read '(logName:"projects/{project_id}/logs/compute.googleapis.com%2Fvpc_flows" OR logName:"projects/{project_id}/logs/networkmanagement.googleapis.com%2Fvpc_flows") AND resource.type="gce_subnetwork"' --project {project_id} --limit 10 --format json
+gcloud logging read '(logName:"projects/{project_id}/logs/compute.googleapis.com%2Fvpc_flows" OR logName:"projects/{project_id}/logs/networkmanagement.googleapis.com%2Fvpc_flows") AND resource.type="gce_subnetwork"' --project {project_id} --limit 10 --format json --quiet
 ```
 
 **Aggregate Trends (bq)**

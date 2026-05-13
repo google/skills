@@ -115,7 +115,8 @@ gcloud container node-pools create hpc-pool \
   --machine-type c3-standard-44 \
   --placement-type COMPACT \
   --num-nodes 8 \
-  --enable-autoscaling --min-nodes 0 --max-nodes 16
+  --enable-autoscaling --min-nodes 0 --max-nodes 16 \
+  --quiet
 ```
 
 ### MPI Workloads
