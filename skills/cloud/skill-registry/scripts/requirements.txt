@@ -1,3 +1,0 @@
-# Required Python packages for Skill Registry Python scripts.
-google-auth
-requests
