@@ -1,6 +1,6 @@
 ---
 name: firebase-basics
-description: Use this skill whenever you are working on a project that uses Firebase products or services, especially for mobile or web apps.
+description: "**WORKFLOW SKILL** — Build and deploy Firebase mobile and web apps, including Auth, Firestore, Hosting, Functions, and the Firebase MCP server. WHEN: \"Firebase project\", \"Firebase Hosting\", \"Firestore\", \"Firebase Auth\", \"Firebase Functions\", \"firebase deploy\", \"Firebase MCP\". INVOKES: firebase-tools CLI, Firebase MCP server, npx commands."
 ---
 
 # Firebase Basics
