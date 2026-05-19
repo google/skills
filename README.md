@@ -28,6 +28,7 @@ repo to install.
 -   [**Cloud SQL Basics**](./skills/cloud/cloud-sql-basics)
 -   [**Firebase Basics**](./skills/cloud/firebase-basics)
 -   [**Kubernetes Engine (GKE) Basics**](./skills/cloud/gke-basics)
+-   [**Workload Manager Basics**](./skills/cloud/workload-manager-basics)
 -   [**Recipe: Onboarding to Google Cloud**](./skills/cloud/google-cloud-recipe-onboarding)
 -   [**Recipe: Authenticating to Google Cloud**](./skills/cloud/google-cloud-recipe-auth)
 -   [**Recipe: Google Cloud Network Observability**](./skills/cloud/google-cloud-networking-observability)
