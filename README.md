@@ -18,6 +18,12 @@ repo to install.
 
 ## Available Skills
 
+### Productivity & Automation
+
+-   [**FlowHunt Skill**](./skills/productivity/flowhunt-skill) — Automation discovery audit. Walks through a 5-question workflow intake and audits Gmail/Calendar/Slack/task trackers to identify automation opportunities.
+
+### Google Cloud
+
 -   [**Gemini API on Agent Platform**](./skills/cloud/gemini-api)
 -   [**Gemini Interactions API on Agent Platform**](./skills/cloud/gemini-api)
 -   [**Managed Agents API on Agent Platform**](./skills/cloud/gemini-agents-api)
