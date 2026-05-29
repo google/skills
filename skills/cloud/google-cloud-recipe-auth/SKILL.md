@@ -1,6 +1,6 @@
 ---
 name: google-cloud-recipe-auth
-description: Provides expert guidance on authenticating and authorizing to Google Cloud services and APIs, covering human users, service identities, Application Default Credentials (ADC), and best practices for secure access.
+description: "**ANALYSIS SKILL** — Guide authentication and authorization to Google Cloud services, covering ADC, service accounts, Workload Identity Federation, IAP, OIDC tokens, and IAM. WHEN: \"gcloud auth\", \"Application Default Credentials\", \"Workload Identity Federation\", \"service account impersonation\", \"OIDC token\", \"IAM role\", \"GCP authentication\". INVOKES: gcloud auth, IAM Service Account Credentials API."
 ---
 
 # Authenticating to Google Cloud

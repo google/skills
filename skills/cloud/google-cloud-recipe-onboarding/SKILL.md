@@ -1,6 +1,6 @@
 ---
 name: google-cloud-recipe-onboarding
-description: Guidance for a developer's first steps on Google Cloud, covering account creation, billing setup, project management, and deploying a first resource.
+description: "**WORKFLOW SKILL** — Onboard a developer to Google Cloud: account setup, billing, first project, gcloud CLI install, enabling APIs, and deploying a first resource. WHEN: \"Google Cloud onboarding\", \"new GCP project\", \"gcloud init\", \"GCP free trial\", \"first Cloud Run\", \"enable Google Cloud API\", \"GCP billing setup\". INVOKES: gcloud CLI, Google Cloud Console."
 ---
 
 # Onboarding to Google Cloud

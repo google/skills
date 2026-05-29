@@ -1,6 +1,6 @@
 ---
 name: google-cloud-waf-security
-description: Generates security-focused guidance for Google Cloud workloads based on the design principles and recommendations in the Google Cloud Well-Architected Framework (WAF). Use this skill to evaluate a workload, identify security requirements, and provide actionable recommendations for IAM, network security, data protection, and operational security.
+description: "**ANALYSIS SKILL** — Evaluate Google Cloud workloads against the Security pillar of the Well-Architected Framework; recommend zero-trust, shift-left, IAM hardening, supply-chain controls, and secure AI practices. WHEN: \"Google Cloud security\", \"GCP zero trust\", \"VPC Service Controls\", \"Binary Authorization\", \"Cloud Armor\", \"WAF security\", \"GCP shift left\". INVOKES: Security Command Center, Google SecOps, IAM, VPC Service Controls."
 ---
 
 # Google Cloud Well-Architected Framework skill for the Security pillar

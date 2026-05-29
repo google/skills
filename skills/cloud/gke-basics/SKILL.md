@@ -4,7 +4,7 @@ license: Apache-2.0
 metadata:
   author: Google Cloud
   version: "1.0.0"
-description: "Plan, create, and configure production-ready Google Kubernetes Engine (GKE) clusters using the golden path Autopilot configuration. Covers Day-0 checklist, Autopilot vs Standard, networking (private clusters, VPC-native, Gateway API), security (Workload Identity, Secret Manager, RBAC hardening), observability, scaling, cost optimization, and AI/ML inference. WHEN: create GKE cluster, provision GKE environment, design GKE networking, secure GKE, optimize GKE cost, GKE autoscaling, GKE inference, GKE upgrade, GKE observability, GKE multi-tenancy, GKE batch, GKE HPC, GKE compute class."
+description: "**WORKFLOW SKILL** — Plan, create, and configure production-ready GKE clusters using the golden-path Autopilot configuration; covers networking, security, scaling, cost, upgrades, and AI/ML inference. WHEN: \"create GKE cluster\", \"GKE Autopilot\", \"GKE networking\", \"Workload Identity\", \"GKE autoscaling\", \"GKE inference\", \"GKE upgrade\". INVOKES: gcloud, kubectl, GKE MCP server."
 ---
 
 # Google Kubernetes Engine (GKE) Basics
