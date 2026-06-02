@@ -5,7 +5,8 @@
 This repository contains [Agent Skills](https://agentskills.io/home) for Google
 products and technologies, including [Google Cloud](https://cloud.google.com).
 
-> [!NOTE] This repository is under active development.
+> [!NOTE]
+> This repository is under active development.
 
 ## Installation
 
