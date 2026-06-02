@@ -14,7 +14,7 @@ training_dataset = types.TuningDataset(
 )
 
 tuning_job = client.tunings.tune(
-    base_model="gemini-3-flash-preview",
+    base_model="gemini-3.1-flash-lite",
     training_dataset=training_dataset,
     config=types.CreateTuningJobConfig(
         tuned_model_display_name="Example tuning job",

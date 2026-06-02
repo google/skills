@@ -8,13 +8,15 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel
 
+
 class Recipe(BaseModel):
     recipe_name: str
     ingredients: list[str]
 
+
 client = genai.Client()
 response = client.models.generate_content(
-    model="gemini-3-flash-preview",
+    model="gemini-3.5-flash",
     contents="List a few popular cookie recipes.",
     config=types.GenerateContentConfig(
         response_mime_type="application/json",
@@ -23,7 +25,7 @@ response = client.models.generate_content(
 )
 # response.text is guaranteed to be valid JSON matching the schema
 print(response.text)
- # Returns list of Recipe objects
+# Returns list of Recipe objects
 print(response.parsed)
 ```
 
@@ -34,33 +36,35 @@ Let the model output function calls that you can execute.
 from google import genai
 from google.genai import types
 
+
 def get_current_weather(location: str) -> str:
     """Example method. Returns the current weather.
     Args: location: The city and state, e.g. San Francisco, CA
     """
-    if 'boston' in location.lower():
+    if "boston" in location.lower():
         return "Snowing"
     return "Sunny"
 
+
 client = genai.Client()
 response = client.models.generate_content(
-    model="gemini-3-flash-preview",
+    model="gemini-3.5-flash",
     contents="What is the weather like in Boston?",
     config=types.GenerateContentConfig(tools=[get_current_weather]),
 )
 
 if response.function_calls:
-    print('Function calls requested by the model:')
+    print("Function calls requested by the model:")
     for function_call in response.function_calls:
-        print(f'- Function: {function_call.name}')
-        print(f'- Args: {dict(function_call.args)}')
+        print(f"- Function: {function_call.name}")
+        print(f"- Args: {dict(function_call.args)}")
 else:
-    print('The model responded directly:')
+    print("The model responded directly:")
     print(response.text)
 ```
 
 ## Search Grounding
-Ground the model's responses in Google Search or your own enterprise data with Agent Search (formerly known as Vertex AI Search).
+Ground the model's responses in Google Search or your own data with Agent Search (formerly known as Vertex AI Search).
 
 ```python
 from google import genai
@@ -69,21 +73,21 @@ from google.genai import types
 client = genai.Client()
 
 response = client.models.generate_content(
-    model="gemini-3-flash-preview",
+    model="gemini-3.5-flash",
     contents="When is the next total solar eclipse in the US?",
     config=types.GenerateContentConfig(
-        tools=[
-            types.Tool(google_search=types.GoogleSearch())
-        ],
+        tools=[types.Tool(google_search=types.GoogleSearch())],
     ),
 )
 print(response.text)
 # Search details
-print(f'Search Query: {response.candidates[0].grounding_metadata.web_search_queries}')
+print(f"Search Query: {response.candidates[0].grounding_metadata.web_search_queries}")
 # Inspect grounding metadata
 print(response.candidates[0].grounding_metadata.search_entry_point.rendered_content)
 # Urls used for grounding
-print(f"Search Pages: {', '.join([site.web.title for site in response.candidates[0].grounding_metadata.grounding_chunks])}")
+print(
+    f"Search Pages: {', '.join([site.web.title for site in response.candidates[0].grounding_metadata.grounding_chunks])}"
+)
 ```
 
 ## Code Execution
@@ -96,8 +100,8 @@ from google.genai import types
 client = genai.Client()
 
 response = client.models.generate_content(
-    model="gemini-3-flash-preview",
-    contents="Calculate 20th fibonacci number.",
+    model="gemini-3.5-flash",
+    contents="Calculate the 20th fibonacci number.",
     config=types.GenerateContentConfig(
         tools=[types.Tool(code_execution=types.ToolCodeExecution())],
     ),
@@ -116,11 +120,11 @@ from google.genai import types
 client = genai.Client()
 
 response = client.models.generate_content(
-    model=model_id,
+    model="gemini-3.5-flash",
     contents="Compare recipes from http://example.com and http://example2.com",
-    config=GenerateContentConfig(
-        tools=[types.Tool(url_context=types.UrlContext)],
-    )
+    config=types.GenerateContentConfig(
+        tools=[types.Tool(url_context=types.UrlContext())],
+    ),
 )
 
 print(response.text)

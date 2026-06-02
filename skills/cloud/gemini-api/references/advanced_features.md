@@ -3,6 +3,8 @@
 ## Content Caching
 Cache large documents or contexts to reduce cost and latency.
 
+Only use explicit caching if asked directly. Implicit caching is enabled by default and automatically provides cost savings when cache hits occur.
+
 ```python
 from google import genai
 from google.genai import types
@@ -10,12 +12,17 @@ from google.genai import types
 client = genai.Client()
 
 content_cache = client.caches.create(
-    model="gemini-3-flash-preview",
+    model="gemini-3.5-flash",
     config=types.CreateCachedContentConfig(
         contents=[
             types.Content(
                 role="user",
-                parts=[types.Part.from_uri(file_uri="gs://your-bucket/large.pdf", mime_type="application/pdf")]
+                parts=[
+                    types.Part.from_uri(
+                        file_uri="gs://your-bucket/large.pdf",
+                        mime_type="application/pdf",
+                    )
+                ],
             )
         ],
         system_instruction="You are an expert researcher.",
@@ -26,11 +33,9 @@ content_cache = client.caches.create(
 
 # Use the cache
 response = client.models.generate_content(
-    model="gemini-3-flash-preview",
+    model="gemini-3.5-flash",
     contents="Summarize the pdf",
-    config=types.GenerateContentConfig(
-        cached_content=content_cache.name
-    ),
+    config=types.GenerateContentConfig(cached_content=content_cache.name),
 )
 ```
 
@@ -45,12 +50,16 @@ from google.genai import types
 client = genai.Client()
 
 job = client.batches.create(
-    model="gemini-3-flash-preview",
+    model="gemini-3.5-flash",
     src="gs://your-bucket/prompts.jsonl",
     config=types.CreateBatchJobConfig(dest="gs://your-bucket/outputs"),
 )
 
-completed_states = {types.JobState.JOB_STATE_SUCCEEDED, types.JobState.JOB_STATE_FAILED, types.JobState.JOB_STATE_CANCELLED}
+completed_states = {
+    types.JobState.JOB_STATE_SUCCEEDED,
+    types.JobState.JOB_STATE_FAILED,
+    types.JobState.JOB_STATE_CANCELLED,
+}
 while job.state not in completed_states:
     time.sleep(30)
     job = client.batches.get(name=job.name)
@@ -58,13 +67,13 @@ while job.state not in completed_states:
 
 ### Thinking (Reasoning)
 
-Thinking is on by default for `gemini-3.1-pro-preview` and `gemini-3-flash-preview`.
+Thinking is on by default for `gemini-3.1-pro-preview` (default `HIGH` / dynamic) and `gemini-3.5-flash` (default `MEDIUM`). `gemini-3.1-flash-lite` defaults to `MINIMAL`.
 It can be adjusted by using the `thinking_level` parameter.
 
-- **`MINIMAL`:** (Gemini 3 Flash Only) Constrains the model to use as few tokens as possible for thinking and is best used for low-complexity tasks that wouldn't benefit from extensive reasoning.
+- **`MINIMAL`:** Constrains the model to use as few tokens as possible for thinking and is best used for low-complexity tasks that wouldn't benefit from extensive reasoning. (Not supported for `gemini-3.1-pro-preview`)
 - **`LOW`**: Constrains the model to use fewer tokens for thinking and is suitable for simpler tasks where extensive reasoning is not required.
 - **`MEDIUM`**: Offers a balanced approach suitable for tasks of moderate complexity that benefit from reasoning but don't require deep, multi-step planning.
-- **`HIGH`**: (Default) Maximizes reasoning depth. The model may take significantly longer to reach a first token, but the output will be more thoroughly vetted.
+- **`HIGH`**: Maximizes reasoning depth. The model may take significantly longer to reach a first token, but the output will be more thoroughly vetted.
 
 ```python
 from google import genai
@@ -76,9 +85,9 @@ response = client.models.generate_content(
     contents="solve x^2 + 4x + 4 = 0",
     config=types.GenerateContentConfig(
         thinking_config=types.ThinkingConfig(
-            thinking_level=types.ThinkingLevel.HIGH
+            thinking_level=types.ThinkingLevel.HIGH,
         )
-    )
+    ),
 )
 
 # Access thoughts if returned
@@ -112,6 +121,7 @@ server_params = StdioServerParameters(
     env=None,  # Optional environment variables
 )
 
+
 async def run():
     async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:
@@ -123,13 +133,16 @@ async def run():
 
             # Send request to the model with MCP function declarations
             response = await client.aio.models.generate_content(
-                model="gemini-3-flash-preview",
+                model="gemini-3.5-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(
-                    tools=[session],  # uses the session, will automatically call the tool using automatic function calling
+                    tools=[
+                        session  # uses the session, will automatically call the tool using automatic function calling
+                    ],
                 ),
             )
             print(response.text)
+
 
 # Start the asyncio event loop and run the main function
 asyncio.run(run())

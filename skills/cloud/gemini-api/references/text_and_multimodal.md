@@ -6,8 +6,8 @@ from google import genai
 
 client = genai.Client()
 response = client.models.generate_content(
-    model="gemini-3-flash-preview",
-    contents="How does AI work?"
+    model="gemini-3.5-flash",
+    contents="How does AI work?",
 )
 print(response.text)
 ```
@@ -19,10 +19,22 @@ from google.genai import types
 
 client = genai.Client()
 chat_session = client.chats.create(
-    model="gemini-3-flash-preview",
+    model="gemini-3.5-flash",
     history=[
-        types.UserContent(parts=[types.Part.from_text(text="Hello")]),
-        types.ModelContent(parts=[types.Part.from_text(text="Great to meet you. What would you like to know?")]),
+        types.UserContent(
+            parts=[
+                types.Part.from_text(
+                    text="Hello",
+                )
+            ]
+        ),
+        types.ModelContent(
+            parts=[
+                types.Part.from_text(
+                    text="Great to meet you. What would you like to know?"
+                )
+            ]
+        ),
     ],
 )
 response = chat_session.send_message("Tell me a story.")
@@ -40,9 +52,9 @@ from google.genai import types
 
 client = genai.Client()
 for chunk in client.models.generate_content_stream(
-    model="gemini-3-flash-preview", contents="Tell me a story in 300 words."
+    model="gemini-3.5-flash", contents="Tell me a story in 300 words."
 ):
-    print(chunk.text, end='')
+    print(chunk.text, end="")
 ```
 
 ## Multimodal Inputs (Images, Audio, Video)
@@ -54,13 +66,16 @@ from google.genai import types
 
 client = genai.Client()
 
-gcs_image = types.Part.from_uri(file_uri="gs://cloud-samples-data/generative-ai/image/scones.jpg", mime_type="image/jpeg")
+gcs_image = types.Part.from_uri(
+    file_uri="gs://cloud-samples-data/generative-ai/image/scones.jpg",
+    mime_type="image/jpeg",
+)
 
 with open("local_image.jpg", "rb") as f:
     local_image = types.Part.from_bytes(data=f.read(), mime_type="image/jpeg")
 
 response = client.models.generate_content(
-    model="gemini-3-flash-preview",
+    model="gemini-3.5-flash",
     contents=[
         "Generate a list of all the objects contained in both images.",
         gcs_image,
@@ -77,7 +92,7 @@ from google.genai import types
 
 client = genai.Client()
 response = client.models.generate_content(
-    model="gemini-3-flash-preview",
+    model="gemini-3.5-flash",
     contents=[
         types.Part.from_uri(
             file_uri="https://www.youtube.com/watch?v=3KtWfp0UopM",

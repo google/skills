@@ -81,6 +81,12 @@ intelligence capabilities.
 - [IAM & Security](references/iam-security.md): Roles, permissions, and data
   governance best practices.
 
+- [AI Forecast](references/bigquery_ai_forecast.md): Leveraging pre-trained
+  TimesFM model for forecasting without custom training.
+
+- [AI Detect Anomalies](references/bigquery_ai_detect_anomalies.md): Identify
+  deviations in time series data using pre-trained TimesFM model.
+
 *If you need product information not found in these references, use the
 Developer Knowledge MCP server `search_documents` tool.*
 
@@ -89,15 +95,13 @@ Developer Knowledge MCP server `search_documents` tool.*
 - [BigQuery AI & ML Skill](https://github.com/google/adk-python/tree/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml):
   SKILL.md file for BigQuery AI and ML capabilities.
 - [BigQuery AI & ML References](https://github.com/google/adk-python/tree/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references):
-  Reference files published for the BigQuery AI and ML skill.
-  - [bigquery_ai_classify.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_classify.md)
-  - [bigquery_ai_detect_anomalies.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_detect_anomalies.md)
-  - [bigquery_ai_forecast.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_forecast.md)
-  - [bigquery_ai_generate.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_generate.md)
-  - [bigquery_ai_generate_bool.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_generate_bool.md)
-  - [bigquery_ai_generate_double.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_generate_double.md)
-  - [bigquery_ai_generate_int.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_generate_int.md)
-  - [bigquery_ai_if.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_if.md)
-  - [bigquery_ai_score.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_score.md)
-  - [bigquery_ai_search.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_search.md)
-  - [bigquery_ai_similarity.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_similarity.md)
+    Reference files published for the BigQuery AI and ML skill.
+    - [bigquery_ai_classify.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_classify.md)
+    - [bigquery_ai_generate.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_generate.md)
+    - [bigquery_ai_generate_bool.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_generate_bool.md)
+    - [bigquery_ai_generate_double.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_generate_double.md)
+    - [bigquery_ai_generate_int.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_generate_int.md)
+    - [bigquery_ai_if.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_if.md)
+    - [bigquery_ai_score.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_score.md)
+    - [bigquery_ai_search.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_search.md)
+    - [bigquery_ai_similarity.md](https://github.com/google/adk-python/blob/main/src/google/adk/tools/bigquery/skills/bigquery-ai-ml/references/bigquery_ai_similarity.md)

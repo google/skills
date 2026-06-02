@@ -14,10 +14,12 @@ from google.genai.types import (
 )
 from pydantic import BaseModel
 
+
 # Define the schema for the bounding box
 class BoundingBox(BaseModel):
     box_2d: list[int]
     label: str
+
 
 client = genai.Client()
 
@@ -33,7 +35,7 @@ config = GenerateContentConfig(
 image_uri = "gs://cloud-samples-data/generative-ai/image/socks.jpg"
 
 response = client.models.generate_content(
-    model="gemini-3-flash-preview",
+    model="gemini-3.5-flash",
     contents=[
         Part.from_uri(file_uri=image_uri, mime_type="image/jpeg"),
         "Detect the socks in the image and provide bounding boxes.",
@@ -61,6 +63,6 @@ def scale_box(box_2d, width, height):
         int(y_min / 1000 * height),
         int(x_min / 1000 * width),
         int(y_max / 1000 * height),
-        int(x_max / 1000 * width)
+        int(x_max / 1000 * width),
     ]
 ```
