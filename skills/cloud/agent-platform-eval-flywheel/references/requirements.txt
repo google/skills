@@ -1,0 +1,4 @@
+google-cloud-aiplatform[evaluation]>=1.154.0
+google-genai>=1.0.0
+pandas
+requests
