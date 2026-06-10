@@ -1,8 +1,20 @@
+---
+name: gke-app-onboarding
+description: >-
+  Onboards applications to GKE, covering containerization, deployment
+  manifests, and migration. Use when onboarding or deploying an application to
+  GKE for the first time, or containerizing an app for GKE. Don't use for
+  general GKE cluster administration or upgrades (use gke-basics or
+  gke-upgrades instead).
+---
+
 # GKE App Onboarding
 
-This reference provides workflows for containerizing and deploying applications to GKE for the first time.
+This reference provides workflows for containerizing and deploying applications
+to GKE for the first time.
 
-> **MCP Tools:** `apply_k8s_manifest`, `get_k8s_resource`, `get_k8s_rollout_status`, `get_k8s_logs`, `describe_k8s_resource`
+> **MCP Tools:** `apply_k8s_manifest`, `get_k8s_resource`,
+> `get_k8s_rollout_status`, `get_k8s_logs`, `describe_k8s_resource`
 
 ## Workflow
 
@@ -10,12 +22,13 @@ This reference provides workflows for containerizing and deploying applications 
 
 Before containerizing, assess the application:
 
-- **Language & Framework**: Identify the tech stack
-- **Dependencies**: List required libraries and external services
-- **Configuration**: How is the app configured? (env vars, config files, secrets)
-- **Statefulness**: Does it need persistent storage? (databases, file storage)
-- **Networking**: Port mapping and protocol (HTTP, gRPC, TCP)
-- **Health endpoints**: Does the app expose health check endpoints?
+-   **Language & Framework**: Identify the tech stack
+-   **Dependencies**: List required libraries and external services
+-   **Configuration**: How is the app configured? (env vars, config files,
+    secrets)
+-   **Statefulness**: Does it need persistent storage? (databases, file storage)
+-   **Networking**: Port mapping and protocol (HTTP, gRPC, TCP)
+-   **Health endpoints**: Does the app expose health check endpoints?
 
 ### 2. Containerization
 
@@ -38,14 +51,18 @@ ENTRYPOINT ["/server"]
 ```
 
 **Best practices:**
-- Use multi-stage builds to keep production images small
-- Use distroless or minimal base images to reduce attack surface
-- Run as non-root user
-- Log to `stdout` and `stderr` for Cloud Logging collection
+
+-   Use multi-stage builds to keep production images small
+-   Use distroless or minimal base images to reduce attack surface
+-   Run as non-root user
+-   Log to `stdout` and `stderr` for Cloud Logging collection
 
 **Alternatives:**
-- **Cloud Native Buildpacks** — auto-detect language and build without a Dockerfile: `pack build <image> --builder gcr.io/buildpacks/builder:latest`
-- **Skaffold** — development workflow tool for iterating on containerized apps: `skaffold dev`
+
+-   **Cloud Native Buildpacks** — auto-detect language and build without a
+    Dockerfile: `pack build <image> --builder gcr.io/buildpacks/builder:latest`
+-   **Skaffold** — development workflow tool for iterating on containerized
+    apps: `skaffold dev`
 
 ### 3. Image Management
 
@@ -60,7 +77,8 @@ docker build -t <REGION>-docker.pkg.dev/<PROJECT>/<REPO>/<IMAGE>:<TAG> .
 docker push <REGION>-docker.pkg.dev/<PROJECT>/<REPO>/<IMAGE>:<TAG>
 ```
 
-**Vulnerability scanning**: Enable automatic scanning in Artifact Registry to detect issues in base images and dependencies.
+**Vulnerability scanning**: Enable automatic scanning in Artifact Registry to
+detect issues in base images and dependencies.
 
 ```bash
 # Check scan results
@@ -127,10 +145,12 @@ spec:
 ```
 
 **Checklist for manifests:**
-- Resource requests and limits set
-- Liveness and readiness probes configured
-- At least 2 replicas for production
-- Service type appropriate (ClusterIP for internal, use Gateway API for external)
+
+-   Resource requests and limits set
+-   Liveness and readiness probes configured
+-   At least 2 replicas for production
+-   Service type appropriate (ClusterIP for internal, use Gateway API for
+    external)
 
 ### 5. Deploy
 
@@ -154,7 +174,10 @@ kubectl get pods -l app=my-app
 ## Next Steps
 
 Once the application is running on GKE:
-- Configure autoscaling — see [gke-scaling.md](./gke-scaling.md)
-- Set up observability — see [gke-observability.md](./gke-observability.md)
-- Harden security — see [gke-security.md](./gke-security.md)
-- Configure reliability (PDBs, topology spread) — see [gke-reliability.md](./gke-reliability.md)
+
+-   Configure autoscaling — see [gke-scaling.md](../gke-scaling/SKILL.md)
+-   Set up observability — see
+    [gke-observability.md](../gke-observability/SKILL.md)
+-   Harden security — see [gke-security.md](../gke-security/SKILL.md)
+-   Configure reliability (PDBs, topology spread) — see
+    [gke-reliability.md](../gke-reliability/SKILL.md)

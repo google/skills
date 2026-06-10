@@ -6,14 +6,14 @@ managed using Terraform.
 ## Terraform
 
 Terraform uses two main providers for GKE:
-*   The **Google Cloud provider** connects to the Google Cloud API to manage
-    GKE cluster infrastructure using Terraform resources such as
+
+*   The **Google Cloud provider** connects to the Google Cloud API to manage GKE
+    cluster infrastructure using Terraform resources such as
     `google_container_cluster` for the cluster itself, and
     `google_container_node_pool` for nodes in Standard mode.
 *   The **Kubernetes provider** connects to the Kubernetes API to manage
-    workloads inside the cluster using Kubernetes resources such as
-    Deployments and Services.
-
+    workloads inside the cluster using Kubernetes resources such as Deployments
+    and Services.
 
 ### GKE Autopilot Cluster Example
 
@@ -65,13 +65,13 @@ resource "kubernetes_deployment_v1" "default" {
 
 ### Reference Documentation
 
-- [Terraform Google Provider - Container Cluster](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/container_cluster)
+-   [Terraform Google Provider - Container Cluster](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/container_cluster)
 
-- [Terraform Google Provider - Kubernetes Provider](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs)
+-   [Terraform Google Provider - Kubernetes Provider](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs)
 
 ## YAML Samples
 
 GKE cluster configurations and Kubernetes manifests can also be defined using
 YAML for use with `kubectl apply` or Deployment Manager.
 
-- [GKE YAML Samples](https://docs.cloud.google.com/docs/samples?product=googlekubernetesengine)
+-   [GKE YAML Samples](https://docs.cloud.google.com/docs/samples?product=googlekubernetesengine)
