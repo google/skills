@@ -1,16 +1,28 @@
+---
+name: gke-batch-hpc
+description: >-
+  Runs batch and HPC workloads on GKE, utilizing job queues and parallel
+  processing. Use when running GKE batch jobs, configuring GKE HPC, or setting
+  up GKE job queues. Don't use for standard web application deployments (use
+  gke-app-onboarding instead).
+---
+
 # GKE Batch & HPC Workloads
 
-This reference covers running batch processing and high-performance computing (HPC) workloads on GKE.
+This reference covers running batch processing and high-performance computing
+(HPC) workloads on GKE.
 
-> **MCP Tools:** `apply_k8s_manifest`, `get_k8s_resource`, `describe_k8s_resource`, `get_k8s_logs`, `delete_k8s_resource`, `list_k8s_events`
+> **MCP Tools:** `apply_k8s_manifest`, `get_k8s_resource`,
+> `describe_k8s_resource`, `get_k8s_logs`, `delete_k8s_resource`,
+> `list_k8s_events`
 
 ## When to Use
 
-- Running batch data processing pipelines
-- HPC simulations (CFD, molecular dynamics, financial modeling)
-- Large-scale parallel computation (MPI, MapReduce)
-- ML training jobs
-- CI/CD build farms
+-   Running batch data processing pipelines
+-   HPC simulations (CFD, molecular dynamics, financial modeling)
+-   Large-scale parallel computation (MPI, MapReduce)
+-   ML training jobs
+-   CI/CD build farms
 
 ## Batch Processing on GKE
 
@@ -106,7 +118,8 @@ spec:
 
 ### Compact Placement (Low-Latency Networking)
 
-For tightly-coupled HPC workloads that need low-latency inter-node communication:
+For tightly-coupled HPC workloads that need low-latency inter-node
+communication:
 
 ```bash
 # Standard clusters: create node pool with compact placement
@@ -152,17 +165,25 @@ spec:
 
 ### Spot VMs for Batch
 
-Batch workloads are ideal Spot VM candidates (interruptible, can checkpoint). Use a ComputeClass with Spot-first priority and `activeMigration` to return to Spot when available. See [gke-compute-classes.md](./gke-compute-classes.md) for the Spot-with-fallback pattern.
+Batch workloads are ideal Spot VM candidates (interruptible, can checkpoint).
+Use a ComputeClass with Spot-first priority and `activeMigration` to return to
+Spot when available. See
+[gke-compute-classes.md](../gke-compute-classes/SKILL.md) for the
+Spot-with-fallback pattern.
 
 ### Scale-to-Zero
 
 For batch clusters, allow node pools to scale to zero when no jobs are running:
 
-- Autopilot (golden path): Automatic, nodes scale to zero when no pods are scheduled
-- Standard: Set `--min-nodes 0` on batch node pools
+-   Autopilot (golden path): Automatic, nodes scale to zero when no pods are
+    scheduled
+-   Standard: Set `--min-nodes 0` on batch node pools
 
 ## Best Practices
 
-- **Kueue** for multi-tenant job scheduling; **JobSet** for multi-component workflows
-- **Set `backoffLimit`** on Jobs; **checkpoint long jobs** for preemption resilience
-- **Spot VMs** for fault-tolerant batch; **compact placement** for tightly-coupled HPC
+-   **Kueue** for multi-tenant job scheduling; **JobSet** for multi-component
+    workflows
+-   **Set `backoffLimit`** on Jobs; **checkpoint long jobs** for preemption
+    resilience
+-   **Spot VMs** for fault-tolerant batch; **compact placement** for
+    tightly-coupled HPC

@@ -1,8 +1,19 @@
+---
+name: gke-backup-dr
+description: >-
+  Configures Backup for GKE and disaster recovery plans. Use when configuring
+  GKE backup policies, setting up disaster recovery, or restoring GKE clusters.
+  Don't use for generic database backups or persistent volume configuration
+  (use gke-storage instead).
+---
+
 # GKE Backup & Disaster Recovery
 
-This reference provides workflows for protecting stateful workloads on GKE using Backup for GKE.
+This reference provides workflows for protecting stateful workloads on GKE using
+Backup for GKE.
 
-> **MCP Tools:** `get_cluster`, `update_cluster`. **CLI-only:** `gcloud container backup-restore *`
+> **MCP Tools:** `get_cluster`, `update_cluster`. **CLI-only:** `gcloud
+> container backup-restore *`
 
 ## Workflows
 
@@ -38,9 +49,11 @@ gcloud container backup-restore backup-plans create <PLAN_NAME> \
 ```
 
 **Options:**
-- `--all-namespaces` — back up everything
-- `--included-namespaces=<ns1>,<ns2>` — back up specific namespaces
-- `--backup-encryption-key=<KEY>` — encrypt with Customer-Managed Encryption Key (CMEK)
+
+-   `--all-namespaces` — back up everything
+-   `--included-namespaces=<ns1>,<ns2>` — back up specific namespaces
+-   `--backup-encryption-key=<KEY>` — encrypt with Customer-Managed Encryption
+    Key (CMEK)
 
 ### 3. Create a Manual Backup
 
@@ -79,8 +92,11 @@ gcloud container backup-restore restores create <RESTORE_NAME> \
 
 ## Best Practices
 
-1. **Automate backups**: Always use a cron schedule for production workloads
-2. **Test restores regularly**: Restore to a separate namespace or cluster to verify data integrity
-3. **Cross-region DR**: Store backups in a different region or configure cross-region restore plans
-4. **Encrypt backups**: Use CMEK for compliance and security requirements
-5. **Scope backups**: Back up specific namespaces rather than the entire cluster when possible to reduce restore complexity
+1.  **Automate backups**: Always use a cron schedule for production workloads
+2.  **Test restores regularly**: Restore to a separate namespace or cluster to
+    verify data integrity
+3.  **Cross-region DR**: Store backups in a different region or configure
+    cross-region restore plans
+4.  **Encrypt backups**: Use CMEK for compliance and security requirements
+5.  **Scope backups**: Back up specific namespaces rather than the entire
+    cluster when possible to reduce restore complexity

@@ -1,26 +1,45 @@
+---
+name: gke-multitenancy
+description: >-
+  Plans and configures multi-tenancy on GKE. Covers namespace isolation, RBAC
+  planning for teams, resource quotas, LimitRanges, network isolation, and
+  cost allocation. Use when designing GKE multi-tenancy, configuring GKE
+  namespaces, setting up resource quotas, or isolating GKE teams. Don't use
+  for single-tenant cluster configuration or general deployment instructions
+  (use gke-basics or gke-app-onboarding instead).
+---
+
 # GKE Multi-Tenancy
 
-This reference covers enterprise multi-tenancy patterns on GKE, including namespace isolation, RBAC planning, resource quotas, and network segmentation.
+This reference covers enterprise multi-tenancy patterns on GKE, including
+namespace isolation, RBAC planning, resource quotas, and network segmentation.
 
-> **MCP Tools:** `apply_k8s_manifest`, `get_k8s_resource`, `check_k8s_auth`, `describe_k8s_resource`, `delete_k8s_resource`
+> **MCP Tools:** `apply_k8s_manifest`, `get_k8s_resource`, `check_k8s_auth`,
+> `describe_k8s_resource`, `delete_k8s_resource`
 
 ## When to Use
 
-- Multiple teams sharing a single GKE cluster
-- Isolating workloads by environment (dev/staging/prod) within one cluster
-- Implementing least-privilege access control
-- Cost allocation across teams or projects
+-   Multiple teams sharing a single GKE cluster
+-   Isolating workloads by environment (dev/staging/prod) within one cluster
+-   Implementing least-privilege access control
+-   Cost allocation across teams or projects
 
 ## Multi-Tenancy Models
 
-| Model | Isolation | Complexity | Cost |
-|-------|-----------|------------|------|
-| **Namespace-per-team** | Soft (RBAC + Network Policy) | Low | Lowest (shared cluster) |
-| **Namespace-per-environment** | Soft | Low | Low |
-| **Node pool-per-team** | Medium (dedicated compute) | Medium | Medium |
-| **Cluster-per-team** | Hard (full isolation) | High | Highest |
+| Model                         | Isolation    | Complexity | Cost           |
+| ----------------------------- | ------------ | ---------- | -------------- |
+| **Namespace-per-team**        | Soft (RBAC + | Low        | Lowest (shared |
+:                               : Network      :            : cluster)       :
+:                               : Policy)      :            :                :
+| **Namespace-per-environment** | Soft         | Low        | Low            |
+| **Node pool-per-team**        | Medium       | Medium     | Medium         |
+:                               : (dedicated   :            :                :
+:                               : compute)     :            :                :
+| **Cluster-per-team**          | Hard (full   | High       | Highest        |
+:                               : isolation)   :            :                :
 
-> **Golden path recommendation**: Start with namespace-per-team for cost efficiency. Escalate to stronger isolation only when compliance requires it.
+> **Golden path recommendation**: Start with namespace-per-team for cost
+> efficiency. Escalate to stronger isolation only when compliance requires it.
 
 ## Namespace Isolation Setup
 
@@ -35,7 +54,8 @@ kubectl label namespace team-b team=b
 
 ### 2. RBAC Configuration
 
-**Principle**: Grant minimal permissions per namespace. Never bind to `system:authenticated`.
+**Principle**: Grant minimal permissions per namespace. Never bind to
+`system:authenticated`.
 
 ```yaml
 # Namespace-scoped role for a team
@@ -64,7 +84,9 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ```
 
-**RBAC best practices:** Use Google Groups for subject bindings. Prefer namespace-scoped Roles over ClusterRoles. See [gke-security.md](./gke-security.md) for full RBAC hardening guidance.
+**RBAC best practices:** Use Google Groups for subject bindings. Prefer
+namespace-scoped Roles over ClusterRoles. See
+[gke-security](../gke-security/SKILL.md) for full RBAC hardening guidance.
 
 ### 3. Resource Quotas
 
@@ -113,7 +135,8 @@ spec:
 
 ### 5. Network Isolation
 
-Apply default-deny per namespace (see [gke-security.md](./gke-security.md)), then allow intra-team traffic:
+Apply default-deny per namespace (see [gke-security](../gke-security/SKILL.md)),
+then allow intra-team traffic:
 
 ```yaml
 # Allow same-namespace pods to talk + DNS
@@ -160,4 +183,3 @@ gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
 ```
 
 View in Cloud Billing > GKE Cost Allocation.
-
