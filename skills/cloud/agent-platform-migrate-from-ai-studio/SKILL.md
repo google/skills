@@ -1,6 +1,7 @@
 ---
 name: agent-platform-migrate-from-ai-studio
-description: Guides agents and users through migrating from Gemini API in Google AI Studio to Gemini Enterprise Agent Platform (formerly Vertex AI). Use this skill when moving applications to Google Cloud, to leverage Cloud credits, or to unify inferencing with other Cloud infrastructure (IAM, billing, telemetry).
+description: >-
+  Guides agents and users through migrating from Gemini API in Google AI Studio to Gemini Enterprise Agent Platform (formerly Vertex AI). Use this skill when moving applications to Google Cloud, to leverage Cloud credits, or to unify inferencing with other Cloud infrastructure (IAM, billing, telemetry).
 ---
 
 # Migrating from Gemini API in AI Studio to Agent Platform
@@ -73,7 +74,7 @@ You must explicitly enable the Agent Platform API on your target Google Cloud
 Project. Run the following command via your local shell:
 
 ```bash
-gcloud services enable aiplatform.googleapis.com --project="YOUR_PROJECT_ID"
+gcloud services enable aiplatform.googleapis.com --project="{project_id}"
 ```
 
 ### Authentication & Authorization (IAM)
@@ -100,7 +101,7 @@ gcloud auth application-default login
 Grant your user identity the required IAM role to perform inferencing calls:
 
 ```bash
-gcloud projects add-iam-policy-binding "YOUR_PROJECT_ID" \
+gcloud projects add-iam-policy-binding "{project_id}" \
     --member="user:YOUR_EMAIL@domain.com" \
     --role="roles/aiplatform.user"
 ```
@@ -115,14 +116,14 @@ example, the
 1.  Grant the virtual machine's underlying Service Account the user role:
 
 ```bash
-gcloud projects add-iam-policy-binding "YOUR_PROJECT_ID" \
+gcloud projects add-iam-policy-binding "{project_id}" \
     --member="serviceAccount:PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
     --role="roles/aiplatform.user"
 ```
 
 2.  **[Compute Engine Access Scopes](https://docs.cloud.google.com/compute/docs/access/service-accounts.md.txt):**
     Legacy access scopes can override IAM bindings. When provisioning or
-    modifying your GCE instance, you must verify that the VM access scope is
+    modifying your Compute Engine instance, you must verify that the VM access scope is
     configured to either **Allow full access to all Cloud APIs**
     (`https://www.googleapis.com/auth/cloud-platform`) or explicitly includes
     the standard cloud-platform scope.
@@ -142,7 +143,7 @@ target the Agent Platform backend.
 Set your target environment details:
 
 ```bash
-export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
+export GOOGLE_CLOUD_PROJECT="{project_id}"
 export GOOGLE_CLOUD_LOCATION="global"  # Or your chosen regional endpoint
 export GOOGLE_GENAI_USE_ENTERPRISE=TRUE
 ```
@@ -177,16 +178,16 @@ agent's assigned service account. Alternatively, if running ADK locally, run:
 gcloud auth application-default login
 ```
 
-2.  Set env variables. Ensure these are set no matter if your ADK agent is
+1.  Set env variables. Ensure these are set no matter if your ADK agent is
     running in Google Cloud or locally:
 
 ```bash
-export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
+export GOOGLE_CLOUD_PROJECT="{project_id}"
 export GOOGLE_CLOUD_LOCATION="global"
 export GOOGLE_GENAI_USE_ENTERPRISE=TRUE
 ```
 
-3.  Initialize the ADK agent. You can use the same model string you used with AI
+2.  Initialize the ADK agent. You can use the same model string you used with AI
     Studio (e.g. `gemini-3-flash-preview`).
 
 ```python
@@ -255,12 +256,13 @@ these steps.
 ```bash
 export PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format="value(projectNumber)")
 echo "Project number: $PROJECT_NUMBER"
+
 ```
 
-Within a GCE VM, run:
+Within a Compute Engine VM, run:
 
 ```bash
-export PROJECT_NUMBER=$(curl "http://metadata.google.internal/computeMetadata/v1/project/numeric-project-id" -H "Metadata-Flavor: Google")
+export PROJECT_NUMBER=$(curl "http://metadata.google.internal/computeMetadata/v1/project/project-id" -H "Metadata-Flavor: Google")
 echo "Project number: $PROJECT_NUMBER"
 ```
 
@@ -273,18 +275,23 @@ mkdir -p ~/.config/gcloud
 gcloud iam service-accounts keys create ~/.config/gcloud/application_default_credentials.json --iam-account="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 ```
 
+> ⚠️ **Troubleshooting Policy Constraints on New Orgs**: New Google
+> Cloud organizations (created on or after May 4th, 2024) enforce a [legacy Organization Policy, restricting Service Account Key Creation](https://docs.cloud.google.com/organization-policy/restrict-service-accounts.md.txt). To complete this step, this Org Policy must be temporarily disabled.
+> An Organization Policy Admin must set this policy to Inactive. 
+> To the agent: Check if this policy is enforced, and if it is: pause, and 
+> prompt the user to disable it at this Console link: 
+> https://console.cloud.google.com/iam-admin/orgpolicies
+
+
 5.  Edit the configuration file that's usually located at:
     `~/.openclaw/openclaw.json`. Ensure you prefix the Gemini model with
     `google-vertex/`.
 
-    ⚠️ Important:
-
-    -   Do not use Gemini 3.5 models, since OpenClaw's `google-vertex` provider
-        does not support it yet. Older models work.
-    -   When using the
-        [Gemini 3 Flash Preview](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-flash)
-        model in Agent Platform, always set the location to `global`, NOT a
-        regional endpoint.
+> ⚠️ Important: Do not use Gemini 3.5 models, since OpenClaw's `google-vertex`
+> provider does not support it yet. Older models work. When using the
+> [Gemini 3 Flash Preview](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-flash)
+> model in Agent Platform, always set the location to `global`, NOT a regional
+> endpoint.
 
 ```json
 {
@@ -323,12 +330,14 @@ gcloud iam service-accounts keys create ~/.config/gcloud/application_default_cre
     "profile": "coding"
   }
 }
+
 ```
 
 6.  Restart OpenClaw.
 
 ```bash
 openclaw gateway restart
+
 ```
 
 7.  Verify the OpenClaw connection to Agent Platform:
@@ -336,6 +345,7 @@ openclaw gateway restart
 ```bash
 openclaw models status
 openclaw agent --agent main --message "Hello world!"
+
 ```
 
 --------------------------------------------------------------------------------
