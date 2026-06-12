@@ -1,0 +1,14 @@
+encoding:
+  delimitedBytes:
+    delimiter: '#'
+fields:
+- fieldName: field1
+  type:
+    bytesType:
+      encoding:
+        raw: {}
+- fieldName: field2
+  type:
+    bytesType:
+      encoding:
+        raw: {}

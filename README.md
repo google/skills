@@ -25,6 +25,7 @@ repo to install.
 -   [**Skill Registry API on Agent Platform**](./skills/cloud/agent-platform-skill-registry)
 -   [**AlloyDB Basics**](./skills/cloud/alloydb-basics)
 -   [**BigQuery Basics**](./skills/cloud/bigquery-basics)
+-   [**Bigtable Basics**](./skills/cloud/bigtable-basics)
 -   [**Cloud Run Basics**](./skills/cloud/cloud-run-basics)
 -   [**Cloud SQL Basics**](./skills/cloud/cloud-sql-basics)
 -   [**Firebase Basics**](./skills/cloud/firebase-basics)
