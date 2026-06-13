@@ -25,6 +25,11 @@ the Agent Platform GenAI Evaluation SDK (`google.genai` / `agentplatform`).
 -   Selecting, configuring, or writing custom evaluation metrics.
 -   Analyzing rubric verdicts, loss patterns, and clustering failures.
 -   Suggesting concrete code/prompt improvements based on eval results.
+-   Evaluating a model served on an Agent Platform **endpoint** (BYOM) or a
+    **Model-as-a-Service (MaaS)** model by ID — including deploying the model
+    first if needed. For this case, follow
+    [references/deployment.md](references/deployment.md) and use the
+    `endpoint_evaluation.py` / `maas_evaluation.py` scripts.
 
 ## Setup
 
@@ -348,10 +353,12 @@ patterns: synthetic data generation, pairwise comparison,
 
 ## Bundled scripts
 
-| Script                  | When to use                                                                          |
-| ----------------------- | ------------------------------------------------------------------------------------ |
-| `validate_dataset.py`   | Before Stage 3 — catch malformed `EvaluationDataset` JSON.                           |
-| `parse_adk_traces.py`   | Stage 1 — convert ADK session dumps to the canonical dataset shape.                  |
-| `inspect_results.py`    | Stages 3/4 — render summary + per-case scores. `--save-html` for a browsable report. |
-| `compare_results.py`    | Stage 5 — diff baseline vs. candidate, detect regressions.                           |
-| `render_html_report.py` | Render HTML from a saved result JSON or loss-clusters JSON.                          |
+Script                   | When to use
+------------------------ | -----------
+`validate_dataset.py`    | Before Stage 3 — catch malformed `EvaluationDataset` JSON.
+`parse_adk_traces.py`    | Stage 1 — convert ADK session dumps to the canonical dataset shape.
+`inspect_results.py`     | Stages 3/4 — render summary + per-case scores. `--save-html` for a browsable report.
+`compare_results.py`     | Stage 5 — diff baseline vs. candidate, detect regressions.
+`render_html_report.py`  | Render HTML from a saved result JSON or loss-clusters JSON.
+`endpoint_evaluation.py` | Stages 2/3 against a deployed Agent Platform endpoint (BYOM). See [references/deployment.md](references/deployment.md).
+`maas_evaluation.py`     | Stages 2/3 against a Model-as-a-Service model by ID. See [references/deployment.md](references/deployment.md).
