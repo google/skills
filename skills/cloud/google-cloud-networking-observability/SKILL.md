@@ -66,12 +66,14 @@ description: >-
 ### 2. Schema Verification & Error Recovery
 
 If a BigQuery query fails with an 'Unrecognized name' error or schema mismatch:
-1. **Validate Schema**: Run `bq show --schema --format=json
-{project_id}:{dataset_id}.{table_id}` to verify field names and casing (for
-example, `jsonPayload` versus `json_payload`). 2. **Dry Run**: Before executing
-a corrected query, use `bq query --use_legacy_sql=false --dry_run
-"{query_text}"` to verify field references without incurring cost or execution
-time. 3. **Retry**: Apply identified fixes to the original query and execute.
+
+1.  **Validate Schema**: Run `bq show --schema --format=json
+    {project_id}:{dataset_id}.{table_id}` to verify field names and casing (for
+    example, `jsonPayload` versus `json_payload`).
+2.  **Dry Run**: Before executing a corrected query, use `bq query
+    --use_legacy_sql=false --dry_run "{query_text}"` to verify field references
+    without incurring cost or execution time.
+3.  **Retry**: Apply identified fixes to the original query and execute.
 
 ### 3. Analysis Guides (Read Only When Needed)
 
@@ -93,8 +95,9 @@ the corresponding reference file:
 -   **Connectivity Test Analysis**:
     [references/connectivity-tests.md](references/connectivity-tests.md)
 
-> **CRITICAL**: If the user asks for **Cost Estimation**, you MUST strictly use `references/vpc-flow-logs-cost-estimation.md`. Do NOT read or use `references/vpc-flow-analysis.md` for cost estimation tasks.
-
+> **CRITICAL**: If the user asks for **Cost Estimation**, you MUST strictly use
+> `references/vpc-flow-logs-cost-estimation.md`. Do NOT read or use
+> `references/vpc-flow-analysis.md` for cost estimation tasks.
 
 ## Boundaries (CRITICAL)
 

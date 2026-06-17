@@ -5,38 +5,62 @@ description: Guides the usage of Gemini Interactions API on Gemini Enterprise Ag
 
 # Gemini Interactions API Skill
 
-This skill provides instructions for authenticating, connecting to, and utilizing the stateful, server-managed **Gemini Interactions API** on Gemini Enterprise Agent Platform.
+This skill provides instructions for authenticating, connecting to, and
+utilizing the stateful, server-managed **Gemini Interactions API** on Gemini
+Enterprise Agent Platform.
 
-
-The Interactions API is the modern, recommended way to execute Generative AI agent conversations, background research tasks, multi-turn chats, and structured, multi-step workflows.
-
+The Interactions API is the modern, recommended way to execute Generative AI
+agent conversations, background research tasks, multi-turn chats, and
+structured, multi-step workflows.
 
 > [!IMPORTANT]
+>
 > **CRITICAL: Unified SDK & Latest Models**
-> *   **Unified SDK**: Use the Google Gen AI SDK (**`google-genai >= 2.0.0`** for Python, **`@google/genai >= 2.0.0`** for JS/TS). Legacy SDKs like `google-cloud-aiplatform`, `@google-cloud/vertexai`, and `google-generativeai` are strictly unsupported for Interactions.
->     *   *Mandatory Instruction*: When explaining client initialization or writing import code, you **must** explicitly state/warn the user that legacy packages like `google-cloud-aiplatform` or `google-generativeai` are strictly unsupported for interactions.
-> *   **Latest Models Only**: Use `gemini-3.1-pro-preview`, `gemini-3.1-flash-lite`, `gemini-3-flash-preview`, `gemini-2.5-pro`, or `gemini-2.5-flash`. Refer to the [latest model versions](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/migrate) to check for new updates. Legacy models (`gemini-2.0-*`, `gemini-1.5-*`) are deprecated and do not support interactions.
->     *   *Mandatory Instruction*: In any interaction response, you **must** warn the user that legacy models like `gemini-2.0` or `gemini-1.5` are deprecated and unsupported for the Interactions API.
-> *   **Turn-Scoped Parameters**: Parameters like `tools`, `system_instruction`, and `generation_config` are turn-scoped. They **MUST** be passed with each interaction request.
+>
+> *   **Unified SDK**: Use the Google Gen AI SDK (**`google-genai >= 2.0.0`**
+>     for Python, **`@google/genai >= 2.0.0`** for JS/TS). Legacy SDKs like
+>     `google-cloud-aiplatform`, `@google-cloud/vertexai`, and
+>     `google-generativeai` are strictly unsupported for Interactions.
+>     *   *Mandatory Instruction*: When explaining client initialization or
+>         writing import code, you **must** explicitly state/warn the user that
+>         legacy packages like `google-cloud-aiplatform` or
+>         `google-generativeai` are strictly unsupported for interactions.
+> *   **Latest Models Only**: Use `gemini-3.1-pro-preview`,
+>     `gemini-3.1-flash-lite`, `gemini-3-flash-preview`, `gemini-2.5-pro`, or
+>     `gemini-2.5-flash`. Refer to the
+>     [latest model versions](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/migrate)
+>     to check for new updates. Legacy models (`gemini-2.0-*`, `gemini-1.5-*`)
+>     are deprecated and do not support interactions.
+>     *   *Mandatory Instruction*: In any interaction response, you **must**
+>         warn the user that legacy models like `gemini-2.0` or `gemini-1.5` are
+>         deprecated and unsupported for the Interactions API.
+> *   **Turn-Scoped Parameters**: Parameters like `tools`, `system_instruction`,
+>     and `generation_config` are turn-scoped. They **MUST** be passed with each
+>     interaction request.
 
 ## 1. Authentication
 
-Before running any code, ensure you are authenticated with Application Default Credentials (ADC) and have the necessary API enabled.
+Before running any code, ensure you are authenticated with Application Default
+Credentials (ADC) and have the necessary API enabled.
 
 1.  **Login**:
+
     ```bash
     gcloud auth application-default login
     ```
+
 2.  **Enable API** (if not already enabled):
+
     ```bash
     gcloud services enable aiplatform.googleapis.com
     ```
 
----
+--------------------------------------------------------------------------------
 
 ## 2. Client Initialization
 
-You can initialize the client using environment variables (recommended) or by passing explicit configuration parameters.
+You can initialize the client using environment variables (recommended) or by
+passing explicit configuration parameters.
 
 ### Option A: Environment Variables (Recommended)
 
@@ -49,6 +73,7 @@ export GOOGLE_CLOUD_LOCATION="global"
 ```
 
 #### Python
+
 ```python
 from google import genai
 
@@ -57,6 +82,7 @@ client = genai.Client()
 ```
 
 #### TypeScript/JavaScript
+
 ```typescript
 import { GoogleGenAI } from "@google/genai";
 
@@ -69,6 +95,7 @@ const ai = new GoogleGenAI();
 Alternatively, pass configuration values directly inside your code:
 
 #### Python
+
 ```python
 from google import genai
 import google.auth
@@ -78,6 +105,7 @@ client = genai.Client(enterprise=True, project=project_id, location="global")
 ```
 
 #### TypeScript/JavaScript
+
 ```typescript
 import { GoogleGenAI } from "@google/genai";
 
@@ -89,15 +117,17 @@ const ai = new GoogleGenAI({
 });
 ```
 
----
+--------------------------------------------------------------------------------
 
 ## 3. Core Interactions API Usage
 
 ### Quick Start (Single-Turn)
 
-Submit a single prompt and read the final text response. Under the modern schema, output content is retrieved from the `steps` list.
+Submit a single prompt and read the final text response. Under the modern
+schema, output content is retrieved from the `steps` list.
 
 #### Python
+
 ```python
 interaction = client.interactions.create(
     model="gemini-3-flash-preview",
@@ -108,6 +138,7 @@ print(interaction.steps[-1].content[0].text)
 ```
 
 #### TypeScript/JavaScript
+
 ```typescript
 const interaction = await ai.interactions.create({
     model: "gemini-3-flash-preview",
@@ -116,13 +147,15 @@ const interaction = await ai.interactions.create({
 console.log(interaction.steps[interaction.steps.length - 1].content[0].text);
 ```
 
----
+--------------------------------------------------------------------------------
 
 ### Stateful Conversation (Multi-Turn)
 
-Interactions are stateful by default. Store the conversation state in the cloud and reference it in the subsequent turn using `previous_interaction_id`.
+Interactions are stateful by default. Store the conversation state in the cloud
+and reference it in the subsequent turn using `previous_interaction_id`.
 
 #### Python
+
 ```python
 # Turn 1: Introduce ourselves
 turn1 = client.interactions.create(
@@ -142,6 +175,7 @@ print(f"Turn 2: {turn2.steps[-1].content[0].text}")
 ```
 
 #### TypeScript/JavaScript
+
 ```typescript
 // Turn 1
 const turn1 = await ai.interactions.create({
@@ -159,13 +193,15 @@ const turn2 = await ai.interactions.create({
 console.log(turn2.steps[turn2.steps.length - 1].content[0].text);
 ```
 
----
+--------------------------------------------------------------------------------
 
 ### Real-Time Streaming
 
-Stream responses in real-time. Passing `stream=True` returns an iterable chunk generator.
+Stream responses in real-time. Passing `stream=True` returns an iterable chunk
+generator.
 
 #### Python
+
 ```python
 response = client.interactions.create(
     model="gemini-3-flash-preview",
@@ -182,6 +218,7 @@ print()
 ```
 
 #### TypeScript/JavaScript
+
 ```typescript
 const responseStream = await ai.interactions.create({
     model: "gemini-3-flash-preview",
@@ -200,13 +237,16 @@ for await (const chunk of responseStream) {
 console.log();
 ```
 
----
+--------------------------------------------------------------------------------
 
 ### Structured Output (Pydantic / Polymorphic `response_format`)
 
-Retrieve structured, type-safe JSON matching a schema. Under the modern Interactions API, a polymorphic `response_format` argument directly takes the target schema structure.
+Retrieve structured, type-safe JSON matching a schema. Under the modern
+Interactions API, a polymorphic `response_format` argument directly takes the
+target schema structure.
 
 #### Python
+
 ```python
 from pydantic import BaseModel, Field
 
@@ -226,6 +266,7 @@ print(interaction.steps[-1].content[0].text)
 ```
 
 #### TypeScript/JavaScript
+
 ```typescript
 import { Type } from "@google/genai";
 
@@ -248,13 +289,15 @@ const interaction = await ai.interactions.create({
 console.log(interaction.steps[interaction.steps.length - 1].content[0].text);
 ```
 
----
+--------------------------------------------------------------------------------
 
 ### Function Calling (Agent Tool Use)
 
-Define local tools (functions) and submit execution results to the stateful interaction history.
+Define local tools (functions) and submit execution results to the stateful
+interaction history.
 
 #### Python
+
 ```python
 def get_stock_price(ticker: str) -> float:
     """Gets the stock price for a given ticker symbol."""
@@ -287,6 +330,7 @@ if last_step.tool_calls:
 ```
 
 #### TypeScript/JavaScript
+
 ```typescript
 import { Type } from "@google/genai";
 
@@ -337,11 +381,13 @@ if (lastStep.toolCalls) {
 }
 ```
 
----
+--------------------------------------------------------------------------------
 
 ## 4. Accessing the Interactions API via REST
 
-For shell-based scripts, debugging, or non-Python/JS environments, you can communicate with the stateful Interactions API directly using raw HTTP/REST requests via `curl`.
+For shell-based scripts, debugging, or non-Python/JS environments, you can
+communicate with the stateful Interactions API directly using raw HTTP/REST
+requests via `curl`.
 
 ### 1. REST Endpoint
 
@@ -356,7 +402,8 @@ POST https://aiplatform.googleapis.com/v1beta1/projects/{PROJECT_ID}/locations/{
 
 ### 2. Set up Variables & Authentication Header
 
-Set your target agent ID (e.g., model or custom agent path) and access token generated from Application Default Credentials:
+Set your target agent ID (e.g., model or custom agent path) and access token
+generated from Application Default Credentials:
 
 ```bash
 AGENT_ID="your-agent-id"
@@ -384,7 +431,10 @@ curl -X POST "https://aiplatform.googleapis.com/v1beta1/projects/${PROJECT_ID}/l
 ```
 
 #### Response Example
-A synchronous POST request returns a JSON object containing the conversation step details and unique identifiers:
+
+A synchronous POST request returns a JSON object containing the conversation
+step details and unique identifiers:
+
 ```json
 {
   "id": "your-interaction-id",
@@ -414,7 +464,8 @@ A synchronous POST request returns a JSON object containing the conversation ste
 
 ### 4. Multi-Turn Stateful Interaction Payload
 
-To continue an existing conversation statefully, specify the `previous_interaction_id` in the JSON payload:
+To continue an existing conversation statefully, specify the
+`previous_interaction_id` in the JSON payload:
 
 ```bash
 curl -X POST "https://aiplatform.googleapis.com/v1beta1/projects/${PROJECT_ID}/locations/global/interactions" \
@@ -435,7 +486,9 @@ curl -X POST "https://aiplatform.googleapis.com/v1beta1/projects/${PROJECT_ID}/l
 ```
 
 ### 5. Streaming Output Payload
-To stream updates in real time (Server-Sent Events format), pass `"stream": true` in the payload:
+
+To stream updates in real time (Server-Sent Events format), pass `"stream":
+true` in the payload:
 
 ```bash
 curl -X POST "https://aiplatform.googleapis.com/v1beta1/projects/${PROJECT_ID}/locations/global/interactions" \
@@ -454,8 +507,12 @@ curl -X POST "https://aiplatform.googleapis.com/v1beta1/projects/${PROJECT_ID}/l
   }'
 ```
 
-The endpoint will return a chunked stream where each event begins with `data: ` containing JSON updates with the `event_type` and step contents.
+The endpoint will return a chunked stream where each event begins with `data: `
+containing JSON updates with the `event_type` and step contents.
 
-> **How `curl` handles streaming:**
-> By default, when `"stream": true` is passed, the server responds with `Transfer-Encoding: chunked` and `Content-Type: text/event-stream` (Server-Sent Events). `curl` will automatically keep the connection open and print the incoming data chunks to `stdout` in real time as they are pushed by the server. The user does not need to poll or pull further; the complete sequence of events streams continuously until completion.
-
+> **How `curl` handles streaming:** By default, when `"stream": true` is passed,
+> the server responds with `Transfer-Encoding: chunked` and `Content-Type:
+> text/event-stream` (Server-Sent Events). `curl` will automatically keep the
+> connection open and print the incoming data chunks to `stdout` in real time as
+> they are pushed by the server. The user does not need to poll or pull further;
+> the complete sequence of events streams continuously until completion.

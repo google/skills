@@ -30,11 +30,13 @@ access to Cloud SQL resources.
 ## Quick Start (PostgreSQL)
 
 1.  **Enable the API:**
+
     ```bash
     gcloud services enable sqladmin.googleapis.com --quiet
     ```
 
 2.  **Create an Instance:**
+
     ```bash
     gcloud sql instances create INSTANCE_NAME \
       --database-version=POSTGRES_18 \
@@ -48,6 +50,7 @@ access to Cloud SQL resources.
 
     Because this is a Cloud SQL for PostgreSQL instance, the default admin user
     is `postgres`:
+
     ```bash
     gcloud sql users set-password postgres \
       --instance=INSTANCE_NAME --password=PASSWORD \
@@ -55,6 +58,7 @@ access to Cloud SQL resources.
     ```
 
 4.  **Create a database:**
+
     ```bash
     gcloud sql databases create DATABASE_NAME \
       --instance=INSTANCE_NAME \
@@ -66,6 +70,7 @@ access to Cloud SQL resources.
     You need the instance connection name (which is formatted as
     `PROJECT_ID:REGION:INSTANCE_NAME`) to connect using the Cloud SQL Auth
     Proxy. Retrieve it with the following command:
+
     ```bash
     gcloud sql instances describe INSTANCE_NAME \
       --format="value(connectionName)" \
@@ -76,11 +81,13 @@ access to Cloud SQL resources.
 
     The Cloud SQL Auth Proxy must be running to be able to connect to the
     instance. In a separate terminal, start the proxy using the connection name:
+
     ```bash
     ./cloud-sql-proxy INSTANCE_CONNECTION_NAME
     ```
 
     With the proxy running, connect using `psql` in another terminal:
+
     ```bash
     psql "host=127.0.0.1 port=5432 user=postgres dbname=DATABASE_NAME password=PASSWORD sslmode=disable"
     ```
@@ -96,14 +103,14 @@ access to Cloud SQL resources.
 -   [Client Libraries & Connectors](references/client-library-usage.md):
     Connecting to Cloud SQL using Python, Java, Node.js, and Go.
 
--   [MCP Usage](references/mcp-usage.md): Using the Cloud SQL remote MCP
-    server and Gemini CLI extension.
+-   [MCP Usage](references/mcp-usage.md): Using the Cloud SQL remote MCP server
+    and Gemini CLI extension.
 
--   [Infrastructure as Code](references/iac-usage.md): Terraform
-    configuration for instances, databases, and users.
+-   [Infrastructure as Code](references/iac-usage.md): Terraform configuration
+    for instances, databases, and users.
 
 -   [IAM & Security](references/iam-security.md): Predefined roles, SSL/TLS
     certificates, and Auth Proxy configuration.
 
 *If you need product information not found in these references, use the
-    Developer Knowledge MCP server `search_documents` tool.*
+Developer Knowledge MCP server `search_documents` tool.*

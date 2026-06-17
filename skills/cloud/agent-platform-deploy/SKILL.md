@@ -20,7 +20,10 @@ resources.
 
 ## 1P Tuned Model Copy & Deployment
 
-If you need to copy a **1P (First-Party) Tuned Model** from a source project to a destination region or project and deploy it to a newly created endpoint, refer to the [1P Tuned Model Copy & Deployment Guide](references/copy_deploy_guide.md).
+If you need to copy a **1P (First-Party) Tuned Model** from a source project to
+a destination region or project and deploy it to a newly created endpoint, refer
+to the
+[1P Tuned Model Copy & Deployment Guide](references/copy_deploy_guide.md).
 
 ## Safety & Confirmation Tiers (CRITICAL)
 
@@ -28,7 +31,8 @@ Before executing any commands on behalf of the user, you MUST adhere to the
 following safety tiers based on the action requested:
 
 1.  **Tier R: Read-only (`list`, `describe`, `list-deployment-config`)**
-    *   **Rule**: No confirmation needed. You may execute these commands immediately to gather information for the user.
+    *   **Rule**: No confirmation needed. You may execute these commands
+        immediately to gather information for the user.
 2.  **Tier M: Mutating & Reversible (`deploy`, `undeploy-model`)**
     *   **Rule**: This requires explicit user confirmation. You MUST present a
         clear confirmation prompt to the user explaining the proposed command.
@@ -72,31 +76,37 @@ gcloud ai model-garden models list-deployment-config \
     --model="google/gemma3@gemma-3-27b-it"
 ```
 
-> [!NOTE] Some models, especially Hugging Face models, might require a Hugging
-> Face Access Token for deployment.
+> [!NOTE]
+>
+> Some models, especially Hugging Face models, might require a Hugging Face
+> Access Token for deployment.
 
-> [!TIP] **Model Recommendation Instructions:** If a user asks to deploy a model
-> but **does not specify which one**, you should recommend a model based on
-> their use case (e.g., Llama 3.3 70B for general purpose or Gemma 3 for
-> lightweight tasks). * You **MUST** ensure you are recommending the **latest
-> version** or **popular version** of the suggested model family. * You **MUST**
-> verify the model is currently deployable using `gcloud ai model-garden models
-> list` before suggesting it to the user.
+> [!TIP]
+>
+> **Model Recommendation Instructions:** If a user asks to deploy a model but
+> **does not specify which one**, you should recommend a model based on their
+> use case (e.g., Llama 3.3 70B for general purpose or Gemma 3 for lightweight
+> tasks). * You **MUST** ensure you are recommending the **latest version** or
+> **popular version** of the suggested model family. * You **MUST** verify the
+> model is currently deployable using `gcloud ai model-garden models list`
+> before suggesting it to the user.
 
 ## 3. Deploying a Model
 
-> [!WARNING] Deploying models, especially large ones, consumes significant
-> compute resources and incurs costs.
+> [!WARNING]
 >
-> 1. You **MUST** refer to
->    [Agent Platform prediction pricing](https://cloud.google.com/products/gemini-enterprise-agent-platform/pricing?hl=en#prediction-and-explanation)
->    to calculate a rough cost estimation based on the requested `--machine-type`
->    and `--accelerator-type` (and count).
-> 2. You **MUST** present this cost estimation to the user and warn them that
->    this is the **list price**, which may differ from their actual bill due to
->    potential discounts or reservations.
-> 3. You **MUST ALWAYS** request explicit confirmation from the user agreeing to
->    the estimated cost before executing any `deploy` command.
+> Deploying models, especially large ones, consumes significant compute
+> resources and incurs costs.
+>
+> 1.  You **MUST** refer to
+>     [Agent Platform prediction pricing](https://cloud.google.com/products/gemini-enterprise-agent-platform/pricing?hl=en#prediction-and-explanation)
+>     to calculate a rough cost estimation based on the requested
+>     `--machine-type` and `--accelerator-type` (and count).
+> 2.  You **MUST** present this cost estimation to the user and warn them that
+>     this is the **list price**, which may differ from their actual bill due to
+>     potential discounts or reservations.
+> 3.  You **MUST ALWAYS** request explicit confirmation from the user agreeing
+>     to the estimated cost before executing any `deploy` command.
 
 To deploy a model, use the `deploy` command. It is highly recommended to use the
 `--asynchronous` flag for long-running deployments, and then poll the status if
@@ -174,9 +184,11 @@ gcloud ai operations describe YOUR_OPERATION_ID \
     --region=$LOCATION_ID
 ```
 
-> [!NOTE] As an agent, you can also offer to check the status of a deployment
-> for the user if they provide an operation ID or if they just initiated the
-> deployment with you.
+> [!NOTE]
+>
+> As an agent, you can also offer to check the status of a deployment for the
+> user if they provide an operation ID or if they just initiated the deployment
+> with you.
 
 Alternatively, you can list your endpoints to see if it shows up and check the
 Cloud Console under the "Online prediction" tab.
@@ -196,8 +208,10 @@ test. Because Model Garden models are often deployed to Dedicated Endpoints, you
 shouldn't use `gcloud ai endpoints predict`. Instead, you must fetch the
 endpoint's dedicated DNS name and send a `curl` request.
 
-> [!TIP] Ask the user to try using their own prompt to see the results.
-> Otherwise use the default.
+> [!TIP]
+>
+> Ask the user to try using their own prompt to see the results. Otherwise use
+> the default.
 
 Use the following script:
 
@@ -295,9 +309,11 @@ gcloud ai models delete $MODEL_ID \
 echo "Model deleted."
 ```
 
-> [!WARNING] Failing to undeploy a model will result in continuous charges for
-> the allocated compute resources, even if you are not sending prediction
-> requests. Always clean up after testing.
+> [!WARNING]
+>
+> Failing to undeploy a model will result in continuous charges for the
+> allocated compute resources, even if you are not sending prediction requests.
+> Always clean up after testing.
 
 ## 6. Troubleshooting
 
@@ -313,7 +329,9 @@ recommend an alternative region or machine type that currently has availability.
 **Ask the user for confirmation** to retry the deployment using the suggested
 `--region` or `--machine-type` parameters.
 
-> [!WARNING] If the alternative suggestions involve changing the machine type or
+> [!WARNING]
+>
+> If the alternative suggestions involve changing the machine type or
 > accelerator, you **MUST** recalculate the estimated cost using
 > [Agent Platform prediction pricing](https://cloud.google.com/products/gemini-enterprise-agent-platform/pricing?hl=en#prediction-and-explanation),
 > warn the user about list prices versus actual billing, and get their explicit

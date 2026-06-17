@@ -63,29 +63,28 @@ intelligence capabilities.
 
 ## Reference Directory
 
-- [Core Concepts](references/core-concepts.md): Storage types, analytics
-  workflows, and BigQuery Studio features.
+-   [Core Concepts](references/core-concepts.md): Storage types, analytics
+    workflows, and BigQuery Studio features.
 
-- [CLI Usage](references/cli-usage.md): Essential `bq` command-line tool
-  operations for managing data and jobs.
+-   [CLI Usage](references/cli-usage.md): Essential `bq` command-line tool
+    operations for managing data and jobs.
 
-- [Client Libraries](references/client-library-usage.md): Using Google Cloud
-  client libraries for Python, Java, Node.js, and Go.
+-   [Client Libraries](references/client-library-usage.md): Using Google Cloud
+    client libraries for Python, Java, Node.js, and Go.
 
-- [MCP Usage](references/mcp-usage.md): Using the BigQuery remote MCP server and
-  Gemini CLI extension.
+-   [MCP Usage](references/mcp-usage.md): Using the BigQuery remote MCP server
+    and Gemini CLI extension.
 
-- [Infrastructure as Code](references/iac-usage.md): Terraform examples for
-  datasets, tables, and reservations.
+-   [Infrastructure as Code](references/iac-usage.md): Terraform examples for
+    datasets, tables, and reservations.
 
-- [IAM & Security](references/iam-security.md): Roles, permissions, and data
-  governance best practices.
+-   [IAM & Security](references/iam-security.md): Roles, permissions, and data
+    governance best practices.
 
 *If you need product information not found in these references, use the
 Developer Knowledge MCP server `search_documents` tool.*
 
 ## Related Skills
 
-- [BigQuery AI & ML Skill](../bigquery-ai-ml):
-  SKILL.md file for BigQuery AI and ML capabilities (forecast, anomaly
-  detection, text generation).
+-   [BigQuery AI & ML Skill](../bigquery-ai-ml): SKILL.md file for BigQuery AI
+    and ML capabilities (forecast, anomaly detection, text generation).

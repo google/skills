@@ -11,10 +11,9 @@ description: >-
 # Agent Platform RAG Engine Management
 
 This skill provides instructions on how to interact with Agent Platform RAG
-Engine using the Agent Platform Python SDK. You
-MUST use the `vertexai` Python SDK to perform RAG Engine operations, rather than
-raw REST calls or MCP tools, because this code is intended to be run by external
-clients.
+Engine using the Agent Platform Python SDK. You MUST use the `vertexai` Python
+SDK to perform RAG Engine operations, rather than raw REST calls or MCP tools,
+because this code is intended to be run by external clients.
 
 ## Safety & Confirmation Tiers (CRITICAL)
 
@@ -50,20 +49,26 @@ the environment is correctly initialized by following these steps:
 1.  **Google Cloud Authentication**: Authenticate with your Google Cloud
     credentials and configure active Application Default Credentials (ADC) for
     Agent Platform access:
+
     ```bash
     gcloud auth login
     gcloud auth application-default login
     ```
+
 2.  **Virtual Environment**: Create and activate a dedicated virtual
     environment:
+
     ```bash
     python3 -m venv ~/rag_agent_venv
     source ~/rag_agent_venv/bin/activate
     ```
+
 3.  **Install Dependencies**: Install the required Agent Platform SDKs:
+
     ```bash
     pip install google-cloud-aiplatform google-genai
     ```
+
 4.  **Execution**: Advise the user that every time they execute a Python
     snippet, they must ensure this virtual environment is activated first.
 
@@ -85,8 +90,10 @@ the environment is correctly initialized by following these steps:
     *   **Answer questions using RAG Engine** -> Proceed to [4. Answering the
         User with Retrieved Context].
 
-> [!TIP] **Placeholder Parameter Replacement:** The Python scripts below use
-> bracketed string placeholders (like `"{project_id}"`, `"{region}"`, and
+> [!TIP]
+>
+> **Placeholder Parameter Replacement:** The Python scripts below use bracketed
+> string placeholders (like `"{project_id}"`, `"{region}"`, and
 > `"{corpus_id}"`). You **MUST** dynamically replace these placeholders with the
 > actual Project ID, Region, and Corpus ID values provided in the user's prompt
 > (or active context) before generating, providing, or executing the scripts.

@@ -24,19 +24,19 @@ configuration, monitoring, and deployment.
 
     -   **No** → **STOP**. Ask the user if they want to tune an Open Model or a
         Gemini Model. **CRITICAL EXCEPTION for Environment Setup Requests:** If
-        the user is specifically asking for environment setup instructions
-        (e.g. "What environment setup is needed?"), you **MUST** provide the full
+        the user is specifically asking for environment setup instructions (e.g.
+        "What environment setup is needed?"), you **MUST** provide the full
         [Phase 0 environment setup](#phase-0) instructions in your initial
         response, *simultaneously* with asking clarifying questions about the
         model category.
-    -   If the user provides a specific tuning purpose, you should
-        recommend three models: one Open Model, one Gemini Model, and a third
-        generally recommended choice. Briefly list the pros and cons of each
-        (e.g., Gemini models might be more expensive, etc.). **CRITICAL:** You
-        must read `references/models.md` during this step and only recommend
-        models explicitly listed in that catalog. Do not recommend unsupported
-        models like Mistral. Do not proceed with model configuration until the
-        category is confirmed.
+    -   If the user provides a specific tuning purpose, you should recommend
+        three models: one Open Model, one Gemini Model, and a third generally
+        recommended choice. Briefly list the pros and cons of each (e.g., Gemini
+        models might be more expensive, etc.). **CRITICAL:** You must read
+        `references/models.md` during this step and only recommend models
+        explicitly listed in that catalog. Do not recommend unsupported models
+        like Mistral. Do not proceed with model configuration until the category
+        is confirmed.
     -   **Yes** → Proceed.
 
 2.  **Environment Check**: Has the environment (Auth, APIs, IAM, Venv) been
@@ -48,8 +48,8 @@ configuration, monitoring, and deployment.
 3.  **Dataset Status**: Is the dataset ready in JSONL format, **is its structure
     valid for tuning**, and is it uploaded to Google Cloud Storage?
 
-        -   **No** → Go to [Phase 1: Dataset Preparation & Upload](#phase-1).
-        -   **Yes** → Proceed.
+    -   **No** → Go to [Phase 1: Dataset Preparation & Upload](#phase-1).
+    -   **Yes** → Proceed.
 
 4.  **Column Selection Confirmation**: Have you presented the columns to the
     user and confirmed the mapping?
@@ -67,19 +67,19 @@ configuration, monitoring, and deployment.
 
 6.  **Job Status**: Has the tuning job been submitted?
 
-        -   **No** → Go to
-            [Phase 3: Tuning Job Execution](#phase-3-tuning-job-execution).
-        -   **Yes** → Proceed.
+    -   **No** → Go to
+        [Phase 3: Tuning Job Execution](#phase-3-tuning-job-execution).
+    -   **Yes** → Proceed.
 
 7.  **Job Completion**: Is the tuning job complete?
 
-        -   **No** → Go to [Phase 4: Monitoring](#phase-4-monitoring).
-        -   **Yes** → Proceed.
+    -   **No** → Go to [Phase 4: Monitoring](#phase-4-monitoring).
+    -   **Yes** → Proceed.
 
 8.  **Deployment**: Has the tuned model been deployed (if required)?
 
-        -   **No** → Go to [Phase 5: Model Deployment](#phase-5-model-deployment).
-        -   **Yes** → Task Complete.
+    -   **No** → Go to [Phase 5: Model Deployment](#phase-5-model-deployment).
+    -   **Yes** → Task Complete.
 
 ## Phase 0: Environment & IAM Setup {#phase-0}
 
@@ -87,9 +87,9 @@ Ensure the foundational environment is ready before proceeding.
 
 ### 0.1 Authentication & Project Context
 
--   Check if `gcloud` CLI is installed. If it is not installed, prompt the
-    user for permission to install it before proceeding. If it is installed,
-    update it:
+-   Check if `gcloud` CLI is installed. If it is not installed, prompt the user
+    for permission to install it before proceeding. If it is installed, update
+    it:
 
 ```bash
 gcloud components update --quiet > /dev/null 2>&1
@@ -148,13 +148,13 @@ pip install -r references/requirements.txt
 
 **CRITICAL AGENT INSTRUCTION:** You **MUST** ensure that every Python command or
 script execution (e.g., `python3 scripts/...`, `pip install ...`) is prefixed
-with the virtual environment activation command: `source ~/tuning_agent_venv/bin/activate &&`.
-Additionally, advise the user that every single time they run a Python command,
-execute a script, or inspect data inline, they **MUST** also activate this
-virtual environment first in their bash execution. For example:
-`source ~/tuning_agent_venv/bin/activate && python3 ...`.
-Do not run standalone `python3` commands without activating the environment, as
-they will encounter `ModuleNotFoundError` issues.
+with the virtual environment activation command: `source
+~/tuning_agent_venv/bin/activate &&`. Additionally, advise the user that every
+single time they run a Python command, execute a script, or inspect data inline,
+they **MUST** also activate this virtual environment first in their bash
+execution. For example: `source ~/tuning_agent_venv/bin/activate && python3
+...`. Do not run standalone `python3` commands without activating the
+environment, as they will encounter `ModuleNotFoundError` issues.
 
 ## Phase 1: Dataset Preparation & Upload {#phase-1}
 
@@ -164,41 +164,50 @@ they will encounter `ModuleNotFoundError` issues.
     filename or path in their prompt, verify its existence in the workspace
     (e.g. via script execution or checking for typos).
     *   **If the file cannot be found anywhere**, you **MUST** inform the user
-    that the dataset file does not exist or cannot be accessed. You **MUST**
-    prompt the user to provide a valid dataset path. Alternatively, if candidate
-    dataset files are found in the workspace during your search, you **MUST**
-    present the candidates to the user and ask them to select one. You **MUST**
-    stop tool execution immediately after reporting the missing file or
-    presenting candidates, and wait for the user's response. Do **NOT** ask for
-    80/20 validation split permission, and do **NOT** attempt to upload the
-    dataset before receiving a valid dataset file selection from the user.
+        that the dataset file does not exist or cannot be accessed. You **MUST**
+        prompt the user to provide a valid dataset path. Alternatively, if
+        candidate dataset files are found in the workspace during your search,
+        you **MUST** present the candidates to the user and ask them to select
+        one. You **MUST** stop tool execution immediately after reporting the
+        missing file or presenting candidates, and wait for the user's response.
+        Do **NOT** ask for 80/20 validation split permission, and do **NOT**
+        attempt to upload the dataset before receiving a valid dataset file
+        selection from the user.
     *   **If the file is found and verified**, proceed to Step 1.1 Formatting &
-    Validation below.
+        Validation below.
 -   **Auto-Discovery: From User Bucket:** If the user does not have a dataset
     and no suitable alternative is found in the Hugging Face reference, offer to
     search the user's GCS buckets for potential training data. Prioritize
     searching for files with extensions like `.jsonl`, `.json`, `.csv`, and
     `.parquet`. If such files are found, read the first few lines/records of
-    each to determine if they contain text-based data suitable for tuning
-    (e.g., prompt/completion pairs) that can be modified to follow
+    each to determine if they contain text-based data suitable for tuning (e.g.,
+    prompt/completion pairs) that can be modified to follow
     [Data Preparation Guide](references/data_prep.md) and is related to the
     tuning task requested. **DO NOT** search without prompting first.
 -   **Auto-Discovery: From Task to Huggingface:** If the user has a specific
     task, refer to [Huggingface Datasets Reference](references/hf_datasets.md)
     and recommend a dataset from this if one exists. For each dataset
     recommended, provide some information about the dataset and provide some
-    reasonable splits. > [!IMPORTANT] > **CRITICAL: Ask for Confirmation and
-    Column Selection.** Do not proceed > with dataset preparation or upload
-    until you perform the following > steps and get user confirmation: > 1.
-    **Dataset and Split Confirmation:** Present the dataset and > available
-    splits to the user and have them confirm which to use. > 2. **Column
-    Selection (Hugging Face or Custom Datasets):** You must: > - Provide a list
-    of all available columns in the selected dataset > split. > - **Show a few
-    samples from the dataset** to help the user > understand the content and
-    make the choice of columns. > - Recommend which columns should be mapped to
-    `prompt` (or user > message) and `completion` (or assistant response),
-    offering a few > reasonable options if applicable. > - Ask the user to
-    confirm the column mapping or specify which > columns to use.
+    reasonable splits.
+
+    > [!IMPORTANT]
+    >
+    > **CRITICAL: Ask for Confirmation and Column Selection.** Do not proceed
+    > with dataset preparation or upload until you perform the following steps
+    > and get user confirmation:
+    >
+    > 1.  **Dataset and Split Confirmation:** Present the dataset and available
+    >     splits to the user and have them confirm which to use.
+    > 2.  **Column Selection (Hugging Face or Custom Datasets):** You must:
+    >     -   Provide a list of all available columns in the selected dataset
+    >         split.
+    >     -   **Show a few samples from the dataset** to help the user
+    >         understand the content and make the choice of columns.
+    >     -   Recommend which columns should be mapped to `prompt` (or user
+    >         message) and `completion` (or assistant response), offering a few
+    >         reasonable options if applicable.
+    >     -   Ask the user to confirm the column mapping or specify which
+    >         columns to use.
 
 ### 1.1 Formatting & Validation
 
@@ -227,10 +236,15 @@ for required schemas.
 ### 1.2 Upload
 
 Upload formatted `.jsonl` files to GCS using a unique directory (e.g., with a
-datetime timestamp) to avoid overwriting outputs from different runs.
-<!-- disableFinding(LINE_OVER_80) --> `bash
+datetime timestamp) to avoid overwriting outputs from different
+runs. <!-- disableFinding(LINE_OVER_80) -->
+
+```bash
 ARTIFACTS="gs://YOUR_BUCKET/tuning_agent_job_<datetime>/dataset.jsonl" gcloud
-storage cp dataset.jsonl $ARTIFACTS` <!-- enableFinding(LINE_OVER_80) -->
+storage cp dataset.jsonl $ARTIFACTS
+```
+
+<!-- enableFinding(LINE_OVER_80) -->
 
 ## Phase 2: Model Configuration & Recommendation {#phase-2}
 
@@ -246,14 +260,15 @@ confirmation before submitting the job.**
 
 #### For Open Models
 
--   Recommend `tuning_mode`, `epochs`, `learning_rate`, and `adapter_size`
-    based on the [Tuning Guide](references/tuning_guide.md) and model-specific
+-   Recommend `tuning_mode`, `epochs`, `learning_rate`, and `adapter_size` based
+    on the [Tuning Guide](references/tuning_guide.md) and model-specific
     baselines in the [Models Catalog](references/models.md).
 
 ### 2.2 Calculating Cost (Open Models Only)
 
 -   We can calculate a rough estimate of cost of tuning based on the dataset and
     the selected model in the [Models Catalog](references/models.md):
+
     ```bash
     python3 scripts/calculate_cost.py \
         --input my_data.jsonl \
@@ -263,6 +278,7 @@ confirmation before submitting the job.**
     ```
 
 > [!NOTE]
+>
 > **Handling Missing Dataset Errors:** If `scripts/calculate_cost.py` fails
 > because the dataset file (e.g. `my_data.jsonl` or `dummy_data.jsonl`) cannot
 > be found, you **MUST** inform the user that the dataset file does not exist or
@@ -282,8 +298,8 @@ confirmation before submitting the job.**
 **CRITICAL Pre-Flight Check (GCS Verification):** Before you propose a
 confirmation prompt or submit any tuning job, you **MUST** verify that the
 specified training dataset GCS URI (e.g. `gs://dummy_bucket/dataset.jsonl` or
-`gs://YOUR_BUCKET/...`) actually exists and is accessible. Run
-`gcloud storage ls $DATASET_URI` (or `gsutil ls`).
+`gs://YOUR_BUCKET/...`) actually exists and is accessible. Run `gcloud storage
+ls $DATASET_URI` (or `gsutil ls`).
 
 *   **If the verification fails** (e.g. `BucketNotFound`, `404`, `AccessDenied`,
     or indicating a dummy/missing bucket), you **MUST** inform the user that the
@@ -307,14 +323,14 @@ Check if `scripts/tune_gemini_model.py` exists.
     ```
 
 -   **If `scripts/tune_gemini_model.py` does not exist:** Instruct the user to
-    manually configure and submit the tuning job via the Google Cloud Console
-    UI or using the Agent Platform SDK for Python.
+    manually configure and submit the tuning job via the Google Cloud Console UI
+    or using the Agent Platform SDK for Python.
 
 ### For Open Models
 
 Submit the open model tuning job using `scripts/tune_open_model.py`. Identify
-the model id using available models documentation at
-<!-- disableFinding(LINE_OVER_80) -->
+the model id using available models documentation
+at <!-- disableFinding(LINE_OVER_80) -->
 [documentation](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/open-model-tuning.md.txt).
 <!-- enableFinding(LINE_OVER_80) -->
 
@@ -331,6 +347,7 @@ python3 scripts/tune_open_model.py \
 ```
 
 > [!IMPORTANT]
+>
 > **Interactive Confirmation Required (Tier M):** Before proceeding with job
 > submission, you **MUST** present the proposed command string showing all
 > literal flags in a confirmation prompt to the user with 'Yes' and 'No'
@@ -346,10 +363,10 @@ python3 scripts/tune_open_model.py \
 
 Monitor the job via the Cloud Console link provided in the script output.
 Additionally, ask the user if they want you to monitor the job status for them
-in the background. If they agree, execute `scripts/monitor_tuning_job.py` as
-a background task to periodically poll the job status and notify the user to
-show the status. If the user declines, leave it completely to the user to
-check on the status.
+in the background. If they agree, execute `scripts/monitor_tuning_job.py` as a
+background task to periodically poll the job status and notify the user to show
+the status. If the user declines, leave it completely to the user to check on
+the status.
 
 ## Phase 5: Model Deployment {#phase-5-model-deployment}
 
@@ -367,6 +384,7 @@ gcloud ai model-garden models deploy \
 ```
 
 > [!IMPORTANT]
+>
 > **Interactive Confirmation Required (Tier M):** Before proceeding with
 > deployment, you **MUST** present the proposed command string showing all
 > literal flags in a confirmation prompt to the user with 'Yes' and 'No'
