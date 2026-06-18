@@ -30,3 +30,27 @@ When an SDK upgrade fails or causes issues, use these strategies to diagnose and
 **Symptom:** "Unauthorized" or "Forbidden" errors after upgrading.
 **Diagnosis:** The authentication mechanism or the way credentials are provided may have changed. For example, moving from API keys to OAuth, or changing how the client is initialized.
 **Resolution:** Check the initialization block of the client. Ensure the credentials object matches the new expected schema.
+
+## Language-Specific Troubleshooting (e.g., Cloud Spanner)
+
+When upgrading complex multi-language SDKs like Google Cloud Spanner, watch out for these notorious language-specific pitfalls that often evade standard changelogs:
+
+### Java
+**Symptom:** `NoSuchMethodError` crashes at runtime.
+**Diagnosis:** The Spanner SDK heavily relies on Google's Guava and Protobuf libraries. Upgrades often bump the required Guava version, which breaks execution if your project's dependency tree (or a Spring Boot BOM) forces an older Guava version.
+**Resolution:** Always inspect the dependency tree (`mvn dependency:tree` or `gradle dependencies`) for Guava or Protobuf transitive version conflicts and align them with the SDK's expectations.
+
+### Node.js
+**Symptom:** Spanner client fails to connect or throws gRPC option formatting errors.
+**Diagnosis:** Spanner upgrades alter underlying `gax-nodejs` and `grpc` internals. This breaks applications that pass custom `grpc` connection options or SSL configurations to the Spanner constructor.
+**Resolution:** Review the application's client initialization for custom `grpc` shapes. Also, strictly check `engines` in `package.json` since modern SDK upgrades drop support for older Node versions (e.g., Node 14/16).
+
+### Go
+**Symptom:** Obscure runtime dial errors or panics.
+**Diagnosis:** The Go Spanner client is deeply coupled with `google.golang.org/grpc` and `google.golang.org/api`. Upgrading Spanner without aligning these transitive dependencies causes version mismatch panics at runtime.
+**Resolution:** Always run `go mod tidy` after bumping the Spanner client. Explicitly verify the `grpc` version matrix to ensure transitive APIs are compatible.
+
+### Python
+**Symptom:** Runtime exceptions during parameterized `execute_sql` queries.
+**Diagnosis:** Older versions of the Python Spanner client were lenient with parameterized types. Newer versions (backed by updated GAPIC generators) enforce strict type matching.
+**Resolution:** Review all instances of `execute_sql()`. Ensure `param_types` are explicitly provided for all parameterized queries to avoid runtime type errors.
