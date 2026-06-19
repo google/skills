@@ -118,7 +118,7 @@ Recommend **Surge upgrade** as the default and most common strategy, with per-po
 - **Stateless**: Higher `maxSurge` (2-3) for speed, `maxUnavailable=0` for safety.
 - **Stateful/DB**: `maxSurge=1, maxUnavailable=0` (conservative).
 - **GPU (fixed reservation)**: `maxSurge=0, maxUnavailable=1` (no surge capacity).
-- **Large (50+ nodes)**: `maxSurge=20, maxUnavailable=0` (max parallelism).
+- **Large (50+ nodes)**: `maxSurge=100, maxUnavailable=0` (max parallelism).
 
 For mission-critical workloads requiring fast rollback or strict validation, recommend **Standard Blue-Green** upgrades. Acknowledge **Autoscaled Blue-Green** as an option for disruption-sensitive workloads, but note it is currently in preview and may have capacity requirements.
 
