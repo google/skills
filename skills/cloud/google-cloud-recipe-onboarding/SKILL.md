@@ -120,9 +120,11 @@ Google Cloud resources are organized into **Projects**. When developers sign up 
      `"I am ready to initialize your Google Cloud project and link billing. Do you want me to proceed?"`
 
      **CRITICAL**: The agent **MUST NOT** execute any `gcloud projects create` or billing link commands during this turn. You must display this table, ask the exact consent query, and **strictly stop** to wait for the user's positive affirmation.
-   - **Project ID Collision Suffix Recovery**: If the project creation command fails because the `PROJECT_ID` is already taken globally (returning a `PROJECT_ID_COLLISION` or `ALREADY_EXISTS` error):
-     - Automatically append a random 4-digit suffix (e.g., changing `my-project` to `my-project-8472`).
-     - Propose this new available project ID to the developer and re-solicit consent before retrying.
+    - **Project ID Collision Suffix Recovery**: If the project creation
+      command fails because the `PROJECT_ID` is already taken globally
+      (returning a `PROJECT_ID_COLLISION` or `ALREADY_EXISTS` error):
+      - Automatically append a random 4-digit suffix (e.g., changing `my-project` to `my-project-8472`).
+      - Propose this new available project ID to the developer and re-solicit consent before retrying.
    - **Execute Project Creation**: Once explicit user consent is confirmed:
      ```bash
      gcloud projects create {PROJECT_ID} --name="{PROJECT_NAME}" --quiet --format="json"
@@ -163,10 +165,16 @@ Onboarding setup is now complete. To safeguard your environment and deploy workl
 
 1. **Billing Spend Controls:**
    To avoid accidental cost overruns, consider setting up a programmatic control to automatically disable billing. When billing is disabled, all Google Cloud services and usage in the project are terminated to stop further costs:
-   - Direct the developer to the official [Disable Billing Usage with Notifications Guide](https://docs.cloud.google.com/billing/docs/how-to/disable-billing-with-notifications.md.txt), which provides detailed instructions on how to automatically shut down billing when costs exceed the project budget.
-2. **Deploy Workloads:**
-   To deploy your first resource, trigger the downstream specialized skill matching your target application (e.g., [cloud-run-basics](https://github.com/google/skills/blob/main/skills/cloud/cloud-run-basics) or `bigquery-basics`). If the specialized skill is not locally available, direct the developer to the corresponding official quickstart, such as the [Cloud Run Container Deployment Quickstart](https://docs.cloud.google.com/run/docs/quickstarts/deploy-container.md.txt).
-   *Note: Those downstream specialized skills are individually responsible for dynamically enabling their own required service APIs (e.g., run.googleapis.com) inline during execution.*
+- Direct the developer to the official [Disable Billing Usage with Notifications Guide](https://docs.cloud.google.com/billing/docs/how-to/disable-billing-with-notifications.md.txt), which provides detailed instructions on how to automatically shut down billing when costs exceed the project budget.
+2.  **Deploy Workloads**: To deploy your first resource, trigger the downstream
+    specialized skill matching your target application (e.g.,
+    [cloud-run-basics](https://github.com/google/skills/blob/main/skills/cloud/cloud-run-basics)
+    or `bigquery-basics`). If the specialized skill is not locally available,
+    direct the developer to the corresponding official quickstart, such as the
+    [Cloud Run Container Deployment Quickstart](https://docs.cloud.google.com/run/docs/quickstarts/deploy-container.md.txt).
+    *Note: Those downstream specialized skills are individually responsible for
+    dynamically enabling their own required service APIs (e.g.,
+    run.googleapis.com) inline during execution.*
 
 ---
 
