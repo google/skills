@@ -1,0 +1,68 @@
+# Capacity Buffer for a serving ComputeClass — pre-warms node capacity so
+# bursty pods don't pay the node pool auto-creation pool-creation latency on the fast path.
+#
+# Resource: autoscaling.x-k8s.io/v1beta1 CapacityBuffer (a CRD; kubectl-only,
+# no gcloud surface). See gke-cluster-autoscaling-optimize.md → Capacity Buffers.
+#
+# Provisioning strategies (set in spec.provisioningStrategy):
+#   buffer.x-k8s.io/active-capacity   default. Buffer pods are real, low-priority
+#                                     placeholder pods that get evicted to make
+#                                     room when real workloads arrive. Requires
+#                                     GKE 1.35.2-gke.1842000+.
+#   buffer.gke.io/standby-capacity    Nodes pre-provisioned but kept idle (no
+#                                     pods running). Requires 1.35.2-gke.1842002+.
+#
+# Sizing modes:
+#   replicas: <N>                     Fixed warm capacity (this example).
+#   percentage: <P>, scalableRef: ... Dynamic — buffer scales with the workload.
+#                                     PodTemplate-only buffers can't use
+#                                     percentage. Reaction lag ~5 min — for
+#                                     sub-minute traffic ramps prefer fixed.
+#
+# Doesn't work on pod-billed clusters (Autopilot pod-billed mode); requires
+# node-based billing.
+
+apiVersion: v1
+kind: PodTemplate
+metadata:
+  name: serving-buffer-template
+  namespace: serving
+template:
+  spec:
+    nodeSelector:
+      cloud.google.com/compute-class: serving-class    # buffer matches the target ComputeClass
+    containers:
+    - name: pause
+      image: registry.k8s.io/pause:3.10
+      resources:
+        requests:
+          cpu: "4"
+          memory: "16Gi"
+---
+apiVersion: autoscaling.x-k8s.io/v1beta1
+kind: CapacityBuffer
+metadata:
+  name: serving-buffer
+  namespace: serving
+spec:
+  podTemplateRef:
+    name: serving-buffer-template
+  replicas: 3                                          # fixed: always keep 3 warm slots
+  provisioningStrategy: "buffer.x-k8s.io/active-capacity"
+  limits:                                              # cluster-wide cap on this buffer
+    cpu: "32"
+    memory: "128Gi"
+
+# --- Dynamic-sizing alternative (replace `replicas:` with these two fields) ---
+#
+#  percentage: 20                                      # 20% headroom on top of
+#                                                      # the source workload
+#  scalableRef:
+#    apiVersion: apps/v1
+#    kind: Deployment
+#    name: serving-frontend
+#
+# For predictable time-windowed ramps (e.g. weekday business hours), pair the
+# dynamic buffer with a scheduled scaler on the source workload (KEDA cron,
+# scheduled HPA, or a CronJob patching the source replicas) — the source scales
+# up before the ramp, the buffer follows. See gke-workload-autoscaling.md.
