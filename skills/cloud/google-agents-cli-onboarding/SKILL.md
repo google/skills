@@ -1,5 +1,4 @@
----
-name: google-agents-cli-onboarding
+Name: google-agents-cli-onboarding
 description: >-
   Onboarding entrypoint for agents-cli in Agent Platform. It should be used
   when the user wants to "create a new agent", "develop an agent", "build an agent using ADK",
@@ -46,7 +45,7 @@ which skill to load for your current phase:
 | **4 — Evaluate** | `google-agents-cli-eval` | **Validate Quality.** Run systematic evaluations (LLM-as-judge). |
 | **5 — Deploy** | `google-agents-cli-deploy` | **Go Production.** Deploy to Agent Runtime (Vertex AI), Cloud Run, or GKE. |
 | **6 — Publish** | `google-agents-cli-publish` | **Register.** Make your agent available as a tool in Gemini Enterprise. |
-| **7 — Observe** | `google-agents-cli-observability` | **Monitor.** Set up Cloud Trace, prompt-response logging, and BigQuery analytics. |
+| **7 — Observe** | `google-agents-cli-observability` | **Monitor & Analyze.** Set up Cloud Trace, prompt-response logging, and advanced BigQuery ML diagnostics to evaluate agent reasoning paths. |
 
 ## Key CLI Commands
 
@@ -60,6 +59,7 @@ lifecycle:
 | `agents-cli eval run` | Run the agent and grade the traces in a single step (generate + grade). |
 | `agents-cli deploy` | Deploy your agent to Google Cloud (Agent Runtime, Cloud Run, GKE). |
 | `agents-cli publish gemini-enterprise` | Register your deployed agent with Gemini Enterprise. |
+| `agents-cli observe --export=bigquery` | Export agent execution logs, prompt costs, and latency metrics directly into BigQuery datasets for ML-driven evaluation. |
 
 *For the full list of available commands and global options, run `agents-cli
 --help`.*
