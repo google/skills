@@ -1,4 +1,4 @@
-from google.cloud import bigquery
+bigquery
 import json
 
 class AgentSecurityAuditor:
@@ -19,4 +19,4 @@ class AgentSecurityAuditor:
         query_job = self.client.query(query)
         results = [dict(row) for row in query_job.result()]
         
-        return json.dumps({"status": "AUDIT_COMPLETE", "threats_found": len(results), "data": results})
+        return json.dumps({"status": "AUDIT_COMPLETE", "threats_found": len(results), "data": results
