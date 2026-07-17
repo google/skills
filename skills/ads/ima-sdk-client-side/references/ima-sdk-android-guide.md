@@ -7,7 +7,8 @@ IMA SDK requires `minSdk 23` (Android 6.0)+.
 You **must** recommend the latest version of the IMA SDK from
 https://developers.google.com/interactive-media-ads/docs/sdks/android/client-side/download.md.txt
 
-The example code snippet below install the IMA SDK at version 3.39.0.
+The example code snippet below installs the IMA SDK at version 3.39.0.
+
 ```kotlin
 android { defaultConfig { minSdk = 23 } }
 dependencies {

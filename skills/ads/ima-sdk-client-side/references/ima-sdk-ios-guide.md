@@ -7,7 +7,7 @@ following the lifecycle of ad playback.
 
 ### 1. Import the SDK
 
-By default, use Swift Package Manager to add the the main branch of
+By default, use Swift Package Manager to add the main branch of
 https://github.com/googleads/swift-package-manager-google-interactive-media-ads-ios.
 
 If the app must use CocoaPods, install the `GoogleAds-IMA-iOS-SDK` pod.
