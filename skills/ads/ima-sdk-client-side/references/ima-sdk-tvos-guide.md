@@ -43,11 +43,12 @@ To handle the Siri Remote, you must manage focus:
 To prevent user interactions from interfering with ad playback (e.g.,
 fast-forwarding through an ad):
 
-*   **Disable Custom Gestures:** You **must** disable your application's custom
-    remote control gesture recognizers (such as play/pause, swiping, or menu
-    button overrides) when the ad starts (on `LOADED` or `STARTED` events).
-*   **Restore Gestures:** Re-enable these gestures only after the ad completes
-    (on `CONTENT_RESUME_REQUESTED`) or fails.
+*   **Disable Custom Gestures:** You **must** disable your app's custom remote
+    control gesture recognizers (such as play/pause, swiping, or menu button
+    overrides) when the ad starts (on `LOADED` or `STARTED` events).
+*   **Restore Gestures:** Re-enable your app's gestures only after the ad
+    completes or a fatal error, using the `adsManagerDidRequestContentResume`
+    delegate method.
 
 --------------------------------------------------------------------------------
 
@@ -128,7 +129,7 @@ class YourViewController: UIViewController, IMAAdsManagerDelegate {
             isAdPlaying = true
             setNeedsFocusUpdate()
 
-        case .COMPLETED, .SKIPPED, .ALL_ADS_COMPLETED:
+        case .COMPLETE, .SKIPPED, .ALL_ADS_COMPLETED:
             // Update state and reclaim focus back to the app
             isAdPlaying = false
             setNeedsFocusUpdate()
