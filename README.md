@@ -88,6 +88,7 @@ repo to install.
   -   [**Google Cloud Well-Architected Framework skill for the Sustainability pillar**](./skills/cloud/google-cloud-waf-sustainability)
 - **Security and identity**
   -   [**GKE Security**](./skills/cloud/gke-security)
+  -   [**Horizon Scanning & Regulatory Intelligence**](./skills/cloud/google-cloud-horizon-scanning)
   -   [**IAM Recommendations Retrieval**](./skills/cloud/iam-recommendations-fetcher)
   -   [**SecOps Detection Coverage Skill**](./skills/cloud/detection-engineering-coverage-evaluation)
 - **Web and app hosting**

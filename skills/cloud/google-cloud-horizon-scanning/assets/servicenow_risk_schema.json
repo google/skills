@@ -1,0 +1,13 @@
+{
+  "sn_risk_risk": {
+    "name": "EU NIS2 Directive Supply Chain Cybersecurity Risk",
+    "description": "Risk of third-party supply chain vendor cybersecurity audit failures under EU NIS2 mandate.",
+    "u_inherent_probability": "High",
+    "u_inherent_impact": "Critical",
+    "category": "Cybersecurity & Operational Resilience",
+    "control_objective": {
+      "id": "CO-REG-EU-NIS2-SUPPLYCHAIN-2022",
+      "name": "Supply Chain Vendor Cybersecurity Audit Management"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "legislation_metadata": {
+    "official_bill_title": "Digital Operational Resilience Act Amendment",
+    "bill_reference_number": "EU-DORA-2026-04",
+    "jurisdiction": "European Union",
+    "sponsoring_agency": "European Banking Authority (EBA)",
+    "current_legislative_status": "In Committee",
+    "direct_pdf_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:32022R2554"
+  },
+  "summary": "Mandates 4-hour major ICT incident reporting timelines for cloud-based financial services providers. Requires financial entities to conduct threat-led penetration testing and maintain continuous third-party risk audit trails.",
+  "taxonomy": {
+    "industry_vertical": "Financial Services",
+    "category": "Regulatory",
+    "data_classification": "Restricted",
+    "owner_team": "Corporate Legal & GRC Team"
+  }
+}

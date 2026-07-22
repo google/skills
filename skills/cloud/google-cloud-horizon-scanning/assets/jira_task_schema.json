@@ -1,0 +1,16 @@
+{
+  "fields": {
+    "project": {
+      "key": "GRC"
+    },
+    "summary": "EU NIS2 Directive Supply Chain Audit Requirement",
+    "description": "Mandates mandatory technical documentation, human oversight, and continuous logging for third-party supply chain vendors. \n\nControl Objective: CO-REG-EU-NIS2-SUPPLYCHAIN-2022",
+    "issuetype": {
+      "name": "Task"
+    },
+    "priority": {
+      "name": "High"
+    },
+    "labels": ["Regulatory", "Cybersecurity", "DORA", "NIS2"]
+  }
+}
