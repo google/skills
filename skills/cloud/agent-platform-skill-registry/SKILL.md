@@ -78,3 +78,5 @@ python3 scripts/skill_registry_ops.py search \
 -   **Monitor Operations**:
     [monitor-operations.md](references/monitor-operations.md)
 -   **Generate Skill**: [generate-skill.md](references/generate-skill.md)
+-   **Verify Revision State**:
+    [verify-revision-state.md](references/verify-revision-state.md)
