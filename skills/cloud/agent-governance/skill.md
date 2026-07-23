@@ -12,8 +12,14 @@ This skill provides instructions for managing, applying, and auditing security g
 ## Usage Guide
 
 To use this skill effectively:
-1. **Generate Governance Artifacts:** Provide the `gcloud` commands and YAML/JSON configurations below to help users configure access controls, content safety, and FinOps labels.
-2. **Support Automation:** Generate executable setup scripts or IaC blocks that help apply these policies.
+1. **No Workspace Pollution:** Do NOT create or write any of the reference files or scripts (e.g., cost_tracking.md, apply_policies.sh) to the user's workspace root. They are already packaged within this skill's directory at `skills/cloud/agent-governance/`.
+2. **Reference Correct Paths with Labels:** Always point the user to the existing files inside the skill folder using descriptive, readable link text. Do not emit blank links. Use these exact paths:
+   - [IAM Conditions Guide](skills/cloud/agent-governance/references/iam_conditions.md)
+   - [Model Armor Configuration Guide](skills/cloud/agent-governance/references/model_armor_config.md)
+   - [Cost Tracking & FinOps Reference](skills/cloud/agent-governance/references/cost_tracking.md)
+   - [Policy Deployment Script](skills/cloud/agent-governance/scripts/apply_policies.sh)
+   - [Governance Verification Script](skills/cloud/agent-governance/scripts/verify_governance.py)
+3. **Generate Governance Artifacts:** Provide the `gcloud` commands and YAML/JSON configurations inline to help users configure access controls, content safety, and FinOps labels.
 
 ---
 
@@ -50,7 +56,7 @@ gcloud config set project $PROJECT_ID
 Control what tools and endpoints an Agent Identity (SPIFFE) is authorized to call through the Agent Gateway.
 
 ### Configure IAM Policy with CEL Conditions
-Define granular conditions to block or allow access to specific MCP Tools based on attributes like read-only tags. See `references/iam_conditions.md` for advanced CEL expressions.
+Define granular conditions to block or allow access to specific MCP Tools based on attributes like read-only tags. Detailed templates can be found in the [IAM Conditions Guide](skills/cloud/agent-governance/references/iam_conditions.md).
 
 * **Step 1:** Get existing policy:
   ```bash
@@ -74,14 +80,14 @@ Define granular conditions to block or allow access to specific MCP Tools based 
 Screen prompts/responses for prompt injection, PII, and harmful content.
 
 ### Create and Bind Model Armor Template
-* **Step 1:** Define the template (e.g., `ma-template.yaml` using the formats in `references/model_armor_config.md`).
+* **Step 1:** Define the template (e.g., `ma-template.yaml` using the formats in the [Model Armor Configuration Guide](skills/cloud/agent-governance/references/model_armor_config.md)).
 * **Step 2:** Import Policy:
   ```bash
   gcloud model-armor policies import my-policy \
       --source=ma-template.yaml \
       --location=$LOCATION_ID
   ```
-* **Step 3:** Bind to Gateway via Extension:
+* **Step 3:** Hook the safety filter directly to the gateway's pipeline:
   ```bash
   gcloud service-extensions authz-extensions import ma-extension \
       --source=extension-config.yaml \
@@ -95,7 +101,7 @@ Screen prompts/responses for prompt injection, PII, and harmful content.
 Ensure strict financial accountability by tagging agents consistently.
 
 ### Apply Governance Labels
-Apply the standardized Labeling Scheme (defined in `references/cost_tracking.md`) to the agent runtime.
+Apply the standardized Labeling Scheme (defined in the [Cost Tracking & FinOps Reference](skills/cloud/agent-governance/references/cost_tracking.md)) to the agent runtime.
 ```bash
 gcloud run services update $SERVICE_NAME \
     --update-labels=agent-id=$AGENT_ID,business-unit=$BU,environment=$ENV \
@@ -103,7 +109,7 @@ gcloud run services update $SERVICE_NAME \
 ```
 
 ### Querying Billing via BigQuery (Tier R)
-To identify the top 5 most expensive agents this week, run the analytical query documented in `references/cost_tracking.md`.
+To identify the top 5 most expensive agents this week, run the analytical query documented in the [Cost Tracking & FinOps Reference](skills/cloud/agent-governance/references/cost_tracking.md).
 
 ---
 

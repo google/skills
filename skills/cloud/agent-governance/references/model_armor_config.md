@@ -1,63 +1,39 @@
-# Model Armor Configuration Reference
+# Model Armor Filter Templates
 
-Model Armor provides guardrails and content safety filtering for agent inputs and outputs, mitigating prompt injection, jailbreaks, PII exposure, and unsafe content.
+Deploy these schemas to prevent prompt injection and secure egress payloads from exfiltrating sensitive company details.
 
----
+### Standard PII & Jailbreak Filter Template (`ma-template.yaml`)
 
-## 1. Template Specification (`ma-template.yaml`)
+This template blocks common PII formats, enforces basic safety limits, and activates real-time injection protection.
 
 ```yaml
-name: "projects/$PROJECT_ID/locations/$LOCATION_ID/templates/agent-safety-template"
-filterConfig:
-  promptInjectionFilterConfig:
-    enforcement: ENFORCE # Options: AUDIT, ENFORCE
-    sensitivityLevel: HIGH
-  piiFilterConfig:
-    enforcement: ENFORCE
-    rules:
-      - piiType: CREDIT_CARD_NUMBER
-        action: REDACT
-      - piiType: US_SOCIAL_SECURITY_NUMBER
-        action: REDACT
-      - piiType: EMAIL_ADDRESS
-        action: INSPECT_AND_BLOCK
-  contentSafetyFilterConfig:
-    enforcement: ENFORCE
-    harmCategories:
-      - category: HARM_CATEGORY_HATE_SPEECH
-        threshold: BLOCK_LOW_AND_ABOVE
-      - category: HARM_CATEGORY_DANGEROUS_CONTENT
-        threshold: BLOCK_MEDIUM_AND_ABOVE
+policy:
+  rules:
+  - ruleId: block_pii
+    displayName: Exfiltration Block
+    infoTypes: [EMAIL_ADDRESS, PHONE_NUMBER, US_SOCIAL_SECURITY_NUMBER]
+    blockingConfig: {}
+  - ruleId: safety_filter
+    displayName: Core Safety Filters
+    raiSettingsFilters:
+    - filterType: HATE_SPEECH
+      confidenceLevel: MEDIUM_AND_ABOVE
+    - filterType: HARASSMENT
+      confidenceLevel: MEDIUM_AND_ABOVE
+  - ruleId: jailbreak_prevention
+    displayName: Prompt Injection Guard
+    piAndJailbreakFilterSettings:
+      enforcement: ENABLED
 ```
 
----
+### Gateway Integration config (`extension-config.yaml`)
 
-## 2. Gateway Service Extension Binding (`extension-config.yaml`)
+This configuration registers the service extension with the gateway.
 
 ```yaml
-name: "projects/$PROJECT_ID/locations/$LOCATION_ID/authzExtensions/ma-extension"
-description: "Model Armor Extension for Agent Gateway"
+name: projects/PROJECT_ID/locations/LOCATION_ID/authorizationExtensions/ma-extension
+authority: projects/PROJECT_ID/locations/LOCATION_ID/authorities/my-auth-service
+forwardHeaders: ["Authorization"]
 failOpen: false
-service: "modelarmor.googleapis.com"
-template: "projects/$PROJECT_ID/locations/$LOCATION_ID/templates/agent-safety-template"
-```
-
----
-
-## 3. CLI Deployment Workflow (Tier M)
-
-### Step 1: Import Policy Template
-```bash
-gcloud model-armor policies import my-policy \
-    --source=ma-template.yaml \
-    --location=$LOCATION_ID \
-    --project=$PROJECT_ID
-```
-
-### Step 2: Bind to Gateway Authz Extension
-```bash
-gcloud service-extensions authz-extensions import ma-extension \
-    --source=extension-config.yaml \
-    --location=$LOCATION_ID \
-    --project=$PROJECT_ID
+timeout: 0.5s
 ```

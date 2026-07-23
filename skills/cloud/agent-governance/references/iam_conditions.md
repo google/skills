@@ -1,52 +1,28 @@
-# IAM & IAP CEL Conditions Reference
+# Agent Gateway IAM Conditions & CEL References
 
-Common Expression Language (CEL) conditions allow fine-grained access authorization for Agent Identities (SPIFFE) interacting with Agent Gateways and MCP tool endpoints.
+Use these Common Expression Language (CEL) templates when writing `iap-policy.json` conditions for Agent Gateway to control what tools an agent can call.
 
----
+### 1. Restrict to Read-Only Tools
+Blocks an Agent from calling any tool marked as write-capable in the Agent Registry.
 
-## 1. CEL Condition Patterns
-
-### Allow Read-Only MCP Tools Only
 ```json
 {
-  "title": "allow_readonly_tools_only",
-  "description": "Restricts agent calls to MCP tools tagged as read-only",
-  "expression": "resource.labels.access_tier == 'readonly' || request.path.endsWith('/read') || request.path.endsWith('/get')"
+  "condition": {
+    "title": "Read-only access",
+    "description": "Allows Agent access to any tool as long as the attribute is read-only",
+    "expression": "api.getAttribute('iap.googleapis.com/mcp.tool.isReadOnly', false) == true"
+  }
 }
 ```
 
-### Restrict Access by Agent Environment
+### 2. Restrict to Specific Tool Name
+Limits access exclusively to a trusted target tool.
+
 ```json
 {
-  "title": "prod_agent_identity_match",
-  "description": "Ensures only production agents access production tool endpoints",
-  "expression": "request.auth.principal.labels.environment == 'prod' && resource.labels.environment == 'prod'"
+  "condition": {
+    "title": "Restricted to Calendar",
+    "expression": "api.getAttribute('iap.googleapis.com/mcp.toolName', '') == 'MyCalendarTool'"
+  }
 }
 ```
-
-### Time-Bound & Working Hours Restriction
-```json
-{
-  "title": "business_hours_only",
-  "description": "Allows agent operations only during UTC business hours",
-  "expression": "request.time.getHours('Etc/UTC') >= 8 && request.time.getHours('Etc/UTC') < 18"
-}
-```
-
----
-
-## 2. Setting IAM Policy with Conditions (Tier M)
-
-1. **Export existing policy:**
-   ```bash
-   gcloud iap web get-iam-policy \
-       --resource-type=AgentRegistryResource \
-       --project=$PROJECT_ID --format=json > iap-policy.json
-   ```
-
-2. **Apply updated policy:**
-   ```bash
-   gcloud iap web set-iam-policy iap-policy.json \
-       --resource-type=AgentRegistryResource \
-       --project=$PROJECT_ID
-   ```
