@@ -25,16 +25,6 @@ an agent can, on demand:
 
 No repo clone. No guesswork. One install, and the whole catalog is one lookup away.
 
-## Install / uninstall
-
-```bash
-npx skills add google/skills --skill google-skill-finder -y   # add the finder
-npx skills remove google-skill-finder -y                      # remove it
-```
-
-Once installed, finding any other skill is a single lookup that returns its own
-`npx skills add ...` command.
-
 ## How it's built
 
 ```
@@ -49,9 +39,11 @@ google-skill-finder/
 
 This layout follows the [Agent Skills specification](https://agentskills.io/specification):
 `SKILL.md` for instructions, `references/` for docs read on demand, `scripts/` for
-executable helpers.
+executable helpers. Two design choices make those pieces pull their weight.
 
-### Key feature 1 — minimal context by design (token-efficient)
+## Key features
+
+### 1. Minimal context by design (token-efficient)
 
 The value here is what the model *doesn't* load until it needs to. Each tier is
 pulled in only when the task reaches for it:
@@ -66,7 +58,7 @@ So the catalog can list every skill in the repo while costing almost nothing on
 requests that have nothing to do with skill discovery. The heavy file sits in
 `references/` and is read only at the moment of the lookup.
 
-### Key feature 2 — built-in refresh, so it never goes stale
+### 2. Built-in refresh, so it never goes stale
 
 The catalog ships as a dated snapshot, and the skill can rebuild it on demand. It
 asks the CLI for the current list of skills, reads the result, and updates the
@@ -77,6 +69,16 @@ flowchart LR
     A[Ask CLI for<br/>current skills] --> B[Read the list]
     B --> C[Update the catalog<br/>if it changed]
 ```
+
+## Install / uninstall
+
+```bash
+npx skills add google/skills --skill google-skill-finder -y   # add the finder
+npx skills remove google-skill-finder -y                      # remove it
+```
+
+Once installed, finding any other skill is a single lookup that returns its own
+`npx skills add ...` command.
 
 ## Takeaway
 
