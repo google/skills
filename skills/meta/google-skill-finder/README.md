@@ -21,7 +21,7 @@ an agent can, on demand:
 2. **Return** the copy-paste command for the match:
    `npx skills add google/skills --skill <skill-name> -y`
 3. **Refresh** the catalog from the live listing when something looks missing, so a
-   stale snapshot never causes a false "no such skill."
+   stale snapshot is less likely to cause a false "no such skill."
 
 No repo clone. No guesswork. One install, and the whole catalog is one lookup away.
 
@@ -58,11 +58,13 @@ So the catalog can list every skill in the repo while costing almost nothing on
 requests that have nothing to do with skill discovery. The heavy file sits in
 `references/` and is read only at the moment of the lookup.
 
-### 2. Built-in refresh, so it never goes stale
+### 2. Built-in refresh to keep the catalog current
 
-The catalog ships as a dated snapshot, and the skill can rebuild it on demand. It
-asks the CLI for the current list of skills, reads the result, and updates the
-catalog when it has changed — so the directory keeps pace with the repo on its own.
+The catalog ships as a dated snapshot, and the skill is designed to rebuild it on
+demand. It asks the CLI for the current list of skills, reads the result, and updates
+the catalog when it has changed — so the directory can keep pace with the repo. (The
+refresh script is unit-tested on sample input; it has not yet been run against a live
+listing end-to-end.)
 
 ```mermaid
 flowchart LR
