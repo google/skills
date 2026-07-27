@@ -1,6 +1,6 @@
 # google-skill-finder
 
-**Ninety-plus skills in this repo. This one helps an agent find the right one — and hand you the command to install it.**
+**Ninety-plus skills in this [google/skills](https://github.com/google/skills) repo. This one helps an agent find the right one — and hand you the command to install it.**
 
 ## The problem
 
@@ -51,41 +51,31 @@ This layout follows the [Agent Skills specification](https://agentskills.io/spec
 `SKILL.md` for instructions, `references/` for docs read on demand, `scripts/` for
 executable helpers.
 
-### Minimal context by design (progressive disclosure)
+### Key feature 1 — minimal context by design (token-efficient)
 
-The value here is what the model *doesn't* load until it needs to:
+The value here is what the model *doesn't* load until it needs to. Each tier is
+pulled in only when the task reaches for it:
 
-| Tier | What loads | When |
-| --- | --- | --- |
-| 1 | `name` + `description` (~100 tokens) | always |
-| 2 | `SKILL.md` body (small, operational) | when the skill activates |
-| 3 | `references/catalog.md` (the large list) | only when actually finding a skill |
+| Tier | What loads | Size (approx) | When |
+| --- | --- | --- | --- |
+| 1 | `name` + `description` | ~100 tokens (< 1 KB) | always |
+| 2 | `SKILL.md` body | ~3 KB · ~500 words | when the skill activates |
+| 3 | `references/catalog.md` | ~50 KB · ~6.5k words | only when finding a skill |
 
-So the catalog can list every skill in the repo without costing context on requests
-that have nothing to do with skill discovery. The heavy file sits in `references/`
-and is read only at the moment of the lookup.
+So the catalog can list every skill in the repo while costing almost nothing on
+requests that have nothing to do with skill discovery. The heavy file sits in
+`references/` and is read only at the moment of the lookup.
 
-### Refreshing the catalog
+### Key feature 2 — built-in refresh, so it never goes stale
 
-The catalog ships as a dated snapshot. When it looks stale or turns up no good match,
-the agent rebuilds it from the live CLI listing instead of trusting a frozen file.
-The rebuild is deliberately conservative: it validates its own work before writing,
-so a bad parse never overwrites a good catalog.
-
-The listing arrives wrapped in the CLI's spinner chrome, so the refresh first trims
-that noise, then parses entries by indentation. Before writing anything it runs two
-guardrails — known "canary" skills must survive the parse, and the parsed count must
-match the CLI's own total. Only if both hold does it write a fresh, dated catalog. If
-either fails, the existing catalog stays untouched and the run exits loudly, so a
-broken directory is never shipped silently.
+The catalog ships as a dated snapshot, and the skill can rebuild it on demand. It
+asks the CLI for the current list of skills, reads the result, and updates the
+catalog when it has changed — so the directory keeps pace with the repo on its own.
 
 ```mermaid
-flowchart TD
-    A[Live CLI listing] --> B[Trim spinner chrome]
-    B --> C[Parse entries by indentation]
-    C --> D{Canaries survive AND<br/>count matches CLI total?}
-    D -->|Pass| E[Write fresh dated catalog]
-    D -->|Fail| F[Keep old catalog · exit loudly]
+flowchart LR
+    A[Ask CLI for<br/>current skills] --> B[Read the list]
+    B --> C[Update the catalog<br/>if it changed]
 ```
 
 ## Takeaway
