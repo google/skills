@@ -25,11 +25,22 @@ an agent can, on demand:
 
 No repo clone. No guesswork. One install, and the whole catalog is one lookup away.
 
+## Install / uninstall
+
+```bash
+npx skills add google/skills --skill google-skill-finder -y   # add the finder
+npx skills remove google-skill-finder -y                      # remove it
+```
+
+Once installed, finding any other skill is a single lookup that returns its own
+`npx skills add ...` command.
+
 ## How it's built
 
 ```
 google-skill-finder/
 ├── SKILL.md                  # lean instructions the agent loads on activation
+├── README.md                 # this file
 ├── references/
 │   └── catalog.md            # the full skill catalog, grouped by category
 └── scripts/
@@ -56,18 +67,26 @@ and is read only at the moment of the lookup.
 
 ### Refreshing the catalog
 
-The catalog ships as a dated snapshot. When it looks stale or has no good match, the
-agent rebuilds it from the live CLI:
+The catalog ships as a dated snapshot. When it looks stale or turns up no good match,
+the agent rebuilds it from the live CLI listing instead of trusting a frozen file.
+The rebuild is deliberately conservative: it validates its own work before writing,
+so a bad parse never overwrites a good catalog.
 
-```bash
-npx skills add google/skills -l > /tmp/skills_list.txt 2>&1
-python3 scripts/refresh_catalog.py /tmp/skills_list.txt
+The listing arrives wrapped in the CLI's spinner chrome, so the refresh first trims
+that noise, then parses entries by indentation. Before writing anything it runs two
+guardrails — known "canary" skills must survive the parse, and the parsed count must
+match the CLI's own total. Only if both hold does it write a fresh, dated catalog. If
+either fails, the existing catalog stays untouched and the run exits loudly, so a
+broken directory is never shipped silently.
+
+```mermaid
+flowchart TD
+    A[Live CLI listing] --> B[Trim spinner chrome]
+    B --> C[Parse entries by indentation]
+    C --> D{Canaries survive AND<br/>count matches CLI total?}
+    D -->|Pass| E[Write fresh dated catalog]
+    D -->|Fail| F[Keep old catalog · exit loudly]
 ```
-
-The script auto-trims the CLI's spinner chrome, parses entries by indentation, and
-**refuses to overwrite the catalog** unless known "canary" skills survive the parse
-and the count matches the CLI's own total. A bad parse fails loudly instead of
-silently shipping a broken directory.
 
 ## Takeaway
 
