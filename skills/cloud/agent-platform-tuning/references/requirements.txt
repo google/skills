@@ -3,5 +3,5 @@ numpy==2.4.2
 pandas==3.0.1
 datasets==2.18.0
 smart_open[gcs]==7.5.1
-pyarrow==19.0.1
+pyarrow==23.0.1
 google-genai==1.73.1
