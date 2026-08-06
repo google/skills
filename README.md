@@ -136,11 +136,12 @@ repo to install.
 
 ## Additional Google skills
 
--   [**Flutter Skills**](https://github.com/flutter/skills)
--   [**Dart Skills**](https://github.com/dart-lang/skills)
 -   [**Advanced Google Cloud Storage Skills**](https://github.com/gemini-cli-extensions/google-cloud-storage)
 -   [**Agent Development Kit (ADK) Skills**](https://github.com/google/agents-cli)
+-   [**Android Skills**](https://github.com/android/skills)
+-   [**Dart Skills**](https://github.com/dart-lang/skills)
 -   [**Firestore Skills**](https://github.com/firebase/agent-skills/tree/main/skills/firebase-firestore)
+-   [**Flutter Skills**](https://github.com/flutter/skills)
 -   [**Genkit Skills**](https://github.com/genkit-ai/skills)
 
 ## Plugins
