@@ -1,0 +1,20 @@
+apiVersion: cloud.google.com/v1
+kind: ComputeClass
+metadata:
+  name: {compute_class_name}
+spec:
+  priorities:
+  # Try Spot capacity first for cost; fall back to on-demand for obtainability.
+  - machineFamily: {machine_family}  # e.g., g2, a2, a3
+    gpu:
+      type: {accelerator_type}       # e.g., nvidia-l4, nvidia-tesla-a100, nvidia-h100-80gb
+      count: {gpu_count}
+    spot: true
+  - machineFamily: {machine_family}
+    gpu:
+      type: {accelerator_type}
+      count: {gpu_count}
+    spot: false
+  nodePoolAutoCreation:
+    enabled: true
+  whenUnsatisfiable: DoNotScaleUp

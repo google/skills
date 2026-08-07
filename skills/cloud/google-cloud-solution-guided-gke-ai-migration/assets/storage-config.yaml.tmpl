@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {workload_name}-model-pv
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: {storage_capacity}  # e.g. 500Gi
+  storageClassName: ""
+  mountOptions:
+  - implicit-dirs
+  - file-cache:enable-parallel-downloads:true
+  csi:
+    driver: gcsfuse.csi.storage.gke.io
+    volumeHandle: {gcs_bucket_name}  # the bucket created in Phase 3 step 3
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {pvc_name}
+  namespace: {namespace}
+spec:
+  accessModes:
+  - ReadWriteMany
+  storageClassName: ""
+  volumeName: {workload_name}-model-pv
+  resources:
+    requests:
+      storage: {storage_capacity}

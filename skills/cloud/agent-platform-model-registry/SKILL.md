@@ -27,19 +27,18 @@ following safety tiers based on the action requested:
     *   No confirmation needed. Execute immediately to gather information.
 2.  **Tier M: Mutating & Reversible (`upload`, `update`)**
     *   Requires **interactive confirmation** with 'Yes'/'No' options. The
-        confirmation prompt MUST contain the exact, literal command string
-        with all required flags (e.g. `--region=us-central1`,
-        `--display-name="..."`) — natural-language paraphrases are NOT
-        sufficient.
-    *   **Same-turn restriction**: NEVER execute the command in the same turn
-        as presenting the confirmation prompt. Stop and wait for the user's
-        reply; only execute after explicit 'Yes' / approval.
+        confirmation prompt MUST contain the exact, literal command string with
+        all required flags (e.g. `--region=us-central1`, `--display-name="..."`)
+        — natural-language paraphrases are NOT sufficient.
+    *   **Same-turn restriction**: NEVER execute the command in the same turn as
+        presenting the confirmation prompt. Stop and wait for the user's reply;
+        only execute after explicit 'Yes' / approval.
 3.  **Tier D: Destructive & Irreversible (`delete`)**
     *   Requires **explicit typed confirmation** (e.g. "I confirm" or "Yes,
         delete it"). Ask for confirmation IMMEDIATELY — before any pre-flight
         checks (don't check if the model is deployed to endpoints first).
-    *   **Same-turn restriction**: NEVER execute in the same turn as asking
-        for typed confirmation. Wait for the user to reply in a new turn.
+    *   **Same-turn restriction**: NEVER execute in the same turn as asking for
+        typed confirmation. Wait for the user to reply in a new turn.
 
 ## Phase 0: Environment Setup
 
@@ -49,18 +48,20 @@ correctly initialized by following these steps:
 1.  **Google Cloud Authentication**: Authenticate with your Google Cloud
     credentials and configure active Application Default Credentials (ADC) for
     Agent Platform access:
-    
+
     ```bash
     gcloud auth login
     gcloud auth application-default login
     ```
+
 2.  **Set Project**: Configure the active project for subsequent commands:
-    
+
     ```bash
     gcloud config set project $PROJECT_ID
     ```
-3.  **Region**: Always specify `--region=$LOCATION_ID` on each command below.
-    Do NOT use `global`.
+
+3.  **Region**: Always specify `--region=$LOCATION_ID` on each command below. Do
+    NOT use `global`.
 
 ## 1. Listing Models (Tier R)
 
@@ -92,8 +93,8 @@ gcloud ai models describe ${MODEL_ID}@${VERSION_ID} \
 ## 3. Uploading a Model (Tier M)
 
 Register a new model or a new version of an existing model. This is a
-long-running operation.
-**Action requires an inline confirmation card before proceeding.**
+long-running operation. **Action requires an inline confirmation card before
+proceeding.**
 
 ### Example: Uploading a Custom Model
 
@@ -105,16 +106,17 @@ gcloud ai models upload \
     --artifact-uri="gs://my-bucket/path/to/artifacts"
 ```
 
-> [!IMPORTANT] This is a Tier M operation — see [Safety & Confirmation Tiers]
-> above.
+> [!IMPORTANT]
+>
+> This is a Tier M operation — see [Safety & Confirmation Tiers] above.
 
 To upload a new version of an existing model, use the `--parent-model` flag or
 specify the parent model ID.
 
 ## 4. Updating a Model (Tier M)
 
-Update metadata fields like display name, description, or labels.
-**Action requires an inline confirmation card before proceeding.**
+Update metadata fields like display name, description, or labels. **Action
+requires an inline confirmation card before proceeding.**
 
 ```bash
 gcloud ai models update $MODEL_ID \
@@ -123,18 +125,36 @@ gcloud ai models update $MODEL_ID \
     --description="Updated description"
 ```
 
-> [!IMPORTANT] This is a Tier M operation — see [Safety & Confirmation Tiers]
-> above.
+> [!IMPORTANT]
+>
+> This is a Tier M operation — see [Safety & Confirmation Tiers] above.
 
 ## 5. Deleting a Model (Tier D)
 
-Permanently delete a Model and all its versions.
-**Action requires explicit typed confirmation before proceeding.**
+Permanently delete a Model and all its versions. **Action requires explicit
+typed confirmation before proceeding.**
 
 ```bash
 gcloud ai models delete $MODEL_ID \
     --region=$LOCATION_ID
 ```
 
-> [!WARNING] This operation is irreversible. All model versions must be
-> undeployed from all Endpoints before deletion.
+> [!WARNING]
+>
+> This operation is irreversible. All model versions must be undeployed from all
+> Endpoints before deletion.
+
+## 6. Searching Publisher Models (Tier R)
+
+Before generating interactive model details, you MUST verify the `model_id` by
+searching Model Garden Publisher Models. No confirmation is required.
+
+Use the `gcloud ai` CLI to search for matching publisher models.
+
+```bash
+gcloud ai model-garden models list --model-filter="<model_name_or_query>" --full-resource-name --format=json
+```
+
+This will return a list of matching models. Extract the exact `name` field from
+the result (e.g., `publishers/google/models/gemma2` or
+`publishers/qwen/models/qwen3-coder`) to use as the verified `model_id`.

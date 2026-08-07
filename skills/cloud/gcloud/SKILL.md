@@ -1,18 +1,71 @@
 ---
 name: gcloud
 metadata:
-  category: DevOps
+  category: CloudInfrastructureAndServices
 description: >-
-  Interacts with Google Cloud services using the gcloud CLI safely and
-  efficiently. Covers command validation, data reduction, safety guardrails with
-  a denylist, and workflows for discovery and investigation. You MUST read this
-  skill before invoking any gcloud command. Use when managing cloud resources,
-  querying configurations, or troubleshooting issues via gcloud. Don't use when
-  writing or debugging Google Cloud client library code or raw REST/gRPC API
-  interactions.
+  Provides safety-critical validation, guardrails, and data reduction for gcloud
+  CLI operations across Google Cloud Platform (GCP) services and infrastructure.
+  Use when planning, generating, constructing, proposing, describing, or
+  executing any gcloud CLI commands - including when answering questions about
+  gcloud syntax, or formatting flags. Don't use when writing Google Cloud
+  client library code or raw REST/gRPC API requests.
 ---
 
 # gcloud CLI Skill for AI Agents
+
+> [!CAUTION]
+>
+> ### MANDATORY PRE-CONDITION: EXPLICIT LEAF-LEVEL SYNTAX VALIDATION
+>
+> All pre-existing knowledge of `gcloud` commands, flags, flag values, and
+> positional argument syntax is **stale and prone to hallucination**.
+>
+> NEVER propose command parameters, output flag options, execute commands, OR
+> outline step-by-step plans for any `gcloud` task before validating leaf-level
+> syntax via `gcloud help <command>` (or including leaf-level help lookup as a
+> mandatory step in the plan).
+>
+> **Mandatory Action Rules**:
+>
+> 1.  **Direct Execution & Code Generation**: **ALWAYS** invoke `gcloud help
+>     <leaf_command>` (e.g. `gcloud help compute instances create` or `gcloud
+>     help sql instances create`) before proposing or executing the final
+>     command syntax.
+>
+> 2.  **Planning & Strategy Queries**: When asked for a plan, strategy, or next
+>     steps to achieve a user goal (e.g., *"What is your plan to accomplish
+>     X..."*), the response **MUST explicitly include running `gcloud help
+>     <leaf_command>`** as Step 1 of the plan before proposing flags or
+>     executing commands.
+>
+> 3.  **Non-Transitive Validation**: Parent command group help (e.g. `gcloud
+>     help compute`) is not sufficient for leaf-level syntax validation.
+>     Validation must occur at the specific leaf subcommand level.
+>
+> 4.  **FORBIDDEN Web Search Fallback**: NEVER use `search_web`, web search, or
+>     external documentation search tools for gcloud CLI syntax. `gcloud help
+>     <leaf_command>` is the **EXCLUSIVE** authorized authority for command
+>     syntax.
+>
+> 5.  **User Flag & Project Preservation**: When proposing intermediate command
+>     steps, **ALWAYS** preserve all user-specified flags (including
+>     `--project=<project_id>`) in the proposed response text.
+>
+> 6.  **Mandatory Plan Template**: When generating a plan, the response **MUST**
+>     copy this exact 4-step structure:
+>
+>     -   **Step 1**: Syntax Validation via `gcloud help <leaf_command>`
+>     -   **Step 2**: Parameter Verification (confirming required and optional
+>         flags, and explicitly checking if the `--dry-run` or `--validate-only`
+>         flag is supported)
+>     -   **Step 3**: Dry-Run Command Proposal (If `--dry-run` or
+>         `--validate-only` is supported, there MUST be a `--dry-run` or
+>         `--validate-only` invocation before the next step.)
+>     -   **Step 4**: Command Proposal & Authorization (If the command is on the
+>         "Prohibited Operations" denylist, state that autonomous execution is
+>         forbidden, and the user MUST be explicitly asked for authorization to
+>         proceed. If the command is NOT on the denylist, propose or proceed
+>         with execution, while following *ALL* "Execution Constraints" below.)
 
 This document provides essential guidelines and best practices for AI agents
 interacting with the Google Cloud SDK (`gcloud` CLI). Following these rules is
@@ -25,12 +78,12 @@ argument syntax, prevent destructive actions, and minimize context window usage.
 
 If the `gcloud` executable is missing, refer to the official
 [Google Cloud CLI Installation Guide](https://docs.cloud.google.com/sdk/docs/install-sdk.md.txt)
-to install it on your platform (Linux, macOS, Windows, etc.).
+to install it on the current platform (Linux, macOS, Windows, etc.).
 
 ### 2. Authorization
 
-Authenticate the CLI with Google Cloud. Choose the flow that matches your
-running environment:
+Authenticate the CLI with Google Cloud. Choose the flow that matches the running
+environment:
 
 *   **User Account (Interactive)**: Run `gcloud auth login`. Follow the browser
     prompts to sign in.
@@ -67,24 +120,20 @@ Federation), see
 
 ### 1. Explicit Command Validation (Mandatory)
 
-Your internal knowledge of `gcloud` may be stale or prone to hallucination
-(e.g., hallucinating commands, flags, flag values, or positional argument
-syntax). You are **FORBIDDEN** from executing commands until you have validated
-the exact syntax at the leaf level.
-
-*   **Action**: Always call `gcloud help <command>` for the *exact* command you
-    intend to run (e.g., `gcloud help compute instances create`).
+*   **Action**: **ALWAYS** call `gcloud help <command>` for the *exact* command
+    that is intended to be run (e.g., `gcloud help compute instances create`).
 *   **Verify**: Ensure the command, flags, flag values, and positional argument
-    syntax are valid for that specific leaf command before attempting execution.
-    Validation is not transitive from parent groups.
+    syntax are valid for that specific leaf command before attempting execution
+    or presenting plans. Validation is not transitive from parent groups.
 
-### 2. Data Reduction Strategies
+### 2. Data Reduction Strategies (Mandatory)
 
-To save context window space and reduce latency, always minimize the volume of
-data returned by `gcloud`.
+Minimize the volume of data returned by `gcloud` to save context window space
+and reduce latency. DO NOT execute any `list` command without including at least
+one data reduction flag (`--limit`, `--filter`, or `--format`).
 
-*   **Projection**: Use `--format=json(key1, key2, ...)` to select only the
-    specific fields needed for your task. To understand the advanced projection
+*   **Projection**: Use `--format="json(key1, key2, ...)"` to select only the
+    specific fields needed for the task. To understand the advanced projection
     and formatting syntax, refer to `gcloud topic projections` and `gcloud topic
     formats`.
 
@@ -96,9 +145,9 @@ data returned by `gcloud`.
     characters. To study the filter expression syntax, refer to `gcloud topic
     filters`.
 
-*   **Schema Discovery**: Unconstrained resource lists can quickly exhaust your
+*   **Schema Discovery**: Unconstrained resource lists can quickly exhaust the
     context window with redundant data. To prevent this, discover a resource's
-    schema before executing queries. If you are unsure of the JSON key path for
+    schema before executing queries. If unsure of the JSON key path for
     projecting fields (`--format`) or filtering (`--filter`), run the targeted
     resource's list command (if supported) with a single-item limit:
 
@@ -116,15 +165,23 @@ data returned by `gcloud`.
 *   **No Shell Operators**: Do not use command substitution (`$(...)`), pipes
     (`|`), or redirection (`>`, `>>`, `<`). This is to increase command safety
     and ensure commands are more easily understandable and reviewable by users.
-*   **No Interactivity**: Do not run interactive commands or commands requiring
-    a TTY (e.g., `gcloud interactive`). You must enforce non-interactive mode by
-    appending `--quiet` (or `-q`) to your commands. This ensures that defaults
-    are used or errors are raised if input is required.
+*   **Non-Interactive Execution (`--quiet` / `-q`)**: Pass the `--quiet` (or
+    `-q`) global flag on all execution commands (e.g., `gcloud pubsub topics
+    delete temp-topic --quiet --project=test-project`). AI agents run in
+    headless, non-interactive environments without a TTY or `stdin` input
+    handler. Without `--quiet`, commands that prompt for user confirmation (such
+    as deleting resources, approving defaults, or selecting unspecified regions)
+    will pause execution indefinitely waiting for input, causing background task
+    timeouts. Including `--quiet` forces non-interactive mode, causing `gcloud`
+    to automatically accept safe default choices or fail immediately with an
+    explicit error if required parameters are missing.
+*   **No Blind Lists**: NEVER execute a `list` command without `--limit`,
+    `--filter`, or `--format`.
 
 ### 4. Project and Location Scoping (Critical)
 
 To ensure commands are deterministic, non-interactive, and target the correct
-environment, you must explicitly manage project and location scoping.
+environment, they must explicitly provide project and location scoping.
 
 *   **Explicit Project Target**: Do not rely on active configuration defaults.
     Always append `--project=<PROJECT_ID>` to all resource-manipulating and
@@ -132,13 +189,13 @@ environment, you must explicitly manage project and location scoping.
     accidental execution against the wrong project.
 
 *   **Prevent Location Prompts**: Many Google Cloud resources are regional or
-    zonal. If you omit the location flag (e.g., `--region`, `--zone`, or
+    zonal. If the location flag is omitted (e.g., `--region`, `--zone`, or
     `--location`), `gcloud` will trigger an interactive prompt to select a
     zone/region. This violates the **No Interactivity** rule. Always provide
     explicit location flags if the command requires them.
 
-*   **Location Discovery**: If you do not know the correct region, zone, or
-    location for a service, run discovery commands first (remembering to limit
+*   **Location Discovery**: If the correct region, zone, or location for a
+    service is not known, run discovery commands first (remembering to limit
     results if there are many):
 
     *   **Compute Engine (VMs, Networks)**:
@@ -161,8 +218,8 @@ environment, you must explicitly manage project and location scoping.
 
 ### Prohibited Operations (Denylist)
 
-You are **strictly prohibited** from executing the following commands
-autonomously. These require explicit human-in-the-loop authorization:
+NEVER execute the following commands autonomously. These require explicit
+human-in-the-loop authorization:
 
 *   **Any IAM policy, role, or binding modification** (Security): Risk of
     privilege escalation, administrative lockout, service disruption, or
@@ -182,35 +239,38 @@ autonomously. These require explicit human-in-the-loop authorization:
 
 ### Execution Guidelines
 
-*   **Dry Run (Mandatory)**: You MUST invoke a command with `--dry-run` (or
-    equivalent) first if it exists, before executing the actual command, to
-    preview changes.
+*   **Dry Run (Mandatory)**: If the `--dry-run` or `--validate-only` flag (or
+    equivalent) is listed in the command help output, ALWAYS include the flag in
+    the proposed command or initial execution step. ALWAYS preview changes with
+    `--dry-run` or `--validate-only` prior to actual execution.
 
 *   **Long Running Operations**: For commands that support it, the `--async`
     flag is highly recommended for long-running operations to avoid blocking the
     agentic flow. Note that not every command has an `--async` flag. For
     commands that return an operation ID (whether via `--async` or by default),
-    you are responsible for polling for completion if the operation status is
-    needed for the next step.
+    operation status must be polled for completion, if needed for the next step.
+
+*   **Non-Interactive Flag (`--quiet`)**: Include `--quiet` (or `-q`) on all
+    proposed or executed commands to guarantee non-interactive execution without
+    waiting for TTY confirmation prompts.
 
 ## Structured Workflows
 
 ### Discovery Workflow
 
-When asked to perform a task on a service you are not familiar with:
+When asked to perform a task on a service that is unfamiliar:
 
-1.  You MUST invoke help on a command (e.g., `gcloud help <COMMAND>`) before
-    invoking it.
-2.  If you do not know the exact command, traverse the command tree by invoking
-    help on a command group (e.g., `gcloud help compute`) to discover available
-    subcommands and groups.
-3.  **Schema Discovery**: If you need to filter or project fields from a list
-    command, but do not know the exact JSON keys, first run `gcloud <GROUP>
-    <RESOURCE> list --limit=1 --format=json` to safely discover the schema.
-    **Never** run a raw `list` command without scoping constraints (like
-    `--limit=1`), as unconstrained results will pollute and exhaust your context
-    window.
-4.  Execute with data reduction flags.
+1.  **Invoke Help**: Call `gcloud help <COMMAND>` on the target leaf command
+    prior to execution.
+2.  **Traverse Command Tree**: Run help on command groups (e.g., `gcloud help
+    compute` or `gcloud help`) to discover available subgroups and commands if
+    the exact command is unknown.
+3.  **Discover Schema**: Run `gcloud <GROUP> <RESOURCE> list --limit=1
+    --format=json` to inspect JSON keys before constructing filters or
+    projections. DO NOT execute unconstrained `list` commands without scoping
+    flags (e.g., `--limit=1`) to prevent context window exhaustion.
+4.  **Enforce Data Reduction**: Include data reduction flags (`--limit`,
+    `--filter`, `--format`) on all command executions.
 
 ## Quick Reference / Cheat Sheet
 

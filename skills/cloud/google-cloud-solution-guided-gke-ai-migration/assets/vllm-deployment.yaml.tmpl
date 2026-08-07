@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${WORKLOAD_NAME}-vllm
+  namespace: ${NAMESPACE}
+  labels:
+    app.kubernetes.io/name: vllm-serving
+    app.kubernetes.io/instance: ${WORKLOAD_NAME}
+spec:
+  replicas: ${REPLICAS}
+  selector:
+    matchLabels:
+      app: ${WORKLOAD_NAME}-vllm
+  template:
+    metadata:
+      labels:
+        app: ${WORKLOAD_NAME}-vllm
+      annotations:
+        gke-gcsfuse/volumes: "true"
+    spec:
+      serviceAccountName: ${K8S_SERVICE_ACCOUNT}
+      nodeSelector:
+        cloud.google.com/compute-class: {compute_class_name}
+      containers:
+      - name: vllm-server
+        image: vllm/vllm-openai:{vllm_version}  # resolve current stable at design time; never :latest
+        command: ["python", "-m", "vllm.entrypoints.openai.api_server"]
+        args:
+        - "--model=/models/{model_name}"
+        - "--served-model-name={model_id}"
+        - "--tensor-parallel-size=${TENSOR_PARALLEL_SIZE}"
+        - "--max-model-len=${MAX_MODEL_LEN}"
+        - "--gpu-memory-utilization=0.90"
+        env:
+        - name: HUGGING_FACE_HUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: ${HF_SECRET_NAME}
+              key: hf_api_token
+              optional: true
+        ports:
+        - containerPort: 8000
+          name: http
+        resources:
+          limits:
+            nvidia.com/gpu: "${GPU_COUNT}"
+            memory: "${MEMORY_LIMIT}"
+            cpu: "${CPU_LIMIT}"
+          requests:
+            nvidia.com/gpu: "${GPU_COUNT}"
+            memory: "${MEMORY_REQUEST}"
+            cpu: "${CPU_REQUEST}"
+        volumeMounts:
+        - name: model-storage
+          mountPath: /models
+      volumes:
+      - name: model-storage
+        persistentVolumeClaim:
+          claimName: ${PVC_NAME}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${WORKLOAD_NAME}-vllm-svc
+  namespace: ${NAMESPACE}
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: http
+  selector:
+    app: ${WORKLOAD_NAME}-vllm

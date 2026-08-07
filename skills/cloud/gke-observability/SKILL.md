@@ -15,8 +15,8 @@ This reference covers monitoring, logging, and metrics configuration for GKE.
 The golden path enables comprehensive observability including control-plane
 metrics.
 
-> **MCP Tools:** `get_cluster`, `list_k8s_events`, `get_k8s_logs`,
-> `get_k8s_cluster_info`, `describe_k8s_resource`. **CLI-only:** `gcloud
+> **MCP Tools:** `gke:get_cluster`, `gke:list_k8s_events`, `gke:get_k8s_logs`,
+> `gke:get_k8s_cluster_info`, `gke:describe_k8s_resource`. **CLI-only:** `gcloud
 > container clusters update --monitoring=...`, `gcloud logging read`
 
 ## Golden Path Observability Defaults
@@ -160,6 +160,13 @@ When designing or proposing alerting and dashboard strategies for GKE:
     indicator of control plane health, alongside node CPU/Memory and pod crash
     loops.
 
+### Node Health (Production Rules)
+
+A comprehensive assessment of node health relies on analyzing these two metrics together:
+
+1.  **`kubernetes.io/node/status_condition`** (filtered by `status_condition="Ready"`): Use this to track healthy nodes. Note that it will only report values for nodes that have successfully bootstrapped.
+2.  **`compute.googleapis.com/instance_group/size`** (filtered by `instance_group_name="gke-<cluster_name>-.*"`): Use this to track the total number of nodes in a specific cluster. Note that it does not differentiate between healthy and unhealthy nodes.
+
 ## Cost Considerations
 
 Monitoring and logging have associated costs:
@@ -208,3 +215,11 @@ resource.type="k8s_event" AND jsonPayload.reason="FailedScheduling"
 # Audit logs (who did what)
 resource.type="k8s_cluster" AND logName:"cloudaudit.googleapis.com"
 ```
+
+## Supporting Links
+
+-   [GKE system metrics](https://docs.cloud.google.com/monitoring/api/metrics_kubernetes)
+-   [GKE Observability Documentation](https://cloud.google.com/kubernetes-engine/docs/concepts/observability)
+-   [Google Cloud Managed Service for Prometheus](https://cloud.google.com/stackdriver/docs/managed-prometheus)
+-   [Cloud Logging Query Language (LQL)](https://cloud.google.com/logging/docs/view/logging-query-language)
+-   [Google Cloud Monitoring Alerts](https://cloud.google.com/monitoring/alerts)

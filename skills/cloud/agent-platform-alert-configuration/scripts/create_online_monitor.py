@@ -16,11 +16,12 @@
 
 import argparse
 import sys
+import typing
 
 try:
-  from google.cloud import aiplatform_v1beta1
+  from google.cloud import aiplatform_v1beta1  # pytype: disable=import-error
 except ImportError:
-  from google.cloud.aiplatform import aiplatform_v1beta1
+  from google.cloud.aiplatform import aiplatform_v1beta1  # pytype: disable=import-error
 
 
 EXPECTED_METRICS = {
@@ -30,8 +31,18 @@ EXPECTED_METRICS = {
 }
 
 
-def verify_configuration(evaluator, target_sampling_percentage) -> bool:
-  """Checks if the existing monitor config matches the desired settings."""
+def _verify_configuration(
+    evaluator: typing.Any, target_sampling_percentage: int
+) -> bool:
+  """Checks if the existing monitor config matches the desired settings.
+
+  Args:
+      evaluator: The OnlineEvaluator instance to verify.
+      target_sampling_percentage: The expected sampling percentage.
+
+  Returns:
+      True if the configuration matches, False otherwise.
+  """
   actual_metrics = set()
   for metric_source in evaluator.metric_sources:
     spec = metric_source.metric.predefined_metric_spec
@@ -58,7 +69,17 @@ def create_agent_online_monitor(
     agent_resource_name: str,
     sampling_percentage: int = 10,
 ) -> str:
-  """Checks for matching monitor and creates one if none exists."""
+  """Checks for matching monitor and creates one if none exists.
+
+  Args:
+      project_id: The GCP project ID.
+      location: The GCP location (region).
+      agent_resource_name: The full resource name of the agent.
+      sampling_percentage: The desired sampling percentage (default 10).
+
+  Returns:
+      The resource name of the matching or created Online Evaluator.
+  """
   client = aiplatform_v1beta1.OnlineEvaluatorServiceClient(
       client_options={"api_endpoint": f"{location}-aiplatform.googleapis.com"}
   )
@@ -72,7 +93,7 @@ def create_agent_online_monitor(
   matching_evaluator = None
   for evaluator in page_result:
     if evaluator.agent_resource == agent_resource_name:
-      if verify_configuration(evaluator, sampling_percentage):
+      if _verify_configuration(evaluator, sampling_percentage):
         matching_evaluator = evaluator
         break
 

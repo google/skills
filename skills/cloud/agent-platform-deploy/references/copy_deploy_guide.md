@@ -33,9 +33,10 @@ If user is copying model in different region, skip the P4SA setup section.
     (`us-central1`) with the user. You MUST halt execution and wait for the
     user's explicit confirmation response before running any `gcloud` or `curl`
     commands. If you are generating a script for the user instead of running
-    commands live, you MUST explicitly include a note in your response explaining
-    that confirming the development environment (e.g., prod) and destination
-    context with the user is required before running the script live.
+    commands live, you MUST explicitly include a note in your response
+    explaining that confirming the development environment (e.g., prod) and
+    destination context with the user is required before running the script
+    live.
 -   Execute the following command to set the global variable.
     `export ENV="prod"`
 
@@ -45,11 +46,12 @@ If user is copying model in different region, skip the P4SA setup section.
 -   Verify `gcloud auth list`. If not authenticated, run `gcloud auth login`.
 -   Execute the following command to set the global variable.
     `export PROJECT_ID=${PROJECT_ID} REGION=${REGION}`
--   Check if ${USER} have value, or ask user to set one.
+-   Check if ${USER_EMAIL} have value (the full account email), or ask user to
+    set one.
 
 ### 0.2 GCloud CLI setup
 
--   use `scripts/config_gcloud_cli.sh ${ENV} ${PROJECT_ID} ${REGION} ${USER}`
+-   use `scripts/config_gcloud_cli.sh ${ENV} ${PROJECT_ID} ${REGION} ${USER_EMAIL}`
 
 ### 0.3 P4SA Setup
 
@@ -57,9 +59,9 @@ If user is copying model in different region, skip the P4SA setup section.
 
 To copy a model from source project ${SOURCE_PROJECT} to the destination project
 ${PROJECT_ID}, and ${REGION}, follow
-<!-- disableFinding(LINE_OVER_80) -->
+
 https://docs.cloud.google.com/gemini-enterprise-agent-platform/machine-learning/model-registry/copy-model, add the
-<!-- enableFinding(LINE_OVER_80) -->
+
 P4SA of the destination project as a new principal to the source project and
 assign the Vertex AI Service Agent role to it.
 
@@ -101,8 +103,8 @@ assign the Vertex AI Service Agent role to it.
 
 -   If failed, try to add user's account to destination project.
     ```bash
-    gcloud projects add-iam-policy-binding gemini-billing-prober-018 \
-    --member="user:${USER}@google.com" --role="roles/aiplatform.admin"
+    gcloud projects add-iam-policy-binding ${DEST_PROJECT_ID} \
+    --member="user:${USER_EMAIL}" --role="roles/aiplatform.admin"
     ```
 
 -   If failed again, prompt user to do it.

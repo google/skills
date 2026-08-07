@@ -1,6 +1,8 @@
 # Model Tuning
 
-Supervised Fine-Tuning or Preference Tuning using your own datasets.
+Supervised Fine-Tuning using your own datasets.
+
+Note: Not all models support tuning. Refer to https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/tuning/supervised-tuning.md.txt for the list of supported models.
 
 ```python
 import time

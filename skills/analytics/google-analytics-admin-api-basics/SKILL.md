@@ -1,5 +1,7 @@
 ---
 name: google-analytics-admin-api-basics
+metadata:
+  category: GoogleAnalytics
 description: >-
   Manages Google Analytics account and property settings, enables the Analytics Admin API via the Cloud CLI, lists accounts and properties, and manages data streams, custom dimensions, conversion events, and integrations. Use when you need to programmatically configure Google Analytics accounts, provision properties, manage data retention, configure Measurement Protocol secrets, or manage Firebase and Google Ads links.
 ---

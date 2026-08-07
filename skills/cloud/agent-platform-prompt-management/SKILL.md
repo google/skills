@@ -9,17 +9,15 @@ description: >-
   prompts.
 ---
 
-# Agent Platform Prompt Management
-
 ## Usage Guide
 
 To use this skill effectively:
 
-1. **Generate Code**: Provide the Python snippets below to the user to help them
-manage prompts in Agent Platform.
+1.  **Generate Code**: Provide the Python snippets below to the user to help
+    them manage prompts in Agent Platform.
 
-2. **No File System Search**: Do not try to find Python files or scripts on the
-file system for these operations.
+2.  **No File System Search**: Do not try to find Python files or scripts on the
+    file system for these operations.
 
 ## Safety & Confirmation Tiers (CRITICAL)
 
@@ -30,35 +28,44 @@ accidental mutation or permanent deletion of prompt resources:
 1.  **Tier R: Read-only (`list`, `get`)**
     *   No confirmation needed. Execute immediately to gather information.
 2.  **Tier M: Mutating & Reversible (`create`)**
-    *   Requires **interactive confirmation** with 'Yes'/'No' options
-    before executing prompt creation, to prevent unintended resource
-    proliferation or misconfiguration. The confirmation prompt must
-    clearly explain the proposed prompt creation and its key parameters
-    (e.g., display name, template text, target model). Natural-language
-    paraphrases without specifying the parameters are not sufficient.
+
+    *   Requires **interactive confirmation** with 'Yes'/'No' options before
+        executing prompt creation, to prevent unintended resource proliferation
+        or misconfiguration. The confirmation prompt must clearly explain the
+        proposed prompt creation and its key parameters (e.g., display name,
+        template text, target model). Natural-language paraphrases without
+        specifying the parameters are not sufficient.
     *   **Same-turn restriction**: Do not execute the creation code in the same
         turn as presenting the confirmation prompt. Stop and wait for the user's
         reply; only execute after explicit 'Yes' / approval.
     *   **Gold Standard Example**:
+
         > I will create a prompt in Agent Platform with the following
         > parameters. Please confirm this information before I proceed:
+        >
         > *   **Display Name**: `Customer Support Greeting`
         > *   **Target Model**: `gemini-2.5-pro`
         > *   **Template Text**: "Hello {{user_name}}, how can I help..."
+        >
         > Do you confirm? [Yes/No]
+
 3.  **Tier D: Destructive & Irreversible (`delete`)**
+
     *   Requires **explicit typed confirmation** (e.g. "I confirm" or "Yes,
-    delete it") before executing prompt deletion, to prevent accidental
-    permanent loss of production prompt assets. Ask for confirmation
-    before any pre-flight checks.
+        delete it") before executing prompt deletion, to prevent accidental
+        permanent loss of production prompt assets. Ask for confirmation before
+        any pre-flight checks.
     *   **Same-turn restriction**: NEVER execute in the same turn as asking for
         typed confirmation. Wait for the user to reply in a new turn.
     *   **Gold Standard Example**:
+
         > I will permanently delete the following prompt from Agent Platform.
-        > This action is irreversible. Please explicitly type your
-        > confirmation (e.g., "I confirm") before I proceed:
+        > This action is irreversible. Please explicitly type your confirmation
+        > (e.g., "I confirm") before I proceed:
+        >
         > *   **Prompt ID**: `prompt_12345abc`
         > *   **Display Name**: `Legacy Outdated Prompt`
+        >
         > Please type your confirmation to proceed.
 
 ## Phase 0: Environment Setup
@@ -67,44 +74,48 @@ accidental mutation or permanent deletion of prompt resources:
 advise them to ensure the environment is correctly initialized by following
 these steps:
 
-1. **Google Cloud Authentication**: Authenticate with your Google Cloud account
-   and configure active Application Default Credentials (ADC) for Agent
-   Platform access:
-   
-   ```bash
-   gcloud auth login
-   gcloud auth application-default login
-   ```
-2. **Virtual Environment**: Create and activate a dedicated virtual environment:
-   
-   ```bash
-   python3 -m venv ~/prompt_agent_venv
-   source ~/prompt_agent_venv/bin/activate
-   ```
-3. **Install Dependencies**: Install the required Agent Platform SDKs:
-   
-   ```bash
-   pip install google-cloud-aiplatform google-genai
-   ```
-4. **Execution**: Advise the user that every time they execute a Python snippet, they must ensure this virtual environment is activated first.
+1.  **Google Cloud Authentication**: Authenticate with your Google Cloud account
+    and configure active Application Default Credentials (ADC) for Agent
+    Platform access:
 
-> [!TIP] **Placeholder Parameter Replacement:** The Python scripts below use
-> uppercase string placeholders (like `"PROJECT_ID"`, `"LOCATION_ID"`, and
-> `"PROMPT_ID"`). You **MUST** dynamically replace these placeholders with the
-> actual Project ID, Region, and Prompt ID values provided in the user's prompt
-> (or discovered context) before generating or providing the scripts.
+    ```bash
+    gcloud auth login
+    gcloud auth application-default login
+    ```
+
+2.  **Python Dependencies**: This skill needs `google-cloud-aiplatform` and
+    `google-genai`. Do **not** create a virtual environment — it starts empty
+    and hides packages the environment already provides, forcing a redundant
+    install. Probe, and install only what is missing:
+
+    ```bash
+    python3 -c "import vertexai, google.genai" \
+      || pip install google-cloud-aiplatform google-genai
+    ```
+
+3.  **Execution**: Run Python snippets with a plain `python3`. There is no
+    environment to activate first.
+
+> [!TIP]
+>
+> **Placeholder Parameter Replacement:** The Python scripts below use uppercase
+> string placeholders (like `"PROJECT_ID"`, `"LOCATION_ID"`, and `"PROMPT_ID"`).
+> You **MUST** dynamically replace these placeholders with the actual Project
+> ID, Region, and Prompt ID values provided in the user's prompt (or discovered
+> context) before generating or providing the scripts.
 
 ## 1. Managing Prompts via Agent Platform SDK
 
 The SDK provides a high-level `Prompt` class in the preview module.
 
-### Create a Prompt
+### Create a Prompt (Tier M)
 
 Use when you need to create a new managed prompt in Agent Platform.
 
-*   **Reference**: See [create.md](references/create.md) for detailed instructions and Python snippets.
+*   **Reference**: See [create.md](references/create.md) for detailed
+    instructions and Python snippets.
 
-### List Prompts
+### List Prompts (Tier R)
 
 ```python
 import vertexai
@@ -117,7 +128,7 @@ for p in all_prompts:
     print(f"Name: {p.display_name}, ID: {p.prompt_id}")
 ```
 
-### Retrieve and Use a Prompt
+### Retrieve and Use a Prompt (Tier R)
 
 ```python
 import vertexai
@@ -133,18 +144,19 @@ assembled = retrieved_prompt.assemble_contents(text="The quick brown fox...")
 print(assembled)
 ```
 
-### Delete a Prompt
+### Delete a Prompt (Tier D)
 
-**CRITICAL**: You must pass the numeric prompt ID (e.g., `"1234567890123456789"`)
-to `prompts.delete()`. The SDK constructs the full resource path internally
-using the project and location from `vertexai.init()`.
+**CRITICAL**: You must pass the numeric prompt ID (e.g.,
+`"1234567890123456789"`) to `prompts.delete()`. The SDK constructs the full
+resource path internally using the project and location from `vertexai.init()`.
 
 **Confirmation Required**: As a Tier D (Destructive) operation, the agent MUST
 pause and request explicit, high-friction typed re-confirmation of the prompt ID
-from the user before generating or providing the deletion code.
-The action is irreversible.
+from the user before generating or providing the deletion code. The action is
+irreversible.
 
 > [!IMPORTANT]
+>
 > **NEVER pre-emptively provide or execute any deletion code before receiving
 > the user's response in a new turn.** You must never speculate or assume that
 > confirmation will be given. Asking for confirmation and providing the code in

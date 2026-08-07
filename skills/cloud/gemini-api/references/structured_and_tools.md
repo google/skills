@@ -16,7 +16,7 @@ class Recipe(BaseModel):
 
 client = genai.Client()
 response = client.models.generate_content(
-    model="gemini-3.5-flash",
+    model="gemini-3.6-flash",
     contents="List a few popular cookie recipes.",
     config=types.GenerateContentConfig(
         response_mime_type="application/json",
@@ -48,7 +48,7 @@ def get_current_weather(location: str) -> str:
 
 client = genai.Client()
 response = client.models.generate_content(
-    model="gemini-3.5-flash",
+    model="gemini-3.6-flash",
     contents="What is the weather like in Boston?",
     config=types.GenerateContentConfig(tools=[get_current_weather]),
 )
@@ -73,7 +73,7 @@ from google.genai import types
 client = genai.Client()
 
 response = client.models.generate_content(
-    model="gemini-3.5-flash",
+    model="gemini-3.6-flash",
     contents="When is the next total solar eclipse in the US?",
     config=types.GenerateContentConfig(
         tools=[types.Tool(google_search=types.GoogleSearch())],
@@ -100,7 +100,7 @@ from google.genai import types
 client = genai.Client()
 
 response = client.models.generate_content(
-    model="gemini-3.5-flash",
+    model="gemini-3.6-flash",
     contents="Calculate the 20th fibonacci number.",
     config=types.GenerateContentConfig(
         tools=[types.Tool(code_execution=types.ToolCodeExecution())],
@@ -120,7 +120,7 @@ from google.genai import types
 client = genai.Client()
 
 response = client.models.generate_content(
-    model="gemini-3.5-flash",
+    model="gemini-3.6-flash",
     contents="Compare recipes from http://example.com and http://example2.com",
     config=types.GenerateContentConfig(
         tools=[types.Tool(url_context=types.UrlContext())],

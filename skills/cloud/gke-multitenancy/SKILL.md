@@ -87,8 +87,8 @@ roleRef:
 ```
 
 **RBAC best practices:** Use Google Groups for subject bindings. Prefer
-namespace-scoped Roles over ClusterRoles. See the `gke-security` skill for full
-RBAC hardening guidance.
+namespace-scoped Roles over ClusterRoles. See the `gke-platform-security` skill
+for full RBAC hardening guidance.
 
 ### 3. Resource Quotas
 
@@ -143,8 +143,8 @@ spec:
 
 ### 5. Network Isolation
 
-Apply default-deny per namespace (see the `gke-security` skill), then allow
-intra-team traffic:
+Apply default-deny per namespace (see the `gke-workload-security` skill), then
+allow intra-team traffic:
 
 ```yaml
 # Allow same-namespace pods to talk + DNS

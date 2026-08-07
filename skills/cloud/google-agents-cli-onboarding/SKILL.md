@@ -1,4 +1,7 @@
-Name: google-agents-cli-onboarding
+---
+name: google-agents-cli-onboarding
+metadata:
+  category: DevOps
 description: >-
   Onboarding entrypoint for agents-cli in Agent Platform. It should be used
   when the user wants to "create a new agent", "develop an agent", "build an agent using ADK",
@@ -6,6 +9,8 @@ description: >-
   "deploy an agent", "publish an agent", "monitor an agent", or needs the ADK (Agent Development Kit)
   development lifecycle.
 ---
+
+# Google Agents CLI Onboarding
 
 > [!TIP] **One-Time Setup**: To install the CLI and enable all 7 specialized
 > development skills in your coding agent, run the setup command:

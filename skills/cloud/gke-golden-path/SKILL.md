@@ -4,8 +4,8 @@ description: >-
   Provides GKE golden path configuration defaults, production readiness
   checklists, and cluster default patterns. Use when designing GKE clusters,
   verifying GKE production readiness, or checking configurations against
-  GKE defaults. Don't use for setting up node autoscaling specifically (use
-  gke-scaling instead).
+  GKE defaults. Don't use for setting up workload autoscaling specifically (use
+  gke-workload-scaling instead).
 metadata:
   category: Containers
 ---
@@ -26,8 +26,10 @@ settings, apply them and note relevant trade-offs.
 2.  **Day-0 vs Day-1.** Flag Day-0 decisions (networking, private nodes,
     subnets, IP allocation) prominently — they are hard/impossible to change
     after creation.
-3.  **Tool preference: MCP > gcloud > kubectl.** See the `gke-basics` skill's
-    CLI reference for full coverage matrix and override options. If the user
+3.  **Tool preference: MCP > gcloud > kubectl.** MCP is preferred as it directly
+    interfaces with GKE APIs with structured data, reducing shell syntax errors
+    and parsing ambiguities. See the `gke-basics` skill's CLI reference for full
+    coverage matrix and override options. If the user
     says "use gcloud" or "use kubectl", respect that for the session.
 4.  **Document decisions and rationale**, especially for Day-0 choices and
     golden path deviations.
@@ -63,6 +65,7 @@ Setting                                                            | Golden Path
 `autoscaling.autoscalingProfile`                                   | `OPTIMIZE_UTILIZATION`
 `verticalPodAutoscaling.enabled`                                   | `true`
 `monitoringConfig` components                                      | SYSTEM_COMPONENTS, STORAGE, POD, DEPLOYMENT, STATEFULSET, DAEMONSET, HPA, JOBSET, CADVISOR, KUBELET, DCGM, APISERVER, SCHEDULER, CONTROLLER_MANAGER
+`loggingConfig` components                                         | SYSTEM_COMPONENTS, WORKLOADS (enabled by default)
 `advancedDatapathObservabilityConfig.enableMetrics`                | `true`
 `nodeConfig.shieldedInstanceConfig.enableSecureBoot`               | `true`
 `nodeConfig.workloadMetadataConfig.mode`                           | `GKE_METADATA`

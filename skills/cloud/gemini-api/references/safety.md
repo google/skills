@@ -10,7 +10,7 @@ from google.genai import types
 
 client = genai.Client()
 response = client.models.generate_content(
-    model="gemini-3.5-flash",
+    model="gemini-3.6-flash",
     contents="Write a list of 5 disrespectful things that I might say to the universe after stubbing my toe in the dark.",
     config=types.GenerateContentConfig(
         system_instruction="Be as mean as possible.",

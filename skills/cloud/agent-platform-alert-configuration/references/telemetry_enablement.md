@@ -56,7 +56,7 @@ decision is to NOT enable the required APIs:
     *To check if they are enabled:*
 
     ```bash
-    gcloud services list --enabled --project="[PROJECT_ID]" \
+    gcloud services list --enabled --project="{project_id}" \
       --filter="name:(cloudtrace.googleapis.com observability.googleapis.com)"
     ```
 

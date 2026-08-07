@@ -1,5 +1,7 @@
 ---
 name: datalineage-bigquery-asset-impact-analysis
+metadata:
+  category: BigDataAndAnalytics
 description: >-
   Analyzes the downstream impact (blast radius) when a BigQuery table or view is broken, stale, or modified.
   Identifies all downstream tables, dashboards, and processes that will be affected.

@@ -3,129 +3,174 @@ name: agent-platform-alert-configuration
 metadata:
   category: AiAndMachineLearning
 description: >-
-  Configures best-practice alerting policies for Google Cloud Vertex AI / Agent
-  Platform agents on Agent Runtime. Use when analyzing, writing, or deploying
-  alerting policies to monitor agent latency, error rates, and quality metrics
-  (response quality, tool use, hallucination). Also use when provisioning online
-  monitors for quality evaluation, or analyzing live metrics traffic footprints.
-  NOTE: This skill currently only works for the Agent Runtime. Don't use for
-  configuring general GCP alert policies or non-agent GCP alerting policies.
+  Configures best-practice alerting policies for AI agents using OpenTelemetry
+  (OTel) metrics. Use when analyzing, writing, or deploying alerting policies
+  to monitor agent latency, error rates, token usage, and quality metrics.
+  NOTE: Reliability, Cost, Safety, and Security alerts use generic OTel metrics
+  and work across runtimes (e.g., Cloud Run, Vertex AI). Quality alerts rely
+  on Vertex AI Online Monitors and are strictly bound to Vertex AI deployments.
 allowed-tools: terraform gcloud python
 ---
 
 # Agent Platform Alert Configuration
 
-This skill provides dynamic threshold alerting configurations for Google Cloud /
-Vertex AI Reasoning Engines (Agent Platform container deployments) using
-extended 1-week lookback retention baselines. Standard static thresholds (e.g.,
-"latency > 2s") cause excessive alert noise for AI agents. Dynamic PromQL
-baselines solve this.
+## Critical Steps
 
-## Safety & Confirmation Tiers (CRITICAL)
+### 1. Safety & Confirmation Tiers (CRITICAL)
 
 Before executing any commands or writing configurations on behalf of the user,
 you MUST adhere to the following safety tiers based on the action requested:
 
-1.  **Tier R: Read-only (`check_telemetry.py`)**
+1.  **Tier R: Read-only (`check_telemetry.py` / `gather_agent_info.py`)**
     *   **Rule**: No confirmation needed. You may execute these scripts
-        immediately to inspect the telemetry status of the Reasoning Engine.
+        immediately to inspect telemetry status or gather agent configuration
+        details.
 2.  **Tier B: Billing & Resource Creation (`create_online_monitor.py` /
     provisioning)**
     *   **Rule**: **Explicit User Confirmation Required**. These actions incur
         additional billing charges and create cloud resources. The agent MUST
-        ask the user directly for approval before proceeding.
+        ALWAYS warn the user explicitly about the potential extra billing costs
+        of BOTH the Online Monitor (specifically mentioning **LLM evaluations**)
+        and Telemetry (specifically mentioning **Cloud Trace/Logging export**).
+        You MUST STOP and ask for explicit approval before proceeding with
+        provisioning or providing setup commands.
 
---------------------------------------------------------------------------------
+### 2. Prerequisites & Dependencies
 
-## CRITICAL RULES
+#### Agent Telemetry
 
-*   **Always configure both Reliability and Quality alerting policies** for the
-    target agent (6 policies in total):
-    *   **For Reliability Monitoring**: You MUST configure exactly three
-        alerting policies:
+*   **Disclaimer**: For Reliability, Cost, Safety, and Security alerts to
+    function, the underlying agent MUST be instrumented to emit OpenTelemetry
+    (OTel) metrics. If the agent does not emit these metrics, the alerting
+    policies will have no data stream to evaluate.
+
+#### Python Environment
+
+Before executing any python script in this skill you MUST install the required
+dependencies in your environment. Run this command first:
+
+```bash
+pip install -r scripts/requirements.txt
+```
+
+### 3. Input Assumptions
+
+*   **Explicit Project Adherence**: You must ONLY configure alerts, query
+    telemetry, or interact with the Google Cloud Project(s) explicitly provided
+    by the user in the prompt. Do NOT assume or use other projects from your
+    environment or history unless the user explicitly directs you to do so.
+*   **Sequential File Transformations**: If the user explicitly asks to copy a
+    file and then modify it, you MUST perform these actions sequentially (copy
+    first, then modify) rather than writing the final content directly.
+
+### 4. Execution Steps
+
+1.  **Mandatory Prerequisite Execution Protocol (SEQUENTIAL)**: Before
+    generating or writing ANY configuration, you MUST execute these steps in
+    order:
+    1.  **Step 1: Streamlined Discovery (Mandatory)**: Run
+        `gather_agent_info.py` to automatically identify agent runtime, check
+        telemetry, metric scopes, linked datasets, and more. This script covers
+        most of the manual checks listed in subsequent steps.
+        *   Command: `python3 scripts/gather_agent_info.py --project-id
+            {project_id} --agent-name {agent_name}`
+        *   **Note**: If this script **fails**, returns **partial data**, or
+            doesn't produce everything you need, you MUST satisfy requirements
+            by running the manual fallback steps listed in Step 2 and then
+            perform Step 3 below. If Step 1 succeeds and provides all info,
+            **SKIP** to Step 3 (Pre-existing Policies Check).
+    2.  **Step 2: Metric Scope Check (Fallback)**: Run this ONLY if Step 1
+        failed to determine the metric scope.
+        *   **Action A (CLI)**: Run `gcloud beta monitoring metrics-scopes list
+            projects/{project_id}`. If a scoping project is returned, you MUST
+            deploy policies there.
+        *   **Action B (Code Scan)**: Search Terraform configurations for
+            `google_monitoring_monitored_project` resources to extract the
+            scoping project.
+        *   **Action C (Fallback)**: If ambiguous, ASK the user: "Are you using
+            a multi-project Cloud Monitoring Metric Scope? If so, what is the
+            scoping project ID?"
+    3.  **Step 3: Pre-existing Policies Check**: Avoid duplicates.
+        *   **Action**: Scan the target directory to see if aggregated policies
+            already exist targeting the same metrics (grouped by
+            `reasoning_engine_id` or `gen_ai_agent_name`). Use
+            `scan_duplicates.py` to verify.
+2.  **Alert Policy Type Resource Files**: You MUST list and read files under
+    `references/` with names ending in `_alert_policies.md` to learn how to
+    configure alert policies based on type. By default you should configure all
+    of the following alert types UNLESS the user requests to generate explicit
+    alert policies and/or types. Follow their tables of content to help you find
+    the reference sections you need to read:
+
+    Alert Type      | Reference File
+    :-------------- | :-------------
+    **Reliability** | [reliability_alert_policies.md](references/reliability_alert_policies.md)
+    **Quality**     | [quality_alert_policies.md](references/quality_alert_policies.md)
+    **Cost**        | [cost_alert_policies.md](references/cost_alert_policies.md)
+    **Safety**      | [safety_alert_policies.md](references/safety_alert_policies.md)
+    **Security**    | [security_alert_policies.md](references/security_alert_policies.md)
+
+### 5. Outputs & Formats
+
+*   **Always configure the supported alerting policies** for the target agent:
+    *   **For Reliability Monitoring**: You MUST configure exactly five alerting
+        policies:
         1.  **Latency** (anomaly monitoring)
         2.  **Error Rate - Fast Burn SLO** (1-Hour Window)
         3.  **Error Rate - Slow Burn SLO** (3-Day Window)
+        4.  **Model Call Error Rate** (SQL-based Log Analytics Alerting)
+        5.  **Tool Call Error Rate** (SQL-based Log Analytics Alerting)
     *   **For Quality Monitoring**: You MUST configure exactly three alerting
-        policies:
+        policies (Requires Vertex AI Online Monitors):
         1.  **Final Response Quality**
         2.  **Tool Use Quality**
         3.  **Hallucination**
-*   **Online Monitor Provisioning & Cost Warning**: Quality alerting policies
-    rely on metrics exported by Online Monitors. You MUST ensure the Online
-    Monitor is provisioned for the agent and telemetry is enabled:
-    -   [ ] **Ask for Approval**: Both Online Monitors and Telemetry incur
-        separate billing charges. Before provisioning them, you MUST warn the
-        user about these extra costs. If not pre-approved in the prompt, you
-        MUST ask a direct question in your response requesting
-        confirmation/approval to proceed (e.g., "Please confirm if you approve
-        the extra billing costs for the Online Monitor and Telemetry to
-        proceed.").
-    -   [ ] **Verify Telemetry First**: Before generating any alerting policy
-        plan or provisioning Online Monitors, you MUST always verify the
-        telemetry status of the Reasoning Engine first using the
-        `check_telemetry.py` script as detailed in
-        [Verify Telemetry Status](#verify-telemetry-status) below.
-    -   [ ] **Follow the Guide**: Follow the step-by-step instructions in the
-        [Online Monitor & Telemetry Provisioning](#online-monitor--telemetry-provisioning)
-        section below.
-*   **Brand New Agents (No Traffic History)**: When setting up alerts for a
-    brand new agent, you MUST explicitly ask the user what traffic pattern they
-    expect (Steady, Seasonal, or Bursty) in your response. If immediate setup is
-    requested, ask the question but proceed using the default Steady/Consistent
-    (Short-Window Z-Score) pattern. Follow
-    [no_historical_traffic_data.md](references/no_historical_traffic_data.md).
-*   **PromQL for Reliability (No MQL or Threshold Filters)**: For the 3
-    reliability metrics, you MUST use `condition_prometheus_query_language` with
-    PromQL. Do **NOT** use MQL or standard `condition_threshold`.
-*   **Standard Threshold Filters for Agent Quality**: For the 3 agent quality
-    metrics, you MUST use standard `condition_threshold` filters matching the
-    monitored resource type `aiplatform.googleapis.com/OnlineEvaluator` and
-    metric type `aiplatform.googleapis.com/online_evaluator/scores`. Do **NOT**
-    use PromQL.
-*   **Install Terraform if Necessary**: You should use terraform to deploy and
-    must install terraform if you can't find a valid install.
+    *   **For Cost Monitoring**: You MUST configure exactly one cost alerting
+        policy:
+        1.  **Rapid Token Burn Rate** (anomaly monitoring)
+    *   **For Safety Monitoring**: You MUST configure exactly one safety
+        alerting policy:
+        1.  **High Model Armor Safety Policy Trigger Rate** (SQL-based Log
+            Analytics Alerting)
+    *   **For Security Monitoring**: You MUST configure exactly one security
+        alerting policy:
+        1.  **High IAM Permission Denied Trigger Rate** (SQL-based Log Analytics
+            Alerting)
 *   **Terraform Only**: Write the generated observability configuration ONLY as
     Terraform (`.tf`) files (e.g., `alerts.tf`, `variables.tf`).
+    -   You **ONLY** need to install Terraform if you're asked to deploy the
+        alerts AND there is no valid Terraform install. SQL-based alerting using
+        `condition_sql` requires the provider version **>= 6.0.0** (or late 5.x
+        versions supporting the feature).
+    -   If you are **NOT** asked to deploy the alerts you do not need to install
+        terraform.
 *   **Dynamic Multi-Resource Alerting (No Single-Resource Pinning)**: You MUST
     NOT hardcode specific agent IDs or resource name filters (e.g.,
-    `{reasoning_engine_id="[AGENT_ID]"}` or
-    `metric.labels.agent_resource_name="[AGENT_NAME]"`) in alerting conditions
-    unless explicitly requested. Alerting policies must be written to cover all
-    active agents in the project dynamically:
+    `{gen_ai_agent_name="{agent_name}"}` or
+    `metric.labels.agent_resource_name="{agent_name}"`) in alerting conditions
+    unless explicitly requested (e.g., "ONLY for this agent"). Merely mentioning
+    a specific agent name or ID in the request does NOT constitute an explicit
+    request to pin/filter; you MUST still default to dynamic grouping to cover
+    all agents. To cover all active agents in the project dynamically:
     *   **For Reliability Metrics using PromQL**: ALWAYS use grouping
-        aggregations (`by (reasoning_engine_id)`) instead of filtering to a
-        single ID. This allows a single alert policy to dynamically track each
-        reasoning engine instance separately.
+        aggregations. Group by `gen_ai_agent_name` (e.g., `by
+        (gen_ai_agent_name)`). Avoid filtering to a single ID/Name unless
+        requested.
     *   **For Quality Metrics using Standard Threshold Filters**: Omit the
         `agent_resource_name` filter entirely. Configure the condition filter to
         only target the monitored resource type
         (`aiplatform.googleapis.com/OnlineEvaluator`) and metric type
         (`aiplatform.googleapis.com/online_evaluator/scores`) globally for the
         project.
-*   **Check for Pre-existing Policies**: Avoid creating duplicate alert policies
-    for a reasoning engine: scan the target directory or workspace to see if a
-    policy already exists that targets the same metrics using aggregations
-    grouped by `reasoning_engine_id`.
-*   **Metric Scope Discovery & Project Inference**: Centralize alert policies in
-    a Metric Scope (scoping project) to save costs. Identify if a scope is used
-    and where policies should live by checking:
-    1.  **GCP CLI Check**: Run `gcloud beta monitoring metrics-scopes list
-        projects/[PROJECT_ID]`. If a parent scope
-        `locations/global/metricsScopes/[SCOPING_PROJECT_ID]` is returned, a
-        Metric Scope is active; deploy policies there.
-    2.  **Infrastructure as Code Scan**: Search Terraform configurations for
-        `google_monitoring_monitored_project` resources and extract the scoping
-        project from the `metrics_scope` attribute.
-    3.  **Ambiguity Fallback**: If unable to determine, ask the user: "Are you
-        using a multi-project Cloud Monitoring Metric Scope? If so, what is the
-        scoping project ID?" Deploy policies to the deduced scoping project
-        (setting the `project` attribute in HCL), or default to the local
-        project.
-*   **Directory Inference**: Deploy configuration files to target Terraform or
-    SRE folders (e.g. `monitoring/`, `ops/`, `sre/`). Use tools to locate where
+    *   **For Downstream Calls using SQL**: Omit the `ENDS_WITH` filter
+        targeting a specific agent name. Instead, extract the agent identifier
+        (e.g., `JSON_VALUE(resource.attributes, '$."cloud.resource_id"')`) and
+        add it to the `GROUP BY` clause alongside the model or tool name.
+*   **Directory Inference**: Prefer the path explicitly provided by the user (if
+    any). Otherwise, deploy configuration files to target Terraform or SRE
+    folders (e.g. `monitoring/`, `ops/`, `sre/`). Use tools to locate where
     alert policies or state pointers exist in the project, rather than blindly
-    writing to the current working directory.
+    writing to the root.
 *   **Notification Channels**: By default, never configure any notification
     channels without user input. If the user explicitly provides a notification
     channel in their prompt, configure the alerts to use it. If no notification
@@ -138,230 +183,43 @@ you MUST adhere to the following safety tiers based on the action requested:
 *   **Plain English Response**: You MUST include a plain English explanation for
     what the alerts do in your response. This must explain in plain English what
     the alert measures, how the algorithm works, and what a trigger indicates.
-*   **Avoid Recursive Directory Operations**: You MUST NOT run recursive listing
-    or search commands (such as `ls -R`, `find .`, or raw recursive `grep`) from
-    the google3 workspace root, as this will hang your session. Always target
-    specific subdirectories.
+
+### 6. Output Verification
+
 *   **Background Task Cleanup**: You MUST check the status of all background
     tasks that you spawn. Before completing your execution and returning your
     final response, you MUST terminate or kill any active or hanging background
     tasks (using the `manage_task` tool with action `kill`).
-
---------------------------------------------------------------------------------
-
-## Algorithm Selection & Policy Mapping Process
-
-Alerting policies for reasoning engine agents MUST map to the correct algorithms
-to ensure statistical stability and prevent alert noise or blind spots based on
-data classes:
-
-*   **Latency**: Follows workload traffic pattern (Steady -> Z-Score; Seasonal
-    -> Seasonal Decomposition; Bursty -> Moving Averages).
-*   **Error Rate**: ALWAYS use **Multi-Window Multi-Burn Rate SLOs** (or
-    ratio-based static thresholds). Error rate is naturally sparse (normally
-    `0`). When standard deviation is `0`, Z-score computation is mathematically
-    unstable (division-by-zero or NaN), causing false alert storms.
-
-To resolve the workload traffic pattern (Seasonal, Steady, or Bursty), follow
-the instructions corresponding to the availability of historical metrics data:
-
-*   **Case 1: No historical metrics data available (e.g., brand new agent)**:
-    You MUST read and follow:
-    [no_historical_traffic_data.md](references/no_historical_traffic_data.md)
-*   **Case 2: Historical metrics data available (e.g., active agent with
-    traffic)**: You MUST read and follow:
-    [has_historical_traffic_data.md](references/has_historical_traffic_data.md)
-
---------------------------------------------------------------------------------
-
-## Telemetry Metrics and PromQL Examples
-
-All raw telemetry metrics for the Agent Platform are cumulative **counters**.
-Because we monitor their rates or quantiles, we can optimize the PromQL queries
-by using longer range windows (e.g., `[1w]`) for historical averages instead of
-expensive `avg_over_time` subqueries.
-
-Signal         | Raw Metric                                  | Type    | Description
-:------------- | :------------------------------------------ | :------ | :----------
-**Latency**    | `reasoning_engine_request_latencies_bucket` | Counter | Histogram bucket of request latencies
-**Error Rate** | `reasoning_engine_request_count`            | Counter | Cumulative count of requests
-
---------------------------------------------------------------------------------
-
-For the specific PromQL queries corresponding to each algorithm, you MUST read
-and follow: [promql_queries.md](references/promql_queries.md)
-
---------------------------------------------------------------------------------
-
-## Agent Quality Metrics (Online Monitor)
-
-All agent quality evaluation metrics are exported by Online Monitors to the
-monitored resource type `aiplatform.googleapis.com/OnlineEvaluator` under the
-metric type `aiplatform.googleapis.com/online_evaluator/scores`.
-
-### Metric Details & Aligners
-
-Because the scores metric is of value type `DISTRIBUTION`, standard mean-based
-PromQL or arithmetic `ALIGN_MEAN` aligners are unsupported. You MUST use a
-percentile aligner (typically `ALIGN_PERCENTILE_50` to evaluate the median
-score) within the `aggregations` block of your `condition_threshold`.
-
-Signal                           | Metric Name (`evaluation_metric_name`) | Target Threshold    | Recommended Aligner
-:------------------------------- | :------------------------------------- | :------------------ | :------------------
-**Final Response Quality**       | `final_response_quality_v1`            | `< 0.8` (or custom) | `ALIGN_PERCENTILE_50`
-**Tool Use Quality**             | `tool_use_quality_v1`                  | `< 0.8` (or custom) | `ALIGN_PERCENTILE_50`
-**Hallucination (Groundedness)** | `hallucination_v1`                     | `< 0.9` (or custom) | `ALIGN_PERCENTILE_50`
-
-### Metric Filter Example
-
-When configuring a quality alert policy in Terraform, use the following filter
-expression structure:
-
-```filter
-resource.type="aiplatform.googleapis.com/OnlineEvaluator"
-AND metric.type="aiplatform.googleapis.com/online_evaluator/scores"
-AND metric.labels.evaluation_metric_name="[METRIC_NAME]"
-```
-
-### Online Monitor & Telemetry Provisioning
-
-Quality metrics are generated by the Online Monitor by evaluating trace data
-exported to Cloud Trace. If telemetry is disabled on the reasoning engine, no
-traces are sent, and the quality metrics will remain empty.
-
-#### Prerequisites & Dependencies
-
-Before executing any scripts in this skill (such as `check_telemetry.py` or
-`create_online_monitor.py`), you MUST install the required dependencies in your
-environment. Run this command first:
-
-```bash
-pip install -r scripts/requirements.txt
-```
-
-#### Verify Telemetry Status
-
-Before generating any alerting policies, proposing a plan, or provisioning
-Online Monitors, you MUST always check if the agent is ready to export traces by
-running the telemetry checking script:
-
-*   **Mandatory Command**: `python3 scripts/check_telemetry.py --project-id
-    "[PROJECT_ID]" --agent-resource-name "[AGENT_RESOURCE_NAME]"`
-    *   **Note on Parameters**: The `[AGENT_RESOURCE_NAME]` parameter MUST be
-        the full resource path format
-        `projects/<project_id>/locations/<location>/reasoningEngines/<agent_id>`
-        (e.g. `projects/gcp-prod/locations/us-central1/reasoningEngines/556677`)
-        and not just the agent ID itself.
-    *   **Dependency Failures**: If package imports or dependency installation
-        fails, try your best to resolve the issues (e.g., by verifying package
-        installation) and run the script again with the specific project-id and
-        agent-resource-name parameters. If you cannot run the script
-        successfully due to missing dependencies, you MUST still attempt to run
-        it first and then include the complete, pre-populated execution command
-        in your final response as a verification plan (this applies even if the
-        user has pre-approved provisioning).
-*   **Detailed Enablement Instructions**: For details on the required
-    environment variables, Terraform setups, and project dependencies, you MUST
-    read and follow:
-    [telemetry_enablement.md](references/telemetry_enablement.md).
-
-#### Provision the Online Monitor
-
-Because Online Monitors cannot be configured via Terraform, run the provisioning
-script to generate the required metrics:
-
-*   **Command**: `python3 scripts/create_online_monitor.py --project-id
-    "[PROJECT_ID]" --agent-resource-name "[AGENT_RESOURCE_NAME]"
-    [--sampling-percentage [PERCENTAGE]]`
-*   **Sampling Rate Recommendation**: For production agents, configure a
-    conservative sampling percentage (default: **10%**) to control LLM
-    evaluation costs. For details, refer to
-    [Continuous evaluation with online monitors](https://docs.cloud.google.com/gemini-enterprise-agent-platform/optimize/evaluation/evaluate-online).
-
-#### Formatting the Execution Plan
-
-If execution fails (e.g. due to sandbox restrictions or permissions), you MUST
-plan it as a concrete next step. To do this, you MUST explicitly include a
-section titled **"Online Monitor Provisioning Plan"** or **"Execution Plan"** in
-your final response, containing the exact concrete python execution command with
-all parameter values (such as project ID, region, and agent resource name) fully
-populated. Do not merely state that the user should run it.
-
-You MUST format the plan exactly as follows:
-
-### Execution Plan: Online Monitor Provisioning
-
-**Online Monitor Provisioning Command:**
-
-```bash
-python3 scripts/create_online_monitor.py \
-  --project-id "[PROJECT_ID]" \
-  --agent-resource-name "projects/[PROJECT_ID]/locations/[LOCATION]/reasoningEngines/[AGENT_ID]" \
-  --sampling-percentage [PERCENTAGE]
-```
-
-**Verify Telemetry Command (Optional fallback):**
-
-```bash
-python3 scripts/check_telemetry.py \
-  --project-id "[PROJECT_ID]" \
-  --agent-resource-name "projects/[PROJECT_ID]/locations/[LOCATION]/reasoningEngines/[AGENT_ID]"
-```
-
---------------------------------------------------------------------------------
+*   **Validate Configuration**: Run the **Config Linting** tool to make sure all
+    the output files are written with the correct grammar and structure. See
+    details about the tool in the `Tooling Scripts` section below.
 
 ## Tooling Scripts
 
-Use the following scripts to resolve duplicates and validate configs before
-presenting or applying Terraform changes:
+Use the following scripts to discover agents, gather configuration details,
+resolve duplicates, and validate configs:
 
-1.  **Duplicate Check & Merge**: Checks for pre-existing alerts in the target
+1.  **Agent Information Gathering**: Streamlines discovery, environment auditing
+    (Metric Scopes, BQ Datasets, Notification Channels), table derivations (Log
+    & Trace), and Online Evaluator checks.
+    *   Command: `python3 scripts/gather_agent_info.py --project-id {project_id}
+        --agent-name {agent_name}`
+2.  **Duplicate Check & Merge**: Checks for pre-existing alerts in the target
     folder to ensure changes are merged in-place rather than appended:
-    *   Command: `python3 scripts/validate_config.py --directory [TARGET_TF_DIR]
-        --engine-var "${var.reasoning_engine_id}"`
-2.  **Config Linting**: Validates PromQL grammar, matching engine labels, and
+    *   Command: `python3 scripts/scan_duplicates.py {target_tf_dir}
+        --engine-var '${var.gen_ai_agent_name}'`
+3.  **Config Linting**: Validates PromQL grammar, matching engine labels, and
     HCL structure:
-    *   Command: `python3 scripts/validate_config.py --file [PATH_TO_TF_FILE]`
+    *   Command: `python3 scripts/lint_syntax.py {path_to_tf_file}`
     *   **Self-Correction Loop**: If validation fails (exits non-zero or outputs
         errors), you MUST read the command output, locate the line/file
         containing the lint error, analyze the PromQL syntax or Terraform HCL
-        issue, apply adjustments in-place, and re-run the `validate_config.py
-        --file` validation. Repeat this loop until the validation script passes
+        issue, apply adjustments in-place, and re-run the `lint_syntax.py`
+        validation. Repeat this loop until the validation script passes
         successfully.
-
---------------------------------------------------------------------------------
 
 ## Gotchas & Behavioral Corrections
 
-*   **Duration Buffers (Transient Glitches)**: To avoid alerts firing on
-    transient spikes, use duration/retest window buffers appropriately:
-    *   **Reliability Metrics (PromQL / Cloud Monitoring)**:
-        *   For short-lookback alerts querying data under 25 hours (e.g.,
-            Short-Window Z-Score, Moving Averages, Fast Burn SLO), ALWAYS use a
-            `duration = "300s"` (5 minutes) buffer to filter out transient cold
-            start/deployment spikes.
-        *   For long-lookback alerts querying data longer than 25 hours (e.g.,
-            Long-Window Z-Score, Seasonal Decomposition, Slow Burn SLO),
-            duration/retest windows are disabled by the platform. You must **not
-            set a duration** (omit it entirely).
-    *   **Quality Metrics (Standard Filters / Online Monitor)**:
-        *   Always use a `duration = "300s"` (5 minutes) buffer to filter out
-            transient scoring dips or evaluation outliers caused by temporary
-            LLM judge congestion, or edge-case query outliers.
-*   **Dynamic Baseline Adaptation Blind Spot**: Explain to users that dynamic
-    statistical Z-score thresholds compare current rates to a moving statistical
-    baseline. If a system degrades slowly over days, the standard baseline curve
-    adapts to this slow drift, making standard Z-score alerts blind to
-    persistent slow errors. Recommend a hard static threshold alert in parallel
-    for strict SLA enforcement.
-*   **Seasonal Decomposition Double Alerting**: The agent MUST ONLY configure
-    seasonal decomposition alert policies to track spikes (e.g., latency spikes)
-    OR drops AND MUST NOT use dual-direction checks (like absolute deviation).
-    Explain this limitation to the user: comparing to a historical offset (e.g.,
-    `offset 1w`) the alert policy triggers twice if tracking both directions
-    (once for the anomaly, and once 1 week later when the anomaly becomes the
-    baseline). To prevent this, the generated policy MUST only track either
-    spikes (using `>`) or drops (using `<`), avoiding using `abs()`.
 *   **Raw Error Boundaries**: Explain that raw error counts or absolute failed
     request count boundaries do not scale under changing traffic throughput.
     Recommend ratio-based error rate alerts instead.
@@ -372,24 +230,36 @@ presenting or applying Terraform changes:
     to a negative value (e.g. > -3) to trigger/verify the "Firing" state before
     reverting. Always get confirmation before taking this action proactively.
 *   **Expected Script Failures**:
-    *   `validate_config.py --directory` exiting with code 1: Parse the JSON
+    *   `scan_duplicates.py` exiting with code 1: Parse the JSON
         output for duplicate resource targets. Perform in-place upgrade edits,
         then re-check until it passes with 0.
+    *   **Avoid Redundant Discovery Calls**: If `gather_agent_info.py`
+        successfully returns the Trace or Log table names (or writes them to
+        variables file), do NOT redundantly call
+        `list_trace_scope_table_names.py` or `list_log_scope_table_names.py`.
+        These scripts are run internally by `gather_agent_info.py` and are
+        provided as external Fallbacks only.
     *   **Script Execution Failures & Self-Correction**: If the execution of
-        utility scripts (such as `check_telemetry.py`,
-        `create_online_monitor.py`, or `analyze_traffic.py`) fails unexpectedly,
-        you MUST read and inspect the stdout/stderr logs or error output.
-        Analyze the error message (e.g., connection timeouts, invalid
-        permissions, or missing resources) and attempt to dynamically correct
-        parameters (such as verifying or correcting the region, project ID, or
-        resource name format) and retry execution before escalating or falling
-        back to manual plans.
+        utility scripts (such as `gather_agent_info.py`, `check_telemetry.py`,
+        `create_online_monitor.py`, `analyze_traffic.py`,
+        `list_log_scope_table_names.py`, or `list_trace_scope_table_names.py`)
+        fails unexpectedly, you MUST read and inspect the stdout/stderr logs or
+        error output. Analyze the error message and attempt to dynamically
+        correct parameters and retry execution before escalating or
+        falling back to manual plans. Consult the relevant domain-specific
+        reference file for detailed troubleshooting steps for specific scripts.
 *   **Distribution Metric Aligner Constraint**: Standard `ALIGN_MEAN` cannot be
     applied to `DELTA` distribution metrics like `online_evaluator/scores`. You
     MUST use percentile-based aligners (like `ALIGN_PERCENTILE_50`) to reduce
     the score distribution into a comparable numeric stream.
-
---------------------------------------------------------------------------------
+*   **HCL Heredoc Interpolation**: When referencing Terraform variables inside
+    PromQL or SQL queries (which are defined as strings), you MUST use the
+    ${var.variable_name} syntax. Bare references like var.variable_name will
+    fail at deployment time.
+*   **Avoid Recursive Directory Operations**: You MUST NOT run recursive listing
+    or search commands (such as `ls -R`, `find .`, or raw recursive `grep`) from
+    the repository root if it contains a very large number of files, as this
+    will freeze your session. Always target specific subdirectories.
 
 ## Supporting Links
 

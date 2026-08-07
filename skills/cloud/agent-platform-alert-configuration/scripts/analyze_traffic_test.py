@@ -21,11 +21,13 @@ import datetime
 import json
 import os
 import sys
+
+
 import time
 import unittest
 from unittest import mock
 
-import analyze_traffic
+import analyze_traffic  # pytype: disable=import-error
 
 
 class AnalyzeTrafficTest(unittest.TestCase):
@@ -33,7 +35,7 @@ class AnalyzeTrafficTest(unittest.TestCase):
   def setUp(self):
     super().setUp()
     self.mock_data_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets"
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "_internal"
     )
     if not os.path.exists(self.mock_data_dir):
       raise FileNotFoundError(
@@ -113,7 +115,9 @@ class AnalyzeTrafficTest(unittest.TestCase):
   @mock.patch("sys.exit")
   @mock.patch("builtins.print")
   @mock.patch("google.cloud.monitoring_v3.MetricServiceClient")
-  def test_main_live_query(self, mock_client_cls, mock_print, mock_exit):
+  def test_main_live_query_request_count(
+      self, mock_client_cls, mock_print, mock_exit
+  ):
     # Ensure google.cloud.monitoring_v3 module import doesn't fail
     mock_client = mock_client_cls.return_value
 
@@ -122,10 +126,8 @@ class AnalyzeTrafficTest(unittest.TestCase):
       def __init__(self, seconds):
         self.seconds = seconds
 
-      def ToDatetime(self):
-        return datetime.datetime.fromtimestamp(
-            self.seconds, tz=datetime.timezone.utc
-        )
+      def timestamp(self):
+        return self.seconds
 
     class MockPoint:
 
@@ -154,6 +156,8 @@ class AnalyzeTrafficTest(unittest.TestCase):
         "my-project",
         "--reasoning-engine-id",
         "123",
+        "--metric-type",
+        "workload.googleapis.com/gen_ai.invoke_agent.duration",
     ]
     with mock.patch.object(sys, "argv", test_argv):
       analyze_traffic.main()
@@ -163,6 +167,64 @@ class AnalyzeTrafficTest(unittest.TestCase):
     results = json.loads(printed_str)
     self.assertEqual(results["profile"], "Steady / Consistent")
     self.assertEqual(results["recommended_algorithm"], "1w Z-Score Baseline")
+
+  @mock.patch("sys.exit")
+  @mock.patch("builtins.print")
+  @mock.patch("google.cloud.monitoring_v3.MetricServiceClient")
+  def test_main_live_query_token_usage(
+      self, mock_client_cls, mock_print, mock_exit
+  ):
+    # Ensure google.cloud.monitoring_v3 module import doesn't fail
+    mock_client = mock_client_cls.return_value
+
+    class MockTimestamp:
+
+      def __init__(self, seconds):
+        self.seconds = seconds
+
+      def timestamp(self):
+        return self.seconds
+
+    class MockPoint:
+
+      def __init__(self, seconds, val):
+        self.interval = mock.MagicMock()
+        self.interval.start_time = MockTimestamp(seconds)
+        self.value = mock.MagicMock()
+        self.value.double_value = val
+
+    class MockSeries:
+
+      def __init__(self, points):
+        self.points = points
+
+    now = time.time()
+    start_ts = now - 14 * 24 * 3600
+    # Simulate high peaks and low baseline to force the Bursty profile.
+    mock_points = [
+        MockPoint(start_ts + (i + 1) * 300, 1000.0 if i % 50 == 0 else 1.0)
+        for i in range(4032)
+    ]
+    mock_client.list_time_series.return_value = [MockSeries(mock_points)]
+
+    test_argv = [
+        "analyze_traffic.py",
+        "--live",
+        "--project-id",
+        "my-project",
+        "--reasoning-engine-id",
+        "test-engine",
+        "--metric-type",
+        "workload.googleapis.com/gen_ai.client.token.usage",
+    ]
+    with mock.patch.object(sys, "argv", test_argv):
+      analyze_traffic.main()
+
+    mock_print.assert_called()
+    printed_str = mock_print.call_args[0][0]
+    results = json.loads(printed_str)
+    self.assertEqual(results["profile"], "Bursty / Inconsistent")
+    self.assertEqual(results["recommended_algorithm"], "Moving Averages")
 
   def test_align_to_grid(self):
     points = [

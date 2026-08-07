@@ -1,0 +1,2 @@
+# Standard Python 3.10+ library modules used for core scripts (re, json, argparse, sys, typing).
+# No external PyPI packages required for runtime execution.

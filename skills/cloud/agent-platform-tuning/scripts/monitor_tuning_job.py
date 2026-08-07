@@ -62,6 +62,8 @@ if __name__ == "__main__":
       description="Monitor Agent Platform Supervised Tuning Job"
   )
   parser.add_argument("--project", required=True)
+  # Must match the location the job was submitted with, which is `global` for
+  # open model jobs that did not pin a region.
   parser.add_argument("--location", required=True)
   parser.add_argument("--job_id", required=True)
   parser.add_argument(

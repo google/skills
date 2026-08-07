@@ -81,7 +81,8 @@ if __name__ == "__main__":
       description="Launch Vertex AI Model Tuning Job"
   )
   parser.add_argument("--project", required=True)
-  parser.add_argument("--location", required=True)
+  # `global` lets the service pick a region with available GPU capacity.
+  parser.add_argument("--location", default="global")
   parser.add_argument("--base_model", required=True)
   parser.add_argument("--train_dataset", required=True)
   parser.add_argument(

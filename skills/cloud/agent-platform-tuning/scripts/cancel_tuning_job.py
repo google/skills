@@ -5,8 +5,8 @@ on Agent Platform given the project, location, and job ID.
 """
 
 import argparse
-import vertexai  # pytype: disable=import-error
-from vertexai.tuning import sft  # pytype: disable=import-error
+import vertexai  # pyrefly: ignore[missing-import]
+from vertexai.tuning import sft  # pyrefly: ignore[missing-import]
 
 
 def cancel_job(project, location, job_id):
@@ -23,6 +23,8 @@ if __name__ == "__main__":
       description="Cancel Vertex AI Supervised Tuning Job"
   )
   parser.add_argument("--project", required=True)
+  # Must match the location the job was submitted with, which is `global` for
+  # open model jobs that did not pin a region.
   parser.add_argument("--location", required=True)
   parser.add_argument("--job_id", required=True)
 

@@ -223,7 +223,16 @@ def _validate_agent_data(agent_data: Any, path: str) -> list[ValidationError]:
 def _validate_eval_case(
     case: Any, index: int, metrics: list[str] | None
 ) -> list[ValidationError]:
-  """Validate a single EvalCase."""
+  """Validate a single EvalCase.
+
+  Args:
+    case: The eval case to validate, expected to be a dict.
+    index: Position of the case in the dataset, used in error paths.
+    metrics: Metric names the dataset will be evaluated against, or None.
+
+  Returns:
+    The validation errors found, empty if the case is well-formed.
+  """
   path = f"eval_cases[{index}]"
   errors = []
 

@@ -1,0 +1,50 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: workload-identity-test
+  namespace: workload-identity-test-ns
+spec:
+  serviceAccountName: <ksa-name> # Replace with your KSA name
+  automountServiceAccountToken: false
+  containers:
+    - image: gcr.io/google.com/cloudsdktool/cloud-sdk@sha256:0d19f566f418b8aa0109eba1d04db88e36e88d09559267b4559982d07c685a0b
+      name: workload-identity-test
+      command:
+        - "sleep"
+        - "infinity"
+      livenessProbe:
+        exec:
+          command:
+            - true
+        initialDelaySeconds: 5
+        periodSeconds: 5
+      readinessProbe:
+        exec:
+          command:
+            - true
+        initialDelaySeconds: 5
+        periodSeconds: 5
+
+      imagePullPolicy: Always
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        readOnlyRootFilesystem: true
+
+  nodeSelector:
+    iam.gke.io/gke-metadata-server-enabled: "true"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    seccompProfile:
+      type: RuntimeDefault

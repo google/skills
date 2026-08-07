@@ -5,7 +5,11 @@ metadata:
 description: >-
   Leverages BigQuery's built-in machine learning and GenAI capabilities
   for advanced data analytics. Use when you need to write SQL queries
-  that perform time-series forecasting, detect outliers, find key drivers, or leverage generative AI capabilities in BigQuery.
+  that perform time-series forecasting, predict values, detect outliers or anomalies, find key drivers,
+  perform semantic search or vector search, classify text, calculate similarity,
+  summarize content, translate language, evaluate models, filter by semantic conditions,
+  or leverage generative AI capabilities in BigQuery. Do not use for general
+  BigQuery dataset, table, or job management requests.
 ---
 
 # BigQuery AI & ML
@@ -16,20 +20,46 @@ like `AI.FORECAST`, `AI.KEY_DRIVERS`, `AI.DETECT_ANOMALIES`, and `AI.GENERATE`.
 
 ## Reference Directory
 
--   [AI Forecast](references/ai_forecast.md): Leveraging pre-trained
-    TimesFM model for forecasting without custom training.
+-   **Functions Reference**:
 
--   [AI Detect Anomalies](references/ai_detect_anomalies.md): Identify
-    deviations in time series data using pre-trained TimesFM model.
-
--   [AI Generate](references/ai_generate.md): General-purpose text and
-    content generation using Gemini models.
-
--   [AI Key Drivers](references/ai_key_drivers.md): Automatically identify
-    dimensional segments most responsible for driving changes in a metric.
+    -   **AI.AGG**: [ai_agg.md](references/ai_agg.md) - Multi-row semantic
+        aggregation and summarization.
+    -   **AI.CLASSIFY**: [ai_classify.md](references/ai_classify.md) - Classify
+        text.
+    -   **AI.DETECT_ANOMALIES**:
+        [ai_detect_anomalies.md](references/ai_detect_anomalies.md) - Detect
+        anomalies.
+    -   **AI.EVALUATE**: [ai_evaluate.md](references/ai_evaluate.md) - Evaluate
+        models.
+    -   **AI.FORECAST**: [ai_forecast.md](references/ai_forecast.md) -
+        Time-series forecasting.
+    -   **AI.GENERATE**: [ai_generate.md](references/ai_generate.md) - Generate
+        text using LLMs.
+    -   **AI.GENERATE_EMBEDDING**:
+        [ai_generate_embedding.md](references/ai_generate_embedding.md) -
+        Generate embeddings.
+    -   **AI.GENERATE_TABLE**:
+        [ai_generate_table.md](references/ai_generate_table.md) - Table-valued
+        AI generation.
+    -   **AI.IF**: [ai_if.md](references/ai_if.md) - Evaluate semantic
+        conditions.
+    -   **AI.KEY_DRIVERS**: [ai_key_drivers.md](references/ai_key_drivers.md) -
+        Identifies key drivers, this is a TVF.
+    -   **AI.SCORE**: [ai_score.md](references/ai_score.md) - Score data.
+    -   **AI.SEARCH**: [ai_search.md](references/ai_search.md) - Semantic
+        search.
+    -   **AI.SIMILARITY**: [ai_similarity.md](references/ai_similarity.md) -
+        Semantic similarity.
+    -   **Remote Models**: [remote_models.md](references/remote_models.md) -
+        Working with remote models (Vertex AI).
+    -   **CONTRIBUTION_ANALYSIS**:
+        [ml_contribution_analysis.md](references/ml_contribution_analysis.md)
+        -   Finds contributing factors, key drivers of change. Requires creating
+            a MODEL entity.
+    -   **VECTOR_SEARCH**: [vector_search.md](references/vector_search.md) -
+        Vector search best practices.
 
 ## Related Skills
 
-- [BigQuery Basics Skill](../bigquery-basics):
-  SKILL.md file for core BigQuery concepts, resource management, CLI,
-  and client libraries.
+-   [BigQuery Basics Skill](../bigquery-basics): SKILL.md file for core BigQuery
+    concepts, resource management, CLI, and client libraries.

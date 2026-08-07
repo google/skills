@@ -1,12 +1,12 @@
 ---
 name: gke-networking
 description: >-
-  Plans, configures, and manages GKE networking. Covers private clusters, VPC-
-  native configurations, Gateway API, DNS, ingress/egress, Dataplane V2, and
+  Plans, configures, and manages core GKE cluster networking. Covers private
+  clusters, VPC-native configurations, DNS, node egress, Dataplane V2, and
   IP planning. Use when designing GKE networking layouts, configuring private
-  clusters, setting up Gateway API, planning GKE IP ranges, or configuring GKE
-  ingress/egress. Don't use for basic application routing that does not
-  require dedicated network configuration.
+  clusters, setting up Dataplane V2, planning GKE IP ranges, or managing VPC-
+  native cluster modes. Don't use for application ingress, load balancing, or
+  service networking (use gke-service-networking instead).
 metadata:
   category: Networking
 ---
@@ -29,7 +29,6 @@ Setting                                                              | Golden Pa
 `networkConfig.datapathProvider`                                     | `ADVANCED_DATAPATH` (Dataplane V2) | Day-0   | eBPF-based, built-in Network Policy
 `networkConfig.dnsConfig.clusterDns`                                 | `CLOUD_DNS`                        | Day-0   | Managed DNS, more reliable than kube-dns
 `networkConfig.enableIntraNodeVisibility`                            | `true`                             | Day-1   | VPC Flow Logs for intra-node traffic
-`networkConfig.gatewayApiConfig.channel`                             | `CHANNEL_STANDARD`                 | Day-1   | Gateway API support
 `ipAllocationPolicy.autoIpamConfig.enabled`                          | `true`                             | Day-0   | Automatic IP range management
 `ipAllocationPolicy.createSubnetwork`                                | `true`                             | Day-0   | Auto-create dedicated subnet
 `defaultMaxPodsConstraint.maxPodsPerNode`                            | `48`                               | Day-0   | Conservative default; 110 for high density
@@ -47,13 +46,13 @@ The golden path creates a private cluster. Users access it via:
 
 ```bash
 # Access private cluster via DNS endpoint (golden path default)
-gcloud container clusters get-credentials <CLUSTER_NAME> \
-  --region <REGION> --dns-endpoint \
+gcloud container clusters get-credentials {cluster_name} \
+  --region {region} --dns-endpoint \
   --quiet
 
 # Access via private endpoint (from within VPC)
-gcloud container clusters get-credentials <CLUSTER_NAME> \
-  --region <REGION> --internal-ip \
+gcloud container clusters get-credentials {cluster_name} \
+  --region {region} --internal-ip \
   --quiet
 ```
 
@@ -62,12 +61,12 @@ gcloud container clusters get-credentials <CLUSTER_NAME> \
 If the customer has existing network infrastructure:
 
 ```bash
-gcloud container clusters create-auto <CLUSTER_NAME> \
-  --region <REGION> \
-  --network <VPC_NAME> \
-  --subnetwork <SUBNET_NAME> \
-  --cluster-secondary-range-name <POD_RANGE> \
-  --services-secondary-range-name <SVC_RANGE> \
+gcloud container clusters create-auto {cluster_name} \
+  --region {region} \
+  --network {vpc_name} \
+  --subnetwork {subnet_name} \
+  --cluster-secondary-range-name {pod_range} \
+  --services-secondary-range-name {svc_range} \
   --enable-private-nodes \
   --enable-master-authorized-networks \
   --quiet
@@ -75,6 +74,18 @@ gcloud container clusters create-auto <CLUSTER_NAME> \
 
 > **Day-0 Warning**: VPC, subnet, and IP ranges cannot be changed after cluster
 > creation.
+
+## VPC-Native Mode Benefits
+
+VPC-native clusters route traffic natively using GCP Alias IP ranges. Key
+benefits to cover:
+
+1.  **Scalability**: Traffic routes natively inside the VPC, bypassing the need
+    for custom routes and avoiding custom route limit bottlenecks.
+2.  **Direct VPC Integration**: Direct resource integration across GCP networks
+    without complex bridging or routing tunnels.
+3.  **Avoiding IP Exhaustion**: Supports discontiguous IP ranges and optimizes
+    allocation, reducing the risk of exhausting subnet IP ranges.
 
 ## IP Planning
 
@@ -92,36 +103,17 @@ gcloud container clusters create-auto <CLUSTER_NAME> \
 -   `maxPodsPerNode=110` -> each node uses a `/24` (256 IPs) from pod CIDR
 -   Larger maxPodsPerNode = fewer nodes fit in a given CIDR
 
-## Ingress
-
-**Gateway API** (golden path, enabled via `gatewayApiConfig.channel:
-CHANNEL_STANDARD`):
-
-```yaml
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: external-http
-spec:
-  gatewayClassName: gke-l7-global-external-managed
-  listeners:
-  - name: http
-    protocol: HTTP
-    port: 80
-```
-
-**Alternatives:**
-
--   `gke-l7-regional-external-managed` — regional external
--   `gke-l7-rilb` — internal load balancer
--   Istio service mesh — for advanced traffic management, mTLS
-
 ## Egress
 
 -   Default: nodes use Cloud NAT for outbound internet access (private nodes
-    have no public IPs)
--   For static egress IPs: configure Cloud NAT with manual IP allocation
+    have no public IPs) to allow private nodes to reach the internet without
+    public IP exposure.
+-   For static egress IPs: configure Cloud NAT with manual IP allocation to
+    maintain a consistent source IP for external allowlists or partner
+    firewalls.
 -   For restricted egress: route through a firewall appliance via custom routes
+    to inspect and filter outbound traffic according to organization security
+    policies.
 
 ## Network Policy
 
@@ -129,34 +121,5 @@ Dataplane V2 (golden path) provides built-in Network Policy enforcement — no
 additional addon needed. Apply default-deny per namespace, then allow specific
 flows.
 
-> See the `gke-security` skill for default-deny policy and the
+> See the `gke-workload-security` skill for default-deny policy and the
 > `gke-multitenancy` skill for per-team allow policies.
-
-## Cloud Armor (Recommended for Public-Facing Services)
-
-Cloud Armor provides WAF and DDoS protection. **Not a golden path default** —
-recommended for any service with public ingress. Link via `BackendConfig`:
-
-```yaml
-# 1. Create BackendConfig referencing your Cloud Armor policy
-apiVersion: cloud.google.com/v1
-kind: BackendConfig
-metadata:
-  name: my-backend-config
-spec:
-  securityPolicy:
-    name: my-cloud-armor-policy
----
-# 2. Annotate your Service
-# cloud.google.com/backend-config: '{"default": "my-backend-config"}'
-```
-
-## SSL, Container-Native LB, and PSC
-
--   **Google-managed SSL certificates**: Use `ManagedCertificate` CRD with
-    Gateway API. Auto-provisions and renews.
--   **Container-native LB**: Enabled by default on VPC-native clusters (golden
-    path). Targets pods via NEGs, bypassing iptables. Annotation:
-    `cloud.google.com/neg: '{"ingress": true}'`.
--   **Private Service Connect (PSC)**: Use `ServiceAttachment` CRD to expose
-    services across VPCs without peering.

@@ -343,7 +343,7 @@ interaction = client.interactions.create(
 {
   "agent": "projects/your-project-id/locations/global/agents/my-custom-agent",
   "input": [{
-    "role": "user",
+    "type": "user_input",
     "content": [{"type": "text", "text": "Hello! Who are you?"}]
   }]
 }

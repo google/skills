@@ -1,93 +1,106 @@
 # AlloyDB IAM & Security
 
-AlloyDB utilizes Google Cloud Identity and Access Management (IAM) to provide
-granular access control and robust security features.
+AlloyDB uses Google Cloud Identity and Access Management (IAM) to enable
+connection authorization and database-level authentication/authorization.
 
 ## Predefined IAM Roles
 
-The following table describes the predefined roles available for AlloyDB:
+| Role Name                    | Description / Permissions Granted             |
+| :--------------------------- | :-------------------------------------------- |
+| `roles/alloydb.admin`        | Full control of all AlloyDB resources.        |
+| `roles/alloydb.client`       | Connection access. Authorizes getting cluster |
+:                              : and instance information, and generating      :
+:                              : client certificates.                          :
+| `roles/alloydb.databaseUser` | Authenticated database user access.           |
+| `roles/alloydb.viewer`       | Read-only access to AlloyDB resource          |
+:                              : configurations.                               :
 
-| Role Name | Usage |
-| :--- | :--- |
-| `roles/alloydb.admin` | Full control of all AlloyDB resources. |
-| `roles/alloydb.client` | Connectivity access to AlloyDB instances. |
-| `roles/alloydb.databaseUser` | Authenticated database-user access to instances. |
-| `roles/alloydb.viewer` | Read-only access to all AlloyDB resources. |
+### Granting Auth Proxy & Client Permissions
+
+To configure the AlloyDB Auth Proxy or language connectors, grant both
+`roles/alloydb.client` and `roles/serviceusage.serviceUsageConsumer` roles to
+the client's service account. Execute the following gcloud commands:
+
+```bash
+# Grant AlloyDB Client permissions to authorize connections
+gcloud projects add-iam-policy-binding PROJECT_ID \
+    --member="serviceAccount:SERVICE_ACCOUNT_EMAIL" \
+    --role="roles/alloydb.client"
+# Grant Service Usage Consumer permissions to authorize API calls
+gcloud projects add-iam-policy-binding PROJECT_ID \
+    --member="serviceAccount:SERVICE_ACCOUNT_EMAIL" \
+    --role="roles/serviceusage.serviceUsageConsumer"
+```
+
+To maintain security and adhere to the **principle of least privilege**,
+prioritize these minimum granularity roles. Specifically, `roles/alloydb.client`
+is preferred over broader roles like `roles/alloydb.admin` for client
+connections.
 
 ## Secure Connectivity
 
-1.  **Network Security:**
-    -   **Private IP:** Keeps traffic internal to Google Cloud.
-        -   **Private Service Connect (PSC):** Recommended for new
-            configurations. Offers enhanced security, better IP management, and
-            flexible multi-VPC topologies without peering.
-        -   **Private Services Access (PSA):** Uses VPC peering.
-    -   **Public IP:** Allows connections from outside GCP.
-        -   **ALWAYS** use with **Authorized Networks** to restrict access to
-            specific IP ranges.
-        -   **NEVER** use `0.0.0.0/0` in Authorized Networks.
-    -   **VPC Service Controls (VPC-SC):** Define security perimeters around
-        your AlloyDB instances to prevent data exfiltration.
+-   **Private IP (Recommended):** Keeps traffic internal to Google Cloud.
 
-1.  **Encryption:**
-    -   **In Transit:** TLS encryption is enforced by default for all
-        connections.
-    -   **At Rest:** Data is always encrypted, using Google-managed keys by
-        default. Customer-Managed Encryption Keys (CMEK) are supported for
-        greater control.
+    -   **Private Service Connect (PSC):** Use PSC for new deployments to
+        simplify multi-VPC address mapping.
+    -   **Private Services Access (PSA):** Uses VPC peering.
+    -   **Serverless Integration:** When connecting from Cloud Run to a Private
+        IP AlloyDB instance, configure a Serverless VPC Access connector or
+        enable Direct VPC Egress.
 
-1.  **Authentication & Authorization:**
-    -   **IAM Authentication:** **Recommended.** Uses Google Cloud Identity and
-        Access Management (IAM) principals (users/service accounts) and
-        short-lived OAuth tokens. Centralizes access control and avoids database
-        passwords.
-    -   **Built-in Database Authentication:** Standard PostgreSQL
-        username/password. Use strong password policies if this method is
-        chosen.
-    -   **Database Authorization:** Standard PostgreSQL GRANT / REVOKE
-        statements manage permissions within the database, regardless of the
-        authentication method.
+-   **Public IP:** Allows connections from outside Google Cloud.
 
-1.  **Connection Methods:**
-    -   **Direct Connection:** Standard PostgreSQL connection.
-    -   **AlloyDB Connectors (Auth Proxy & Language Libraries):** **Highly
-        Recommended for security.**
-        -   Provide connection-level **IAM Authorization**.
-        -   Automatically use **mTLS** (Mutual TLS) for encrypted and
-            authenticated connections.
-        -   Simplify using IAM Database Authentication (tokens are handled
-            automatically).
-        -   Essential for secure Public IP access without wide open Authorized
-            Networks.
-        -   Best practice: Run Auth Proxy as a sidecar to the application.
+    -   **Authorized Networks:** Always restrict access to specific, narrow IP
+        ranges. Never permit `0.0.0.0/0`.
+    -   **Connectors:** Always use AlloyDB Connectors (Auth Proxy or language
+        libraries) to secure Public IP traffic with IAM authentication and mTLS.
 
-**Key Recommendations for Agents:**
+-   **VPC Service Controls (VPC-SC):** Configure security perimeters to prevent
+    data exfiltration.
 
--   **Prioritize Private IP:** Guide users to use Private IP (especially PSC)
-    over Public IP whenever their application is within GCP.
--   **Push AlloyDB Connectors:** Strongly recommend AlloyDB Connectors (Auth
-    Proxy or language libraries) because they enhance security through IAM
-    connection authorization and mTLS, especially crucial for Public IP.
--   **IAM Authentication is Preferred:** Encourages centralized management and
-    token-based auth.
--   **Secure Public IP:** If Public IP is necessary, stress the absolute need
-    for tightly restricted Authorized Networks.
--   **Leverage Cloud Security Tools:** Remind users to use VPC-SC and Security
-    Command Center for monitoring and policy enforcement.
+## Database User Management
 
-## Data Security
+### Built-in Password Authentication
 
-- **Encryption at Rest:** All data is encrypted by default. Use Customer-Managed
-  Encryption Keys (CMEK) for greater control.
+To manage standard database-level users:
 
-- **IAM Database Authentication:** Authenticate to the database using IAM
-  identities (users or service accounts) instead of static passwords.
+1.  Connect to the database using `psql` as an administrator (e.g., `postgres`).
+2.  Run standard PostgreSQL creation statements:
+
+    ```sql
+    CREATE USER username WITH PASSWORD 'secure_password';
+    ```
+
+3.  Control object access using standard PostgreSQL roles and privileges via SQL
+    `GRANT` and `REVOKE` statements.
+
+    ### IAM Database Authentication
+
+    To authenticate using Google Cloud IAM identities (service accounts or
+    users):
+
+4.  **Enable IAM authentication** on the target AlloyDB instance configuration.
+
+5.  **Create the user principal** using the Google Cloud Console, `gcloud` CLI,
+    or the AlloyDB API. Note that IAM database users *cannot be created using
+    standard SQL alone*; they must first be registered via the control plane
+    (Console, CLI, or API) before they can be granted access in the database (do
+    not use SQL `CREATE USER` to create them):
+
+    ```bash
+    gcloud alloydb users create USER_EMAIL --cluster=CLUSTER_ID \
+        --region=REGION --type=IAM_USER
+    ```
+
+6.  Connect as an administrator and grant the `alloydbiamuser` role to the IAM
+    user:
+
+    ```sql
+    GRANT alloydbiamuser TO "USER_EMAIL";
+    ```
 
 ## Service Agents
 
-AlloyDB uses a managed service agent
-(`service-PROJECT_NUMBER@gcp-sa-alloydb.iam.gserviceaccount.com`) to manage
-resources like storage and backups. Ensure this agent has the necessary
-permissions in your project.
-
-For more information, see: [Security, privacy, risk, and compliance for AlloyDB for PostgreSQL](https://docs.cloud.google.com/alloydb/docs/security-privacy-compliance.md.txt).
+AlloyDB uses a managed service agent template
+(`service-PROJECT_NUMBER@gcp-sa-alloydb.iam.gserviceaccount.com`). Verify that
+this service agent has project permissions to manage storage and backups.

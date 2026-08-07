@@ -1,0 +1,157 @@
+{
+  "name": "google-plugins",
+  "owner": {
+    "name": "Google LLC"
+  },
+  "metadata": {
+    "version": "0.0.1",
+    "description": "A central repository of official skills and prescriptive plugins designed to provide a high-performance experience for building and deploying agentic applications across Google products and technologies."
+  },
+  "plugins": [
+    {
+      "name": "alloydb",
+      "source": {
+        "source": "github",
+        "repo": "gemini-cli-extensions/alloydb",
+        "ref": "0.2.0"
+      },
+      "description": "Create, connect, and interact with an AlloyDB for PostgreSQL database and data."
+    },
+    {
+      "name": "alloydb-omni",
+      "source": {
+        "source": "github",
+        "repo": "gemini-cli-extensions/alloydb-omni",
+        "ref": "0.2.1"
+      },
+      "description": "Create, connect, and interact with an AlloyDB Omni database and data."
+    },
+    {
+      "name": "bigtable",
+      "source": {
+        "source": "github",
+        "repo": "GoogleCloudPlatform/cloud-bigtable-ecosystem",
+        "ref": "v0.4.0"
+      },
+      "description": "Connect, query, and interact with Cloud Bigtable."
+    },
+    {
+      "name": "cloud-sql-mysql",
+      "source": {
+        "source": "github",
+        "repo": "gemini-cli-extensions/cloud-sql-mysql",
+        "ref": "0.2.0"
+      },
+      "description": "Connect and interact with a Cloud SQL for MySQL database and data."
+    },
+    {
+      "name": "cloud-sql-postgresql",
+      "source": {
+        "source": "github",
+        "repo": "gemini-cli-extensions/cloud-sql-postgresql",
+        "ref": "0.4.0"
+      },
+      "description": "Create, connect, and interact with a Cloud SQL for PostgreSQL database and data."
+    },
+    {
+      "name": "cloud-sql-sqlserver",
+      "source": {
+        "source": "github",
+        "repo": "gemini-cli-extensions/cloud-sql-sqlserver",
+        "ref": "0.2.0"
+      },
+      "description": "Connect to Cloud SQL for SQL Server."
+    },
+    {
+      "name": "firestore-native",
+      "source": {
+        "source": "github",
+        "repo": "gemini-cli-extensions/firestore-native",
+        "ref": "0.3.1"
+      },
+      "description": "Connect and interact with Cloud Firestore."
+    },
+    {
+      "name": "data-agent-kit-starter-pack",
+      "source": {
+        "source": "github",
+        "repo": "gemini-cli-extensions/data-agent-kit-starter-pack",
+        "ref": "0.6.1"
+      },
+      "description": "This plugin provides a specialized suite of skills for data engineers and database practitioners working on Google Cloud. It acts as an expert assistant, allowing you to use natural language prompts in your preferred coding agent to architect complex data pipelines, transform data with dbt, write Spark and BigQuery SQL notebooks, and orchestrate end-to-end workflows across GCP's data ecosystem."
+    },
+    {
+      "name": "google-cloud-storage",
+      "source": {
+        "source": "github",
+        "repo": "gemini-cli-extensions/google-cloud-storage",
+        "ref": "1.2.0"
+      },
+      "description": "Vetted Google Cloud Storage skills for your coding agent."
+    },
+    {
+      "name": "looker",
+      "source": {
+        "source": "github",
+        "repo": "gemini-cli-extensions/looker",
+        "ref": "0.3.5"
+      },
+      "description": "Connect to Looker."
+    },
+    {
+      "name": "oracledb",
+      "source": {
+        "source": "github",
+        "repo": "gemini-cli-extensions/oracledb",
+        "ref": "0.2.3"
+      },
+      "description": "Connect, query, and interact with Oracle Databases and their data within Gemini CLI."
+    },
+    {
+      "name": "spanner",
+      "source": {
+        "source": "github",
+        "repo": "gemini-cli-extensions/spanner",
+        "ref": "0.3.1"
+      },
+      "description": "Connect and interact with Spanner data using natural language."
+    },
+    {
+      "name": "knowledge-catalog",
+      "source": {
+        "source": "github",
+        "repo": "gemini-cli-extensions/knowledge-catalog",
+        "ref": "0.5.2"
+      },
+      "description": "Skills for Knowledge Catalog."
+    },
+    {
+      "name": "dataproc",
+      "source": {
+        "source": "github",
+        "repo": "gemini-cli-extensions/dataproc",
+        "ref": "0.1.0"
+      },
+      "description": "Skills for Dataproc."
+    },
+    {
+      "name": "bigquery",
+      "source": {
+        "source": "github",
+        "repo": "gemini-cli-extensions/bigquery-data-analytics",
+        "ref": "0.2.1"
+      },
+      "description": "Data Analytics skills for BigQuery."
+    },
+    {
+      "name": "db-context-engineering",
+      "source": {
+        "source": "git-subdir",
+        "url": "GoogleCloudPlatform/db-context-enrichment",
+        "path": "plugin",
+        "ref": "v0.6.0"
+      },
+      "description": "Context Engineering Agent for generating and maintaining QueryData / Conversational Analytics API context sets (templates, facets, value searches) for natural language to SQL tasks. Works with AlloyDB, Cloud SQL for MySQL, Cloud SQL for PostgreSQL, and Spanner."
+    }
+  ]
+}

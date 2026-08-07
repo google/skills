@@ -117,6 +117,12 @@ falls back to GCS-hosted LLM metric recipes. The names below are the
 **uppercase enum form** of the unversioned IDs above; pass them as
 `types.RubricMetric.<NAME>`.
 
+`types.RubricMetric` is a `PrebuiltMetricLoader`, not an enum: it is not
+iterable (despite `hasattr(..., "__iter__")` returning True), so discover
+names with `dir()` or the table below. Attribute access returns a
+`LazyLoadedPrebuiltMetric` exposing only `name`, `version`, `metric_kwargs`
+and `resolve(api_client)`; pass it straight to `evaluate(metrics=[...])`.
+
 | Property                        | Resolution           |
 | ------------------------------- | -------------------- |
 | `MULTI_TURN_TASK_SUCCESS`       | API predefined       |
@@ -200,6 +206,10 @@ metric = types.LLMMetric.load("path/to/metric_config.yaml")
 
 Builds structured LLM judge prompts from criteria, rating scores, and evaluation
 steps. Preferred over raw `prompt_template` strings for complex rubrics.
+
+`criteria` and `rating_scores` are both mandatory; supplying only one raises
+`ValidationError: Both 'criteria' and 'rating_scores' are required to
+construct the LLM-based metric prompt template text`.
 
 ```python
 metric = types.LLMMetric(

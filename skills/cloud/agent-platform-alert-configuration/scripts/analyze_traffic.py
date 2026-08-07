@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Traffic metrics analyzer for Agent Platform reasoning engine agents.
+"""Traffic metrics analyzer for Agent Platform agents (using OpenTelemetry).
 
 Computes zero-ratio, variance ratio, and 1-week autocorrelation on a 14-day
 metrics time series (at 5-minute intervals) and classifies the traffic pattern
@@ -27,18 +27,38 @@ import statistics
 import sys
 import time
 
-try:
-  from google.auth import exceptions as auth_exceptions
-  from google.cloud import monitoring_v3
-
-  _HAS_GCP_LIBS = True
-except ImportError:
-  _HAS_GCP_LIBS = False
-
+from google.auth import exceptions as auth_exceptions
+from google.cloud import monitoring_v3
 
 # Number of 5-minute data points in a 7-day weekly window
 # (12 points/hour * 24 hours/day * 7 days/week)
 _POINTS_PER_WEEK = 2016
+
+# Supported metric types and their corresponding resource labels.
+_SUPPORTED_METRIC_TYPE_LABEL = {
+    "workload.googleapis.com/gen_ai.invoke_agent.duration": (
+        "metric.labels.gen_ai_agent_name"
+    ),
+    "workload.googleapis.com/gen_ai.client.token.usage": (
+        "resource.labels.namespace"
+    ),
+}
+
+# Supported metric types and their corresponding aligners.
+_SUPPORTED_METRIC_TYPE_ALIGNER = {
+    "workload.googleapis.com/gen_ai.invoke_agent.duration": (
+        monitoring_v3.Aggregation.Aligner.ALIGN_DELTA
+    ),
+    "workload.googleapis.com/gen_ai.client.token.usage": (
+        monitoring_v3.Aggregation.Aligner.ALIGN_DELTA
+    ),
+}
+
+# Supported metric types and their filters for live queries.
+_SUPPORTED_METRIC_TYPE_FILTERS = {
+    "workload.googleapis.com/gen_ai.invoke_agent.duration": [],
+    "workload.googleapis.com/gen_ai.client.token.usage": [],
+}
 
 
 class CredentialsMissingError(Exception):
@@ -47,7 +67,7 @@ class CredentialsMissingError(Exception):
   pass
 
 
-def compute_metrics_and_classify(values):
+def compute_metrics_and_classify(values: list[float]) -> dict[str, float | str]:
   """Computes statistical metrics and classifies the traffic profile.
 
   Args:
@@ -56,6 +76,9 @@ def compute_metrics_and_classify(values):
 
   Returns:
       A dictionary with statistical metrics and the classification profile.
+
+  Raises:
+      ValueError: If values contains fewer than 4032 points (14 days).
   """
   required_points = 2 * _POINTS_PER_WEEK
   if len(values) < required_points:
@@ -64,11 +87,13 @@ def compute_metrics_and_classify(values):
         f" days at 5m interval), got {len(values)}"
     )
 
-  # We focus on the last 7 days (latest weekly points) and previous 7 days (weekly points before that)
+  # We focus on the last 7 days (latest weekly points) and previous 7 days
+  # (weekly points before that)
   last_7_days = values[-_POINTS_PER_WEEK:]
   prev_7_days = values[-required_points:-_POINTS_PER_WEEK]
 
-  # 1. Zero Ratio: proportion of 5m intervals with rate <= 0.01 in the last 7 days
+  # 1. Zero Ratio: proportion of 5m intervals with rate <= 0.01 in the last
+  # 7 days
   zero_ratio = sum(x <= 0.01 for x in last_7_days) / _POINTS_PER_WEEK
 
   # 2. Mean and Standard Deviation of the last 7 days
@@ -175,13 +200,16 @@ def align_to_grid(
 
 
 def query_live_metrics(
-    project_id: str, reasoning_engine_id: str
+    project_id: str,
+    metric_type: str,
+    engine_id: str,
 ) -> list[float]:
-  """Queries live Vertex AI reasoning engine request count metrics for 14 days.
+  """Queries live metrics (e.g., OTel latency or token usage) for 14 days.
 
   Args:
       project_id: The GCP project ID.
-      reasoning_engine_id: The reasoning engine ID.
+      metric_type: The metric type to query.
+      engine_id: The agent identifier value.
 
   Returns:
       A list of 4032 floats representing the 5m rate telemetry aligned to grid.
@@ -189,9 +217,6 @@ def query_live_metrics(
   Raises:
       CredentialsMissingError: If GCP credentials are not found.
   """
-  if not _HAS_GCP_LIBS:
-    raise RuntimeError("Google Cloud Client libraries are not installed.")
-
   try:
     client = monitoring_v3.MetricServiceClient()
     name = f"projects/{project_id}"
@@ -206,11 +231,12 @@ def query_live_metrics(
     })
 
     filter_str = (
-        "metric.type ="
-        ' "aiplatform.googleapis.com/reasoning_engine/request_count" AND'
-        ' resource.type = "aiplatform.googleapis.com/ReasoningEngine" AND'
-        f' resource.labels.reasoning_engine_id = "{reasoning_engine_id}"'
+        f'metric.type = "{metric_type}" AND'
+        f" {_SUPPORTED_METRIC_TYPE_LABEL[metric_type]} ="
+        f' "{engine_id}"'
     )
+    for metric_filter in _SUPPORTED_METRIC_TYPE_FILTERS[metric_type]:
+      filter_str += f" AND {metric_filter}"
 
     results = client.list_time_series(
         request={
@@ -220,13 +246,15 @@ def query_live_metrics(
             "view": monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
             "aggregation": {
                 "alignment_period": {"seconds": 300},
-                "per_series_aligner": (
-                    monitoring_v3.Aggregation.Aligner.ALIGN_RATE
-                ),
+                "per_series_aligner": _SUPPORTED_METRIC_TYPE_ALIGNER[
+                    metric_type
+                ],
                 "cross_series_reducer": (
                     monitoring_v3.Aggregation.Reducer.REDUCE_SUM
                 ),
-                "group_by_fields": ["resource.labels.reasoning_engine_id"],
+                "group_by_fields": [
+                    _SUPPORTED_METRIC_TYPE_LABEL[metric_type]
+                ],
             },
         }
     )
@@ -239,9 +267,27 @@ def query_live_metrics(
   points = []
   for series in results:
     for point in series.points:
+      st = point.interval.start_time
+      ts = (
+          st.timestamp()
+          if hasattr(st, "timestamp")
+          else st.ToDatetime().timestamp()
+      )
+      pb = getattr(point.value, "_pb", point.value)
+      val_type = pb.WhichOneof("value")
+      if val_type == "distribution_value":
+        # Calculate total tokens consumed across all buckets in the interval
+        val = float(
+            point.value.distribution_value.mean
+            * point.value.distribution_value.count
+        )
+      elif val_type == "int64_value":
+        val = float(point.value.int64_value)
+      else:
+        val = float(point.value.double_value)
       points.append((
-          point.interval.start_time.ToDatetime().timestamp(),
-          point.value.double_value,
+          ts,
+          val,
       ))
 
   if not points:
@@ -258,6 +304,12 @@ def main():
           "Analyze 14-day traffic metrics to select dynamic thresholding"
           " algorithm."
       )
+  )
+  parser.add_argument(
+      "--metric-type",
+      required=True,
+      type=str,
+      help="The metric type to query.",
   )
   parser.add_argument(
       "--metrics-file",
@@ -278,12 +330,20 @@ def main():
       "--reasoning-engine-id",
       type=str,
       help=(
-          "Vertex AI Reasoning Engine numerical ID (required for live queries)."
+          "Agent Identifier (e.g., gen_ai_agent_name or namespace) "
+          "required for live queries."
       ),
   )
   args = parser.parse_args()
 
   data = None
+
+  if args.metric_type not in _SUPPORTED_METRIC_TYPE_LABEL:
+    print(
+        f"Error: Metric type {args.metric_type} is not supported.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
   if args.live:
     if not args.project_id or not args.reasoning_engine_id:
@@ -295,7 +355,9 @@ def main():
       sys.exit(1)
 
     try:
-      data = query_live_metrics(args.project_id, args.reasoning_engine_id)
+      data = query_live_metrics(
+          args.project_id, args.metric_type, args.reasoning_engine_id
+      )
     except CredentialsMissingError as e:
       print(f"Error: {e}", file=sys.stderr)
       sys.exit(1)

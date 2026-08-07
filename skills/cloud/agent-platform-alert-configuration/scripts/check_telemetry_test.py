@@ -14,22 +14,10 @@
 
 """Unit tests for check_telemetry.py."""
 
-import os
-import sys
-import types
 import unittest
 from unittest import mock
 
-script_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "check_telemetry.py"
-)
-with open(script_path, "r") as f:
-  code_content = f.read()
-
-check_telemetry = types.ModuleType("check_telemetry")
-check_telemetry.__file__ = script_path
-sys.modules["check_telemetry"] = check_telemetry
-exec(code_content, check_telemetry.__dict__)
+import check_telemetry
 
 
 class CheckTelemetryTest(unittest.TestCase):
@@ -118,6 +106,48 @@ class CheckTelemetryTest(unittest.TestCase):
     )
 
     self.assertFalse(result)
+
+  @mock.patch("check_telemetry.monitoring_v3")
+  def test_check_token_usage_monitoring_namespaces_success(
+      self, mock_monitoring_v3
+  ):
+    # Setup mock client and mock time series returns
+    mock_client = mock.MagicMock()
+    mock_monitoring_v3.MetricServiceClient.return_value = mock_client
+    mock_monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.HEADERS = 1
+
+    ts1 = mock.MagicMock()
+    ts1.resource.labels = {"namespace": "staging_agent", "node_id": "node-2"}
+    mock_client.list_time_series.return_value = [ts1]
+    namespaces = check_telemetry.check_token_usage_monitoring_namespaces(
+        self.project_id, days_lookback=3
+    )
+    # Verify return set contains expected unique namespaces
+    self.assertEqual(namespaces, {"staging_agent"})
+
+    # Verify exact API request structure passed to list_time_series
+    self.assertTrue(mock_client.list_time_series.called)
+    call_kwargs = mock_client.list_time_series.call_args[1]["request"]
+    self.assertEqual(call_kwargs["name"], f"projects/{self.project_id}")
+    self.assertEqual(
+        call_kwargs["filter"],
+        'metric.type="workload.googleapis.com/gen_ai.client.token.usage"',
+    )
+    self.assertEqual(call_kwargs["view"], 1)
+
+  @mock.patch("check_telemetry.monitoring_v3")
+  def test_check_token_usage_monitoring_namespaces_missing_namespace_label(
+      self, mock_monitoring_v3
+  ):
+    mock_client = mock.MagicMock()
+    mock_monitoring_v3.MetricServiceClient.return_value = mock_client
+    ts_no_label = mock.MagicMock()
+    ts_no_label.resource.labels = {"location": "us-central1"}
+    mock_client.list_time_series.return_value = [ts_no_label]
+    namespaces = check_telemetry.check_token_usage_monitoring_namespaces(
+        self.project_id
+    )
+    self.assertIn("(namespace label not found in this resource)", namespaces)
 
 
 if __name__ == "__main__":

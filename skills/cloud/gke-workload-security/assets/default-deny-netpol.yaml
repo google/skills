@@ -1,0 +1,12 @@
+---
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  # checkov:skip=CKV_K8S_39:Default deny all intentionally matches all pods
+  name: default-deny-all
+
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress

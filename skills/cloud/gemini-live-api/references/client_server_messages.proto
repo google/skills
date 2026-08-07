@@ -1,0 +1,380 @@
+// Proto definitions for the Gemini Enterprise Live API wire protocol.
+//
+// Models the WebSocket frames described in client_server_messages.md.
+// Both `ClientMessage` (client -> server) and `ServerMessage` (server ->
+// client) are oneof envelopes; each WebSocket frame sets exactly one of the
+// listed fields.
+//
+// Covers the Gemini Enterprise Agent Platform (`BidiGenerateContent*`) shapes.
+
+syntax = "proto3";
+
+package google.ai.live.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
+
+// =============================================================================
+// Top-level envelopes
+// =============================================================================
+
+// Client -> server frame. Exactly one field is set per frame.
+message ClientMessage {
+  oneof message_type {
+    // First frame only. Configures the session.
+    BidiGenerateContentSetup setup = 1;
+
+    // Turn-based, history-affecting input. Interrupts ongoing model output.
+    BidiGenerateContentClientContent client_content = 2;
+
+    // Continuous, low-latency audio/video input. Not added to history.
+    BidiGenerateContentRealtimeInput realtime_input = 3;
+
+    // Reply to a server-issued `tool_call`.
+    BidiGenerateContentToolResponse tool_response = 4;
+  }
+}
+
+// Server -> client frame. Exactly one field is set per frame.
+message ServerMessage {
+  oneof message_type {
+    // Sent once after `setup` is accepted. Gate further sends on this.
+    BidiGenerateContentSetupComplete setup_complete = 1;
+
+    // Streamed model output (audio/text), turn lifecycle.
+    BidiGenerateContentServerContent server_content = 2;
+
+    // Model is requesting tool execution.
+    BidiGenerateContentToolCall tool_call = 3;
+
+    // Cancels previously-issued tool calls (e.g. on user interruption).
+    BidiGenerateContentToolCallCancellation tool_call_cancellation = 4;
+
+    // Token / duration accounting.
+    UsageMetadata usage_metadata = 5;
+
+    // Connection will be terminated soon.
+    GoAway go_away = 6;
+
+    // Resume handle for reconnects.
+    SessionResumptionUpdate session_resumption_update = 7;
+  }
+}
+
+// =============================================================================
+// Common content primitives
+// =============================================================================
+
+// A piece of binary data carried inline (audio chunk, image frame, etc.).
+message Blob {
+  // IANA-style mime type, e.g. "audio/pcm;rate=16000", "image/jpeg".
+  string mime_type = 1;
+
+  // Raw bytes (base64-encoded on the JSON wire).
+  bytes data = 2;
+}
+
+// A reference to a remote file (e.g. GCS URI).
+message FileData {
+  string mime_type = 1;
+  string file_uri = 2;
+}
+
+// A function call requested by the model.
+message FunctionCall {
+  // Opaque ID matching the eventual `FunctionResponse.id`. Optional.
+  string id = 1;
+  string name = 2;
+  google.protobuf.Struct args = 3;
+}
+
+// Result of executing a function call.
+message FunctionResponse {
+  // Must match the originating `FunctionCall.id`. Optional.
+  string id = 1;
+  string name = 2;
+  google.protobuf.Struct response = 3;
+}
+
+// A part of a Content message; oneof of the supported part types.
+//
+// The markdown only references `text`, `inlineData`, and `fileData` parts; no
+// other variants are described.
+message Part {
+  oneof data {
+    string text = 1;
+    Blob inline_data = 2;
+    FileData file_data = 3;
+  }
+}
+
+// A piece of conversation content with a role and ordered parts.
+message Content {
+  // Typically "user" or "model".
+  string role = 1;
+  repeated Part parts = 2;
+}
+
+// Tool declaration. The markdown only states that tools carry "function
+// declarations and built-ins (Search, code execution)" without defining the
+// internal schema, so the contents are left opaque here.
+message Tool {
+  google.protobuf.Struct value = 1;
+}
+
+// =============================================================================
+// Setup
+// =============================================================================
+
+message BidiGenerateContentSetup {
+  // Required.
+  // "projects/{p}/locations/{l}/publishers/google/models/{m}"
+  string model = 1;
+
+  GenerationConfig generation_config = 2;
+
+  // Text-only parts.
+  Content system_instruction = 3;
+
+  repeated Tool tools = 4;
+
+  SessionResumptionConfig session_resumption = 5;
+
+  ContextWindowCompressionConfig context_window_compression = 6;
+
+  RealtimeInputConfig realtime_input_config = 7;
+
+  AudioTranscriptionConfig input_audio_transcription = 8;
+
+  AudioTranscriptionConfig output_audio_transcription = 9;
+}
+
+message GenerationConfig {
+  enum Modality {
+    MODALITY_UNSPECIFIED = 0;
+    TEXT = 1;
+    AUDIO = 2;
+  }
+
+  enum MediaResolution {
+    MEDIA_RESOLUTION_UNSPECIFIED = 0;
+    MEDIA_RESOLUTION_LOW = 1;
+    MEDIA_RESOLUTION_MEDIUM = 2;
+    MEDIA_RESOLUTION_HIGH = 3;
+  }
+
+  // Pick exactly one per session; default AUDIO.
+  repeated Modality response_modalities = 1;
+
+  float temperature = 2;
+  float top_p = 3;
+  int32 top_k = 4;
+  int32 max_output_tokens = 5;
+
+  // Only effective when response_modalities=[AUDIO].
+  SpeechConfig speech_config = 6;
+
+  MediaResolution media_resolution = 7;
+
+  ThinkingConfig thinking_config = 8;
+}
+
+message SpeechConfig {
+  // Single-speaker voice (Live API is single-speaker only).
+  VoiceConfig voice_config = 1;
+
+  // BCP-47 (e.g. "en-US"). Output TTS language.
+  string language_code = 2;
+}
+
+message VoiceConfig {
+  PrebuiltVoiceConfig prebuilt_voice_config = 1;
+}
+
+message PrebuiltVoiceConfig {
+  // Case-sensitive prebuilt voice name (e.g. "Aoede", "Charon").
+  string voice_name = 1;
+}
+
+message ThinkingConfig {
+  // 0 disables thinking. Only honored on models that support it.
+  int32 thinking_budget = 1;
+}
+
+message SessionResumptionConfig {
+  // Provide to resume; omit to start a new resumable session.
+  string handle = 1;
+  bool transparent = 2;
+}
+
+message ContextWindowCompressionConfig {
+  message SlidingWindow {
+    int64 target_tokens = 1;
+  }
+  int64 trigger_tokens = 1;
+  SlidingWindow sliding_window = 2;
+}
+
+message RealtimeInputConfig {
+  enum ActivityHandling {
+    ACTIVITY_HANDLING_UNSPECIFIED = 0;
+    START_OF_ACTIVITY_INTERRUPTS = 1;
+    NO_INTERRUPTION = 2;
+  }
+
+  enum TurnCoverage {
+    TURN_COVERAGE_UNSPECIFIED = 0;
+    TURN_INCLUDES_ALL_INPUT = 1;
+    TURN_INCLUDES_ONLY_ACTIVITY = 2;
+    TURN_INCLUDES_AUDIO_ACTIVITY_AND_ALL_VIDEO = 3;
+  }
+
+  // Unset -> server-side VAD enabled by default.
+  AutomaticActivityDetection automatic_activity_detection = 1;
+  ActivityHandling activity_handling = 2;
+  TurnCoverage turn_coverage = 3;
+}
+
+message AutomaticActivityDetection {
+  enum StartSensitivity {
+    START_SENSITIVITY_UNSPECIFIED = 0;
+    START_SENSITIVITY_HIGH = 1;
+    START_SENSITIVITY_LOW = 2;
+  }
+
+  enum EndSensitivity {
+    END_SENSITIVITY_UNSPECIFIED = 0;
+    END_SENSITIVITY_HIGH = 1;
+    END_SENSITIVITY_LOW = 2;
+  }
+
+  // If true, client must send activity_start / activity_end manually.
+  bool disabled = 1;
+  StartSensitivity start_of_speech_sensitivity = 2;
+  EndSensitivity end_of_speech_sensitivity = 3;
+  int32 prefix_padding_ms = 4;
+  int32 silence_duration_ms = 5;
+}
+
+// Empty configuration message for enabling input/output audio transcription.
+message AudioTranscriptionConfig {}
+
+// =============================================================================
+// ClientContent / RealtimeInput / ToolResponse
+// =============================================================================
+
+message BidiGenerateContentClientContent {
+  // Conversation history + the latest user request.
+  repeated Content turns = 1;
+
+  // If true, server starts generating immediately.
+  bool turn_complete = 2;
+}
+
+message BidiGenerateContentRealtimeInput {
+  message ActivityStart {}
+  message ActivityEnd {}
+
+  // Deprecated: combined audio/video chunks. Prefer the typed `audio` /
+  // `video` fields below.
+  repeated Blob media_chunks = 1 [deprecated = true];
+
+  // Typed realtime audio (PCM 16-bit, 16 kHz mono).
+  Blob audio = 2;
+
+  // Typed realtime video frame (image/jpeg|png|webp).
+  Blob video = 3;
+
+  // Realtime text input.
+  string text = 4;
+
+  // Mic turned off; only valid with auto-VAD enabled.
+  bool audio_stream_end = 5;
+
+  // Only when auto-VAD is disabled.
+  ActivityStart activity_start = 6;
+  ActivityEnd activity_end = 7;
+}
+
+message BidiGenerateContentToolResponse {
+  // Match `FunctionCall.id` from the server. `id` is optional.
+  repeated FunctionResponse function_responses = 1;
+}
+
+// =============================================================================
+// Server messages
+// =============================================================================
+
+message BidiGenerateContentSetupComplete {
+  // Server-assigned session identifier.
+  string session_id = 1;
+}
+
+message BidiGenerateContentServerContent {
+  // Streamed model output parts (text and/or `inline_data` audio @ 24 kHz).
+  Content model_turn = 1;
+
+  // Model has finished generating; playback may still be flushing.
+  bool generation_complete = 2;
+
+  // Logical end of turn.
+  bool turn_complete = 3;
+
+  // Generation was interrupted by client input -- drop queued audio playback.
+  bool interrupted = 4;
+
+  // When grounding (e.g. Google Search) is used. Modelled as Struct because the
+  // full grounding schema is out of scope for this wire-protocol proto.
+  google.protobuf.Struct grounding_metadata = 5;
+
+  // Transcription of the user's spoken input. Requires
+  // `input_audio_transcription` set in `setup`.
+  Transcription input_transcription = 6;
+
+  // Transcription of the model's spoken output. Requires
+  // `output_audio_transcription` set in `setup`.
+  Transcription output_transcription = 7;
+}
+
+message Transcription {
+  string text = 1;
+  bool finished = 2;
+}
+
+message BidiGenerateContentToolCall {
+  // Each has `id`, `name`, `args`. Reply with matching FunctionResponse.id.
+  repeated FunctionCall function_calls = 1;
+}
+
+message BidiGenerateContentToolCallCancellation {
+  // IDs of previously-issued tool calls to cancel. Stop the work; do not
+  // send `tool_response` for these.
+  repeated string ids = 1;
+}
+
+// =============================================================================
+// Connection lifecycle / accounting
+// =============================================================================
+
+message GoAway {
+  // Time until the connection terminates with ABORTED.
+  google.protobuf.Duration time_left = 1;
+}
+
+message SessionResumptionUpdate {
+  // Handle to resume; empty if `resumable=false`.
+  string new_handle = 1;
+  bool resumable = 2;
+
+  // Set only when SessionResumptionConfig.transparent=true.
+  int64 last_consumed_client_message_index = 3;
+}
+
+// Token / duration accounting (cached-content style).
+message UsageMetadata {
+  int32 total_token_count = 1;
+  int32 text_count = 2;
+  int32 image_count = 3;
+  int32 video_duration_seconds = 4;
+  int32 audio_duration_seconds = 5;
+}

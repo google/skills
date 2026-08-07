@@ -14,22 +14,11 @@
 
 """Unit tests for Vertex AI Reasoning Engine Online Monitor creation."""
 
-import os
 import sys
-import types
 import unittest
 from unittest import mock
 
-script_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "create_online_monitor.py"
-)
-with open(script_path, "r") as f:
-  code_content = f.read()
-
-create_online_monitor = types.ModuleType("create_online_monitor")
-create_online_monitor.__file__ = script_path
-sys.modules["create_online_monitor"] = create_online_monitor
-exec(code_content, create_online_monitor.__dict__)
+import create_online_monitor
 
 
 class CreateOnlineMonitorTest(unittest.TestCase):

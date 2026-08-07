@@ -10,6 +10,10 @@ from agentplatform import types
 from google.genai import types as genai_types
 
 client = agentplatform.Client(project="{PROJECT_ID}", location="{LOCATION}")
+
+# EvalCase prompt/reference/response values are Content objects, not plain
+# strings. Use genai_types.UserContent(str) / ModelContent(str), which wrap
+# the string in a Part and set the role. Each pattern below is self-contained.
 ```
 
 For Gemini 3+ models, use `location="global"`.
@@ -21,9 +25,13 @@ Simplest case — evaluate prompt/response pairs against predefined metrics.
 ```python
 dataset = types.EvaluationDataset(eval_cases=[
     types.EvalCase(
-        prompt="What causes rain?",
-        response="Rain is caused by water evaporating...",
-        reference="Rain forms when water vapor condenses...",
+        prompt=genai_types.UserContent("What causes rain?"),
+        responses=[types.ResponseCandidate(
+            response=genai_types.ModelContent(
+                "Rain is caused by water evaporating..."))],
+        reference=types.ResponseCandidate(
+            response=genai_types.ModelContent(
+                "Rain forms when water vapor condenses...")),
     ),
 ])
 
@@ -103,7 +111,7 @@ Generate user scenarios when no eval data exists.
 
 ```python
 # Step 1: Generate scenarios
-scenarios = client.evals.generate_user_scenarios(
+scenarios = client.evals.generate_conversation_scenarios(
     agents={
         "agent": types.evals.AgentConfig(
             agent_id="agent",
@@ -196,10 +204,16 @@ Compare two models using `calculate_win_rates()`.
 ```python
 # Same dataset, two different model responses
 dataset_a = types.EvaluationDataset(eval_cases=[
-    types.EvalCase(prompt="Explain quantum computing", response="Model A response..."),
+    types.EvalCase(prompt=genai_types.UserContent("Explain quantum computing"),
+                   responses=[types.ResponseCandidate(
+                       response=genai_types.ModelContent(
+                           "Model A response..."))]),
 ])
 dataset_b = types.EvaluationDataset(eval_cases=[
-    types.EvalCase(prompt="Explain quantum computing", response="Model B response..."),
+    types.EvalCase(prompt=genai_types.UserContent("Explain quantum computing"),
+                   responses=[types.ResponseCandidate(
+                       response=genai_types.ModelContent(
+                           "Model B response..."))]),
 ])
 
 result_a = client.evals.evaluate(dataset=dataset_a, metrics=[types.RubricMetric.GENERAL_QUALITY])

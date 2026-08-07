@@ -120,7 +120,7 @@ def convert_to_jsonl(
     sys.exit(1)
 
   for col in [prompt_col, completion_col]:
-    if col not in dataset.column_names:
+    if col not in dataset.column_names:  # pyrefly: ignore[not-iterable]
       logging.error(
           "Column '%s' not found. Available columns: %s",
           col,
@@ -141,11 +141,11 @@ def convert_to_jsonl(
         and completion_text != "none"
     )
 
-  initial_len = len(dataset)
+  initial_len = len(dataset)  # pyrefly: ignore[bad-argument-type]
   dataset = dataset.filter(is_valid)
-  if len(dataset) < initial_len:
+  if len(dataset) < initial_len:  # pyrefly: ignore[bad-argument-type]
     logging.warning(
-        "Dropped %d rows with empty or NaN values", initial_len - len(dataset)
+        "Dropped %d rows with empty or NaN values", initial_len - len(dataset)  # pyrefly: ignore[bad-argument-type]
     )
 
   def format_example(example):
@@ -165,7 +165,7 @@ def convert_to_jsonl(
       }
 
   formatted_dataset = dataset.map(
-      format_example, remove_columns=dataset.column_names
+      format_example, remove_columns=dataset.column_names  # pyrefly: ignore[bad-argument-type]
   )
 
   if validation_split and validation_split > 0:
@@ -174,7 +174,7 @@ def convert_to_jsonl(
       sys.exit(1)
 
     # Use the datasets library to perform the split as requested
-    split_dict = formatted_dataset.train_test_split(
+    split_dict = formatted_dataset.train_test_split(  # pyrefly: ignore[missing-attribute]
         seed=42, test_size=validation_split
     )
     train_ds = split_dict["train"]
@@ -198,10 +198,10 @@ def convert_to_jsonl(
         val_output_file,
     )
   else:
-    formatted_dataset.to_json(output_file, force_ascii=False, lines=True)
+    formatted_dataset.to_json(output_file, force_ascii=False, lines=True)  # pyrefly: ignore[missing-attribute]
     logging.info(
         "Successfully saved %d examples to %s",
-        len(formatted_dataset),
+        len(formatted_dataset),  # pyrefly: ignore[bad-argument-type]
         output_file,
     )
 

@@ -12,7 +12,7 @@ from google.genai import types
 client = genai.Client()
 
 content_cache = client.caches.create(
-    model="gemini-3.5-flash",
+    model="gemini-3.6-flash",
     config=types.CreateCachedContentConfig(
         contents=[
             types.Content(
@@ -33,7 +33,7 @@ content_cache = client.caches.create(
 
 # Use the cache
 response = client.models.generate_content(
-    model="gemini-3.5-flash",
+    model="gemini-3.6-flash",
     contents="Summarize the pdf",
     config=types.GenerateContentConfig(cached_content=content_cache.name),
 )
@@ -50,7 +50,7 @@ from google.genai import types
 client = genai.Client()
 
 job = client.batches.create(
-    model="gemini-3.5-flash",
+    model="gemini-3.6-flash",
     src="gs://your-bucket/prompts.jsonl",
     config=types.CreateBatchJobConfig(dest="gs://your-bucket/outputs"),
 )
@@ -67,7 +67,7 @@ while job.state not in completed_states:
 
 ### Thinking (Reasoning)
 
-Thinking is on by default for `gemini-3.1-pro-preview` (default `HIGH` / dynamic) and `gemini-3.5-flash` (default `MEDIUM`). `gemini-3.1-flash-lite` defaults to `MINIMAL`.
+Thinking is on by default for `gemini-3.1-pro-preview` (default `HIGH` / dynamic) and `gemini-3.6-flash` (default `MEDIUM`). `gemini-3.5-flash-lite` defaults to `MINIMAL`.
 It can be adjusted by using the `thinking_level` parameter.
 
 - **`MINIMAL`:** Constrains the model to use as few tokens as possible for thinking and is best used for low-complexity tasks that wouldn't benefit from extensive reasoning. (Not supported for `gemini-3.1-pro-preview`)
@@ -133,7 +133,7 @@ async def run():
 
             # Send request to the model with MCP function declarations
             response = await client.aio.models.generate_content(
-                model="gemini-3.5-flash",
+                model="gemini-3.6-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     tools=[

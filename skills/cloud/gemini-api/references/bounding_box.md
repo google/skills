@@ -35,7 +35,7 @@ config = GenerateContentConfig(
 image_uri = "gs://cloud-samples-data/generative-ai/image/socks.jpg"
 
 response = client.models.generate_content(
-    model="gemini-3.5-flash",
+    model="gemini-3.6-flash",
     contents=[
         Part.from_uri(file_uri=image_uri, mime_type="image/jpeg"),
         "Detect the socks in the image and provide bounding boxes.",

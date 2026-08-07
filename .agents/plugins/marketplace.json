@@ -1,0 +1,218 @@
+{
+  "name": "google-plugins",
+  "interface": {
+    "displayName": "Google Plugins"
+  },
+  "plugins": [
+    {
+      "name": "alloydb",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/gemini-cli-extensions/alloydb.git",
+        "ref": "0.2.0"
+      },
+      "description": "Create, connect, and interact with an AlloyDB for PostgreSQL database and data.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Databases"
+    },
+    {
+      "name": "alloydb-omni",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/gemini-cli-extensions/alloydb-omni.git",
+        "ref": "0.2.1"
+      },
+      "description": "Create, connect, and interact with an AlloyDB Omni database and data.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Databases"
+    },
+    {
+      "name": "bigtable",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/GoogleCloudPlatform/cloud-bigtable-ecosystem.git",
+        "ref": "v0.4.0"
+      },
+      "description": "Connect, query, and interact with Cloud Bigtable.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Databases"
+    },
+    {
+      "name": "cloud-sql-mysql",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/gemini-cli-extensions/cloud-sql-mysql.git",
+        "ref": "0.2.0"
+      },
+      "description": "Connect and interact with a Cloud SQL for MySQL database and data.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Databases"
+    },
+    {
+      "name": "cloud-sql-postgresql",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/gemini-cli-extensions/cloud-sql-postgresql.git",
+        "ref": "0.4.0"
+      },
+      "description": "Create, connect, and interact with a Cloud SQL for PostgreSQL database and data.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Databases"
+    },
+    {
+      "name": "cloud-sql-sqlserver",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/gemini-cli-extensions/cloud-sql-sqlserver.git",
+        "ref": "0.2.0"
+      },
+      "description": "Connect to Cloud SQL for SQL Server.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Databases"
+    },
+    {
+      "name": "firestore-native",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/gemini-cli-extensions/firestore-native.git",
+        "ref": "0.3.1"
+      },
+      "description": "Connect and interact with Cloud Firestore.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Databases"
+    },
+    {
+      "name": "data-agent-kit-starter-pack",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/gemini-cli-extensions/data-agent-kit-starter-pack.git",
+        "ref": "0.6.1"
+      },
+      "description": "This plugin provides a specialized suite of skills for data engineers and database practitioners working on Google Cloud. It acts as an expert assistant, allowing you to use natural language prompts in your preferred coding agent to architect complex data pipelines, transform data with dbt, write Spark and BigQuery SQL notebooks, and orchestrate end-to-end workflows across GCP's data ecosystem.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Databases"
+    },
+    {
+      "name": "google-cloud-storage",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/gemini-cli-extensions/google-cloud-storage.git",
+        "ref": "1.2.0"
+      },
+      "description": "Vetted Google Cloud Storage skills for your coding agent.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Storage"
+    },
+    {
+      "name": "looker",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/gemini-cli-extensions/looker.git",
+        "ref": "0.3.5"
+      },
+      "description": "Connect to Looker.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Business Intelligence & Analytics"
+    },
+    {
+      "name": "oracledb",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/gemini-cli-extensions/oracledb.git",
+        "ref": "0.2.3"
+      },
+      "description": "Connect, query, and interact with Oracle Databases and their data within Gemini CLI.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Databases"
+    },
+    {
+      "name": "spanner",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/gemini-cli-extensions/spanner.git",
+        "ref": "0.3.1"
+      },
+      "description": "Connect and interact with Spanner data using natural language.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Databases"
+    },
+    {
+      "name": "knowledge-catalog",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/gemini-cli-extensions/knowledge-catalog.git",
+        "ref": "0.5.2"
+      },
+      "description": "Skills for Knowledge Catalog.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data Governance & Management"
+    },
+    {
+      "name": "dataproc",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/gemini-cli-extensions/dataproc.git",
+        "ref": "0.1.0"
+      },
+      "description": "Skills for Dataproc.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data Processing & ETL"
+    },
+    {
+      "name": "bigquery",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/gemini-cli-extensions/bigquery-data-analytics.git",
+        "ref": "0.2.1"
+      },
+      "description": "Data Analytics skills for BigQuery.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data Warehousing & Data Lakes"
+    }
+  ]
+}

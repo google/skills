@@ -6,7 +6,7 @@ from google import genai
 
 client = genai.Client()
 response = client.models.generate_content(
-    model="gemini-3.5-flash",
+    model="gemini-3.6-flash",
     contents="How does AI work?",
 )
 print(response.text)
@@ -19,7 +19,7 @@ from google.genai import types
 
 client = genai.Client()
 chat_session = client.chats.create(
-    model="gemini-3.5-flash",
+    model="gemini-3.6-flash",
     history=[
         types.UserContent(
             parts=[
@@ -52,7 +52,7 @@ from google.genai import types
 
 client = genai.Client()
 for chunk in client.models.generate_content_stream(
-    model="gemini-3.5-flash", contents="Tell me a story in 300 words."
+    model="gemini-3.6-flash", contents="Tell me a story in 300 words."
 ):
     print(chunk.text, end="")
 ```
@@ -75,7 +75,7 @@ with open("local_image.jpg", "rb") as f:
     local_image = types.Part.from_bytes(data=f.read(), mime_type="image/jpeg")
 
 response = client.models.generate_content(
-    model="gemini-3.5-flash",
+    model="gemini-3.6-flash",
     contents=[
         "Generate a list of all the objects contained in both images.",
         gcs_image,
@@ -92,7 +92,7 @@ from google.genai import types
 
 client = genai.Client()
 response = client.models.generate_content(
-    model="gemini-3.5-flash",
+    model="gemini-3.6-flash",
     contents=[
         types.Part.from_uri(
             file_uri="https://www.youtube.com/watch?v=3KtWfp0UopM",

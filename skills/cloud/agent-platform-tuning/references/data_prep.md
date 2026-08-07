@@ -37,11 +37,17 @@ Suitable for base models or simple completion tasks.
 
 ## Bucket Considerations
 
-If a bucket does not exist, create one in the same region as your tuning job:
+If a bucket does not exist, create one. Because the default tuning location is
+`global` — the service picks whichever region has GPU capacity — the bucket
+should be a multi-region so it stays reachable wherever the job lands. Use `US`
+(or `EU` if the data must stay in Europe):
 
 ```bash
-gcloud storage buckets create gs://YOUR_BUCKET_NAME --location=YOUR_LOCATION
+gcloud storage buckets create gs://YOUR_BUCKET_NAME --location=US
 ```
+
+Only pin the bucket to a single region when the tuning job itself is pinned to
+that region.
 
 ## Formatting Best Practices
 

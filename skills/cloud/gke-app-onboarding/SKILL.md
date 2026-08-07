@@ -178,8 +178,8 @@ kubectl get pods -l app=my-app
 
 Once the application is running on GKE:
 
--   Configure autoscaling — see the `gke-scaling` skill
+-   Configure autoscaling — see the `gke-workload-scaling` skill
 -   Set up observability — see the `gke-observability` skill
--   Harden security — see the `gke-security` skill
+-   Harden security — see the `gke-workload-security` skill
 -   Configure reliability (PDBs, topology spread) — see the `gke-reliability`
     skill

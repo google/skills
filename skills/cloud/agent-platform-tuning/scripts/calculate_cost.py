@@ -3,7 +3,9 @@
 import argparse
 import json
 import sys
-import smart_open
+from typing import TextIO
+
+from google.cloud import storage
 
 # Data from
 # https://docs.google.com/spreadsheets/d/1pOXzfQBSCaKJYcemvRKv4b30qmUBx3yG28yScH-pnVI/edit?resourcekey=0-0kJGshytd3yrxB41YM4OFg&gid=0#gid=0
@@ -58,6 +60,34 @@ MODEL_DATA = {
 }
 
 
+def _open_jsonl(input_file: str) -> TextIO:
+  """Opens a local or ``gs://`` jsonl file for streaming text reads.
+
+  Args:
+    input_file: A local filesystem path or a ``gs://bucket/object`` URI.
+
+  Returns:
+    An open text-mode file object; the caller is responsible for closing it.
+
+  Raises:
+    ValueError: If the path uses a scheme other than ``gs://``, or is a
+      malformed ``gs://`` URI.
+  """
+  if input_file.startswith('gs://'):
+    bucket_name, _, blob_name = input_file[len('gs://') :].partition('/')
+    if not bucket_name or not blob_name:
+      raise ValueError(
+          f'Malformed GCS path: {input_file}. Expected gs://<bucket>/<object>.'
+      )
+    return storage.Client().bucket(bucket_name).blob(blob_name).open('r')
+  if '://' in input_file:
+    raise ValueError(
+        f'Unsupported file path: {input_file}. '
+        'Only local paths and gs:// paths are supported.'
+    )
+  return open(input_file, 'r')
+
+
 def count_characters(input_file: str) -> int:
   """Counts the characters in a jsonl dataset.
 
@@ -74,12 +104,7 @@ def count_characters(input_file: str) -> int:
     Total character count.
   """
   total_character_count = 0
-  if not input_file.startswith('gs://') and '://' in input_file:
-    raise ValueError(
-        f'Unsupported file path: {input_file}. '
-        'Only local paths and gs:// paths are supported.'
-    )
-  with smart_open.smart_open(input_file, 'r') as f:
+  with _open_jsonl(input_file) as f:
     for line in f:
       data = json.loads(line)
       for message in data['messages']:

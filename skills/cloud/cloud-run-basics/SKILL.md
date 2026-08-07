@@ -374,5 +374,9 @@ Replace `WORKER_POOL_NAME` with the name you want for your worker pool.
 -   [IAM & Security](references/iam-security.md): Roles, service identities,
     and ingress/egress controls.
 
+-   [Networking Best Practices & Cost Optimization](references/networking.md): Cost
+    optimization strategies, Direct VPC egress, IP address and port exhaustion
+    strategies, performance throughput tuning, and MTU settings.
+
 *If you need product information not found in these references, use the
     Developer Knowledge MCP server `search_documents` tool.*

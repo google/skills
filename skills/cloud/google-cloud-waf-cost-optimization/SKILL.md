@@ -14,6 +14,20 @@ provides a structured approach to optimize the costs of your cloud workloads
 while maximizing business value. Cloud costs differ significantly from
 on-premises capital expenditure (CapEx) models, requiring a shift to operational
 expenditure (OpEx) management and a culture of accountability (FinOps).
+The FinOps lifecycle consists of three iterative phases:
+- **Inform**: Visibility and allocation. Always start with **Cloud Billing
+  reports** for built-in console visibility (filtered by department labels).
+  Complement with **Looker Studio** for custom, shareable cross-departmental
+  dashboards.
+
+- **Optimize**: Rates and usage. Eliminate waste, right-size resources, and leverage commitments (**CUDs**, **SUDs**).
+- **Operate**: Continuous improvement. Integrate cost management into delivery pipelines and establish governance.
+
+## Operational instructions
+
+- **Comprehensive First**: Always provide a complete list of standard recommendations/strategies relevant to the service or scenario mentioned. Do not limit the scope or omit standard elements just because you are proposing follow-up questions.
+- **Full Conjunction**: When an instruction bundles multiple actions (e.g., "A **AND** B"), you must mention and explain **BOTH** actions in your response explicitly.
+- **Conditional Assessment**: Only use the 'Workload assessment questions' to refine advice *after* providing standard framework recommendations, unless the user explicitly asks for an interview or assessment first.
 
 ## Core principles
 
@@ -52,14 +66,16 @@ relevant to cost optimization:
 
 - **Visibility and monitoring**:
 
-  - **Cloud Billing reports**: Native dashboards for visualizing spending and
-    trends.
+  - **Cloud Billing reports**: Built-in dashboards for visualizing spending and
+    trends. **Essential for visibility within the console.**
   - **BigQuery billing export**: Enables granular, custom analysis of billing
     data using SQL and BI tools.
   - **Looker Studio**: Used for creating detailed, shared cost dashboards and
-    reports.
+    reports. **Use alongside Cloud Billing reports for custom visual insights.**
   - **Billing alerts and budgets**: Automated notifications when spending
     reaches predefined thresholds.
+  - **Storage Insights**: Used to analyze Cloud Storage access patterns and identify
+    cost-saving opportunities.
 
 - **Automation and optimization tools**:
 
@@ -78,10 +94,26 @@ relevant to cost optimization:
   - **Managed services and serverless services**: Services like Cloud Run, Cloud
     Run functions, and GKE Autopilot reduce operational overhead and pay-per-use
     scaling.
-  - **Compute Engine**: Use of Spot VMs for fault-tolerant workloads and
-    Committed Use Discounts (CUDs) for stable workloads.
-  - **Cloud Storage Lifecycle Policies**: Automatically moves data to lower-cost
+  - **Compute Engine**:
+    - **Committed Use Discounts (CUDs)**: Best for predictable, steady-state workloads.
+    - **Spot VMs**: Best for fault-tolerant, interruptible, or unpredictable batch tasks.
+    - **Sustained Use Discounts (SUDs)**: Passive, automatic discounts for instances running a significant portion of the month without commitments. **Always mention this as a passive alternative or complement to CUDs.**
+
+  - **Cloud Storage Lifecycle Policies**: Automated moves data to lower-cost
     storage classes (Nearline, Coldline, Archive) based on age or access.
+    **Note**: Always recommend **Storage Insights** first to understand current
+    access patterns before defining lifecycle rules.
+
+  - **Networking and Content Delivery**:
+    - **Location awareness**: Keep traffic within a single region where possible to avoid inter-region data transfer costs.
+    - **Cloud CDN**: Caches content to reduce data egress from the origin.
+    - **Network Service Tiers**: Offers **Standard Tier** as a lower-cost option compared to **Premium Tier** for latency-tolerant traffic.
+    - **Cloud Interconnect / Direct Peering**: Optimizes costs for high-volume data transfer to on-premises environments. **Note**: Always clarify hybrid connectivity options when discussing egress control, as on-premises sync is often a factor in multi-regional designs.
+  - **Managed Databases**:
+    - **Instance sizing**: Right-size CPU and memory based on Cloud Monitoring metrics.
+    - **High Availability (HA)**: Implement HA only for production environments to avoid doubling node costs for all environments.
+    - **Storage Optimization**: Optimize storage costs by managing backup retention policies **AND** explicitly identifying and deleting unused or idle resources (like unused and orphaned disks, expired snapshots, or idle instances).
+
 
 - **Organization and governance**:
 
@@ -126,11 +158,22 @@ cost-optimization recommendations:
   and active alerts.
 - **Rightsizing**: Resources are regularly adjusted based on rightsizing
   suggestions provided by Active Assist Recommender.
-- **Commitment Strategy**: Spend is reviewed monthly to optimize Committed
-  Use Discount coverage.
+- **Commitment Strategy**: Spend is reviewed monthly to optimize Committed Use Discount (CUD) coverage. For non-committed workloads, verify if **Sustained Use Discounts (SUDs)** are being captured automatically.
 - **Idle Resource Management**: Unused disks, IP addresses, and idle VMs are
   identified and removed monthly.
 - **Managed Services**: Serverless options are preferred for new workloads
   unless specific technical constraints exist.
 - **Storage Tiers**: Lifecycle policies are active for all major storage
-  buckets to minimize archival costs.
+  buckets to minimize archival costs. Be aware of **retrieval fees**
+  associated with Nearline, Coldline and Archive storage classes.
+- **Network Egress**: Data transfer is minimized by keeping traffic regional,
+  using **Cloud CDN**, and leveraging **Standard Network Tier** where
+  appropriate. High-volume on-premises traffic uses **Direct Peering** or
+  **Cloud Interconnect** (always verify if hybrid connectivity is involved).
+- **Native Reporting**: **Cloud Billing reports** must be used for standard
+  views of spending trends in the console.
+- **Custom Dashboards**: **Looker Studio** is used for advanced, shareable, and
+  customized reporting.
+
+
+

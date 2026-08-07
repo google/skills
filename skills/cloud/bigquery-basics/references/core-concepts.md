@@ -51,8 +51,8 @@ BigQuery organizes resources in a structured hierarchy:
     arrives in BigQuery. This feature enables unbounded streaming pipelines for
     real-time AI inference (using Vertex AI) and Reverse ETL to downstream
     systems. Results can be exported to Pub/Sub, Bigtable, Spanner, or other
-    BigQuery tables. Note that running continuous queries requires a BigQuery
-    reservation with a `CONTINUOUS` assignment type.
+    BigQuery tables. See [Continuous Queries](continuous-queries.md) for more
+    detail.
 
 ## BigQuery Studio
 

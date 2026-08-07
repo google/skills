@@ -207,5 +207,5 @@ Refer to [`references/troubleshooting.md`](references/troubleshooting.md) for th
 - [GKE Release Notes](https://cloud.google.com/kubernetes-engine/docs/release-notes)
 - [Upgrading GKE Clusters](https://cloud.google.com/kubernetes-engine/docs/how-to/upgrading-a-cluster)
 - [Maintenance Windows & Exclusions](https://cloud.google.com/kubernetes-engine/docs/concepts/maintenance-windows-and-exclusions)
-- [Rollout Sequencing Concepts](https://cloud.google.com/kubernetes-engine/docs/concepts/rollout-sequencing)
+- [Rollout Sequencing Concepts](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/rollout-sequencing/about-rollout-sequencing)
 - [Configure Rollout Sequencing](https://cloud.google.com/kubernetes-engine/docs/how-to/rollout-sequencing)

@@ -63,7 +63,7 @@ resource "google_cloud_run_v2_worker_pool" "default" {
 }
 ```
 
-### Reference dpcumentation
+### Reference documentation
 
 - [Terraform Google Provider - Cloud Run v2 Service](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/cloud_run_v2_service)
 

@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {workload_name}-model-staging
+  namespace: {namespace}
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      annotations:
+        gke-gcsfuse/volumes: "true"
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {k8s_service_account}
+      containers:
+      - name: model-downloader
+        image: python:3.11-slim
+        command:
+        - /bin/sh
+        - -c
+        - |
+          pip install --quiet huggingface_hub hf_transfer
+          export HF_HUB_ENABLE_HF_TRANSFER=1
+          python3 - <<'PYEOF'
+          import os
+          from huggingface_hub import snapshot_download
+          snapshot_download(
+              repo_id=os.environ["MODEL_ID"],
+              local_dir="/models/" + os.environ["MODEL_NAME"],
+              token=os.environ.get("HUGGING_FACE_HUB_TOKEN") or None,
+          )
+          print("Model downloaded successfully to /models/" + os.environ["MODEL_NAME"])
+          PYEOF
+        env:
+        - name: MODEL_ID
+          value: "{model_id}"
+        - name: MODEL_NAME
+          value: "{model_name}"
+        - name: HUGGING_FACE_HUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {hf_secret_name}
+              key: hf_api_token
+              optional: true
+        resources:
+          requests:
+            cpu: "2"
+            memory: 4Gi
+        volumeMounts:
+        - name: model-storage
+          mountPath: /models
+      volumes:
+      - name: model-storage
+        persistentVolumeClaim:
+          claimName: {pvc_name}

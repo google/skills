@@ -12,11 +12,30 @@ EvaluationDataset
 └── eval_dataset_df: pd.DataFrame    # Alternative: pandas DataFrame
 
 EvalCase
-├── prompt: str                      # Single-turn: the user query
-├── response: str                    # Single-turn: the model response
-├── reference: str                   # Ground truth (for reference-based metrics)
-├── agent_data: AgentData            # Multi-turn: full conversation trajectory
-└── (extra fields allowed)           # Custom fields for custom metrics
+├── prompt: genai_types.Content            # Single-turn: user query (NOT a str)
+├── responses: list[ResponseCandidate]     # Model replies (NOTE: plural, a list)
+├── reference: ResponseCandidate           # Ground truth (reference-based metrics)
+├── system_instruction: genai_types.Content  # System instruction for the model
+├── conversation_history: list[Message]    # Prior messages (chat history)
+├── eval_case_id: str                      # Unique identifier for the case
+├── agent_data: AgentData                  # Multi-turn: full conversation trajectory
+├── ... also: rubric_groups, intermediate_events, agent_info, user_scenario,
+│            interactions_data_source
+└── (extra fields allowed)                 # Custom fields for custom metrics
+
+ResponseCandidate
+└── response: genai_types.Content          # The model-generated Content
+
+NOTE: When constructing EvalCase objects directly:
+  * prompt is a Content (NOT a str). Passing a str raises
+    pydantic.ValidationError -- fails loudly.
+  * there is NO singular `response=` field -- use
+    `responses=[ResponseCandidate(...)]`. EvalCase sets extra="allow", so
+    `response=` does NOT raise; it is silently stored, never read, and the
+    candidate scores as missing -- fails quietly.
+  * reference is a ResponseCandidate (NOT a str)
+Simpler: use the pandas DataFrame form, whose converter accepts plain
+`prompt`/`response`/`reference` string columns and wraps them for you.
 
 AgentData
 ├── agents: dict[str, AgentConfig]   # Agent definitions
@@ -33,20 +52,28 @@ AgentEvent
 
 ## Single-Turn Dataset
 
-For simple prompt-response evaluation (e.g., QA, summarization).
+For simple prompt-response evaluation (e.g., QA, summarization). **The pandas
+DataFrame form (below) is the recommended, least error-prone way** -- it accepts
+plain strings. Direct `EvalCase` construction is shown here for reference; see
+the NOTE under Core Types above for the exact types.
 
 ```python
 from agentplatform import types
+from google.genai import types as genai_types
 
 dataset = types.EvaluationDataset(eval_cases=[
     types.EvalCase(
-        prompt="What is the capital of France?",
-        response="The capital of France is Paris.",
-        reference="Paris",
+        prompt=genai_types.UserContent("What is the capital of France?"),
+        responses=[types.ResponseCandidate(
+            response=genai_types.ModelContent(
+                "The capital of France is Paris."))],
+        reference=types.ResponseCandidate(
+            response=genai_types.ModelContent("Paris")),
     ),
     types.EvalCase(
-        prompt="Summarize this article: ...",
-        response="The article discusses...",
+        prompt=genai_types.UserContent("Summarize this article: ..."),
+        responses=[types.ResponseCandidate(
+            response=genai_types.ModelContent("The article discusses..."))],
     ),
 ])
 ```
@@ -65,9 +92,14 @@ df = pd.DataFrame({
 dataset = types.EvaluationDataset(eval_dataset_df=df)
 ```
 
-### Required fields by metric type
+### Required columns (DataFrame / JSONL form)
 
-Metric category          | Required fields
+These are DataFrame/JSONL *column* names, which the converter maps onto the
+`EvalCase` attributes above -- a `response` column becomes
+`responses=[ResponseCandidate(...)]`. There is still no singular `response=`
+constructor argument.
+
+Metric category          | Required columns
 ------------------------ | -------------------------------------------
 Predefined (single-turn) | `prompt`, `response`
 Computation-based        | `response`, `reference`
@@ -230,7 +262,7 @@ agent_data = types.evals.AgentData(
 ### Generate User Scenarios (Cold Start)
 
 ```python
-scenarios = client.evals.generate_user_scenarios(
+scenarios = client.evals.generate_conversation_scenarios(
     agents={
         "my_agent": types.evals.AgentConfig(
             agent_id="my_agent",

@@ -1,21 +1,12 @@
 #!/bin/bash
 set -e
 
-# Create a temporary directory for the virtual environment
-VENV_DIR=$(mktemp -d -t venv_verify.XXXXXX)
-python3 -m venv "$VENV_DIR"
-source "$VENV_DIR/bin/activate"
-
-# Trap to ensure cleanup happens on exit
-cleanup() {
-  echo "Cleaning up virtual environment..."
-  deactivate 2>/dev/null || true
-  rm -rf "$VENV_DIR"
-}
-trap cleanup EXIT
-
-echo "Installing requirements..."
-pip install -q -r scripts/requirements.txt
+# Verify against the ambient interpreter, which is the one the skill's scripts
+# actually run under. A throwaway venv would verify an environment no real
+# invocation ever uses, so it could pass while the real one is broken.
+echo "Checking dependencies..."
+python3 -c "import vertexai, google.genai, openai" \
+  || pip install -q -r scripts/requirements.txt
 
 echo "Running verification tests..."
 FAILED=0

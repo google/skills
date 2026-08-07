@@ -2,7 +2,12 @@
 name: google-cloud-waf-security
 metadata:
   category: WellArchitectedFramework
-description: Generates security-focused guidance for Google Cloud workloads based on the design principles and recommendations in the Google Cloud Well-Architected Framework (WAF). Use this skill to evaluate a workload, identify security requirements, and provide actionable recommendations for IAM, network security, data protection, and operational security.
+  description: >-
+    Generates security-focused guidance for Google Cloud workloads based on the
+    design principles and recommendations in the Google Cloud Well-Architected
+    Framework (WAF). Use this skill to evaluate workloads, identify security
+    requirements, and provide actionable recommendations for IAM, network
+    security, data protection, and operational security.
 ---
 
 # Google Cloud Well-Architected Framework skill for the Security pillar
@@ -16,6 +21,27 @@ It focuses on maintaining confidentiality and integrity of data and systems
 while ensuring compliance and privacy. It provides a structured approach to risk
 management, threat defense, and identity control, enabling you to operate cloud
 workloads securely and at scale.
+
+## Workflow
+
+When this skill is activated, follow these steps to evaluate and improve the
+security posture of the specified Google Cloud workload:
+
+1.  **Understand the context**: Ask targeted questions from the **Workload
+    assessment questions** list to gather information about the user's current
+    architecture, security requirements, and constraints.
+2.  **Analyze and identify gaps**: Evaluate the workload against the **Core
+    principles** and the **Validation checklist** to identify security
+    vulnerabilities, missing controls, or deviations from best practices.
+3.  **Formulate recommendations**: Provide actionable, prioritized guidance
+    based on the Google Cloud Well-Architected Framework. Recommend specific
+    products from **Relevant Google Cloud products** to address the identified
+    gaps.
+4.  **Explain the recommendations**: Align all recommendations with the
+    appropriate **Core principles** and state the benefits that each
+    recommendation provides.
+5.  **Iterate and refine**: Help the user adapt the recommendations to their
+    specific requirements and constraints.
 
 ## Core principles
 
@@ -32,7 +58,7 @@ aligned with the following core principles:
 -  **Implement zero trust**: Use a _never trust, always verify_ approach, where
    access to resources is granted based on continuous verification of trust.
    Google Cloud supports this principle through products like Chrome Enterprise
-   Premium and Identity-Aware Proxy (IAP). Grounding document:
+   Premium, Identity-Aware Proxy (IAP) and IAM Recommender. Grounding document:
    https://docs.cloud.google.com/architecture/framework/security/implement-zero-trust.md.txt
 
 -  **Implement shift-left security**: Implement security controls early in the
@@ -73,6 +99,14 @@ aligned with the following core principles:
    resource center. Grounding document:
    https://docs.cloud.google.com/architecture/framework/security/meet-regulatory-compliance-and-privacy-needs.md.txt
 
+- **Shared responsibilities and shared fate on Google Cloud**: Understand that
+  Google is responsible for the security _of_ the cloud and you're responsible
+  for the security of your workloads _in_ the cloud. Recognize how this division
+  of responsibilities varies based on the workload type. Learn what Google does
+  to help ensure that security _of_ the cloud. Take appropriate actions to help
+  ensure that your workloads are secure _in_ the cloud.
+  Grounding document: https://docs.cloud.google.com/architecture/framework/security/shared-responsibility-shared-fate.md.txt
+
 ## Relevant Google Cloud products
 
 The following are _examples_ of Google Cloud products and features that are
@@ -80,10 +114,13 @@ relevant to security:
 
 - **Identity and access management**
 
+  - **Cloud Identity**: Manage user lifecycles, authentication, and identity
+    federation.
   - **Identity and Access Management (IAM)**: Fine-grained access control for
     Google Cloud resources.
   - **Identity-Aware Proxy (IAP)**: Secure access to applications without a VPN.
   - **Chrome Enterprise Premium**: Endpoint security and context-aware access.
+  - **IAM Recommender**: Provide policy intelligence.
 
 - **Network security**
 
@@ -94,6 +131,7 @@ relevant to security:
     network traffic.
   - **Shared VPC**: Centralized network management across projects.
   - **Cloud Interconnect and IPsec VPN**: Secure, private connectivity.
+  -**Private Service Connect**: Provide private access to managed services
 
 - **Data security**
 
@@ -108,6 +146,7 @@ relevant to security:
   - **Security Command Center (SCC)**: Centralized vulnerability and threat
     management.
   - **Cloud Logging and Cloud Monitoring**: Visibility into system activity.
+  - **BigQuery**: Storing exported logs for analysis.
 
 - **Automation and supply chain**
 
@@ -280,6 +319,8 @@ security recommendations:
 
 - **Zero trust**:
 
+  - Is Cloud Identity used as a centralized identity provider for managing user
+    lifecycles and federation?
   - Is access control enforced based on user identity and context (device,
     location)?
   - Are private connectivity methods (Cloud Interconnect, VPN) used for internal
