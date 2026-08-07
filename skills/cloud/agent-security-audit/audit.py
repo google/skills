@@ -1,122 +1,386 @@
 """
-GCP Agent Security Audit Skill - Core Logic
+GCP Agent Security Audit Skill
+
+Proactive AI Agent security auditing using:
+- Google BigQuery
+- BigQuery ML anomaly detection
+- Cloud Monitoring / PubSub alerts
 """
-import os
+
 import json
 import re
+import logging
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import Dict, List, Any
 
 from google.cloud import bigquery
-from google.api_core import exceptions
+from google.cloud import pubsub_v1
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s"
+)
+
 
 class AgentSecurityAuditor:
-    """
-    مدقق أمني استباقي لوكلاء الذكاء الاصطناعي.
-    يفحص سجلات BigQuery بحثاً عن أنماط الهجوم باستخدام ملفات patterns/
-    """
-    
-    DEFAULT_MAX_ROWS = 500
-    SNIPPET_LENGTH = 60
-    
-    def __init__(self, project_id: str):
-        self.client = bigquery.Client(project=project_id)
-        self.patterns = self._load_threat_patterns()
-        
-    def _load_threat_patterns(self) -> Dict[str, str]:
-        """تحميل أنماط التهديد من ملفات SQL الموجودة في مجلد patterns/"""
-        patterns_dir = os.path.join(os.path.dirname(__file__), "patterns")
-        patterns = {}
-        
-        if os.path.exists(patterns_dir):
-            for file_name in os.listdir(patterns_dir):
-                if file_name.endswith(".sql"):
-                    file_path = os.path.join(patterns_dir, file_name)
-                    try:
-                        with open(file_path, 'r') as f:
-                            content = f.read().strip()
-                            if content:
-                                pattern_name = file_name.replace(".sql", "").upper()
-                                patterns[pattern_name] = content
-                    except Exception:
-                        pass 
-            
-        # إذا لم يتم تحميل أي شيء، نستخدم أنماطاً افتراضية (Fallback)
-        if not patterns:
-            patterns = {
-                "PROMPT_INJECTION": r"(?i)(ignore\s+(all\s+)?previous\s+instructions|you\s+are\s+now\s+a\s+|system\s+prompt|reveal\s+your\s+instructions)",
-                "DATA_EXFILTRATION": r"(?i)(send\s+data\s+to|upload\s+to|https?://|api[_\s]?key|password)",
-            }
-            
-        return patterns
 
-    def _sanitize_identifier(self, name: str) -> str:
-        sanitized = re.sub(r'[^a-zA-Z0-9_]', '', name)
-        if not sanitized:
-            raise ValueError(f"Invalid identifier: '{name}'")
-        return sanitized
-    
-    def _build_query(self, dataset: str, table: str, max_rows: int) -> str:
-        return f"""
-        SELECT interaction_log, timestamp, session_id
-        FROM `{dataset}.{table}`
-        WHERE interaction_log IS NOT NULL
-        LIMIT {max_rows}
+
+    MAX_ROWS = 10000
+
+
+    SECURITY_PATTERNS = {
+
+        "PROMPT_INJECTION":
+        r"(?i)(ignore previous instructions|ignore all previous|system prompt|developer message|reveal instructions)",
+
+
+        "JAILBREAK":
+        r"(?i)(jailbreak|bypass safety|disable safeguards|ignore policy)",
+
+
+        "ROLE_OVERRIDE":
+        r"(?i)(you are now|act as|pretend to be)",
+
+
+        "INDIRECT_PROMPT_INJECTION":
+        r"(?i)(hidden instruction|embedded command|retrieved document instruction|follow these instructions)",
+
+
+        "DATA_EXFILTRATION":
+        r"(?i)(api[_ -]?key|secret|password|token|private key|credentials)"
+
+    }
+
+
+
+    def __init__(
+        self,
+        project_id: str,
+        alert_topic: str = None
+    ):
+
+        self.project_id = project_id
+
+        self.bigquery = bigquery.Client(
+            project=project_id
+        )
+
+        self.publisher = pubsub_v1.PublisherClient()
+
+        self.alert_topic = alert_topic
+
+
+
+    # -------------------------------
+    # BigQuery Logs
+    # -------------------------------
+
+
+    def fetch_logs(
+        self,
+        table_id: str,
+        limit: int = 500
+    ):
+
+
+        limit = min(
+            limit,
+            self.MAX_ROWS
+        )
+
+
+        query = f"""
+
+        SELECT *
+        FROM `{table_id}`
+        LIMIT {limit}
+
         """
-    
-    def _analyze_log(self, log: str, timestamp: Any, session_id: Any) -> List[Dict[str, str]]:
-        findings = []
-        for threat_type, pattern in self.patterns.items():
-            if re.search(pattern, log, re.IGNORECASE):
-                findings.append({
-                    "threat_type": threat_type,
-                    "snippet": log[:self.SNIPPET_LENGTH] + "..." if len(log) > self.SNIPPET_LENGTH else log,
-                    "timestamp": str(timestamp),
-                    "session_id": str(session_id)
-                })
-                break
-        return findings
-    
-    def _format_response(self, status: str, **kwargs) -> str:
-        response = {
-            "status": status,
-            "audit_time": datetime.now().isoformat(),
-            **kwargs
-        }
-        return json.dumps(response, indent=2, ensure_ascii=False)
-    
-    def run_audit(self, dataset_id: str, table_id: str, max_rows: int = DEFAULT_MAX_ROWS) -> str:
-        try:
-            ds = self._sanitize_identifier(dataset_id)
-            tb = self._sanitize_identifier(table_id)
-            
-            query = self._build_query(ds, tb, max_rows)
-            query_job = self.client.query(query)
-            
-            all_findings = []
-            for row in query_job.result():
-                log = row.interaction_log
-                timestamp = row.timestamp
-                session_id = row.get("session_id", "unknown")
-                all_findings.extend(self._analyze_log(log, timestamp, session_id))
-            
-            return self._format_response(
-                "AUDIT_COMPLETE",
-                threats_found=len(all_findings),
-                findings=all_findings,
-                patterns_used=list(self.patterns.keys())
-            )
-            
-        except exceptions.GoogleAPIError as e:
-            return self._format_response("ERROR", message=str(e))
-        except ValueError as e:
-            return self._format_response("ERROR", message=f"Validation error: {str(e)}")
-        except Exception as e:
-            return self._format_response("ERROR", message=f"Unexpected error: {str(e)}")
 
-if __name__ == "__main__":
-    auditor = AgentSecurityAuditor(project_id="your-gcp-project-id")
-    report = json.loads(auditor.run_audit("your_dataset", "your_table"))
-    print(f"Audit Status: {report['status']}")
-    print(f"Patterns Used: {report['patterns_used']}")
-    print(f"Threats Found: {report['threats_found']}")
+
+        rows = self.bigquery.query(
+            query
+        ).result()
+
+
+        return [
+            dict(row)
+            for row in rows
+        ]
+
+
+
+    # -------------------------------
+    # Threat Detection
+    # -------------------------------
+
+
+    def scan_text(
+        self,
+        text: str
+    ):
+
+
+        findings = []
+
+
+        for name, pattern in self.SECURITY_PATTERNS.items():
+
+
+            if re.search(
+                pattern,
+                text
+            ):
+
+                findings.append(
+                    {
+                        "type": name,
+                        "severity":
+                            self.severity(name)
+                    }
+                )
+
+
+        return findings
+
+
+
+    def audit_logs(
+        self,
+        logs
+    ):
+
+
+        results = []
+
+
+        for index, log in enumerate(logs):
+
+
+            content = json.dumps(
+                log,
+                ensure_ascii=False
+            )
+
+
+            issues = self.scan_text(
+                content
+            )
+
+
+            if issues:
+
+                results.append(
+                    {
+                        "row": index,
+                        "time":
+                        datetime.utcnow().isoformat(),
+                        "issues": issues
+                    }
+                )
+
+
+        return results
+
+
+
+    # -------------------------------
+    # BigQuery ML Anomaly
+    # -------------------------------
+
+
+    def anomaly_detection(
+        self,
+        table_id
+    ):
+
+
+        query = f"""
+
+        SELECT *
+        FROM ML.DETECT_ANOMALIES(
+            MODEL `{table_id}_model`,
+            STRUCT(0.95 AS contamination)
+        )
+
+        """
+
+
+        try:
+
+            result = self.bigquery.query(
+                query
+            ).result()
+
+
+            return [
+                dict(row)
+                for row in result
+            ]
+
+
+        except Exception as e:
+
+
+            logging.warning(
+                "BigQuery ML unavailable: %s",
+                e
+            )
+
+
+            return {
+                "status":
+                "not_configured"
+            }
+
+
+
+    # -------------------------------
+    # Save Security Report
+    # -------------------------------
+
+
+    def save_report(
+        self,
+        table_id,
+        report
+    ):
+
+
+        errors = self.bigquery.insert_rows_json(
+            table_id,
+            [
+                {
+                    "timestamp":
+                    datetime.utcnow().isoformat(),
+
+                    "report":
+                    json.dumps(report)
+                }
+            ]
+        )
+
+
+        return errors == []
+
+
+
+    # -------------------------------
+    # Alerts
+    # -------------------------------
+
+
+    def send_alert(
+        self,
+        message
+    ):
+
+
+        if not self.alert_topic:
+
+            return
+
+
+        topic = (
+            f"projects/{self.project_id}/topics/"
+            f"{self.alert_topic}"
+        )
+
+
+        self.publisher.publish(
+            topic,
+            json.dumps(message).encode(
+                "utf-8"
+            )
+        )
+
+
+    # -------------------------------
+    # Final Audit
+    # -------------------------------
+
+
+    def run_audit(
+        self,
+        logs_table,
+        report_table=None
+    ):
+
+
+        logs = self.fetch_logs(
+            logs_table
+        )
+
+
+        findings = self.audit_logs(
+            logs
+        )
+
+
+        anomalies = self.anomaly_detection(
+            logs_table
+        )
+
+
+        risk = (
+            "HIGH"
+            if findings
+            else "LOW"
+        )
+
+
+        report = {
+
+            "generated":
+            datetime.utcnow().isoformat(),
+
+            "risk":
+            risk,
+
+            "findings":
+            findings,
+
+            "anomalies":
+            anomalies
+
+        }
+
+
+
+        if report_table:
+
+            self.save_report(
+                report_table,
+                report
+            )
+
+
+
+        if risk == "HIGH":
+
+            self.send_alert(
+                report
+            )
+
+
+
+        return report
+
+
+
+    @staticmethod
+    def severity(
+        name
+    ):
+
+
+        if name in [
+            "DATA_EXFILTRATION",
+            "JAILBREAK"
+        ]:
+
+            return "HIGH"
+
+
+        return "MEDIUM"
