@@ -7,6 +7,7 @@ Proactive AI Agent security auditing using:
 - Cloud Monitoring / PubSub alerts
 """
 
+import os
 import json
 import re
 import logging
@@ -24,34 +25,12 @@ logging.basicConfig(
 
 
 class AgentSecurityAuditor:
+    """
+    Security auditor for AI Agent logs.
+    """
 
 
     MAX_ROWS = 10000
-
-
-    SECURITY_PATTERNS = {
-
-        "PROMPT_INJECTION":
-        r"(?i)(ignore previous instructions|ignore all previous|system prompt|developer message|reveal instructions)",
-
-
-        "JAILBREAK":
-        r"(?i)(jailbreak|bypass safety|disable safeguards|ignore policy)",
-
-
-        "ROLE_OVERRIDE":
-        r"(?i)(you are now|act as|pretend to be)",
-
-
-        "INDIRECT_PROMPT_INJECTION":
-        r"(?i)(hidden instruction|embedded command|retrieved document instruction|follow these instructions)",
-
-
-        "DATA_EXFILTRATION":
-        r"(?i)(api[_ -]?key|secret|password|token|private key|credentials)"
-
-    }
-
 
 
     def __init__(
@@ -70,11 +49,60 @@ class AgentSecurityAuditor:
 
         self.alert_topic = alert_topic
 
+        self.patterns = self.load_patterns()
 
 
-    # -------------------------------
+
+    # --------------------------------
+    # Load Security Patterns
+    # --------------------------------
+
+
+    def load_patterns(self):
+
+        patterns = {}
+
+        path = os.path.join(
+            os.path.dirname(__file__),
+            "patterns"
+        )
+
+
+        if os.path.exists(path):
+
+            for file in os.listdir(path):
+
+                if file.endswith(".sql"):
+
+                    with open(
+                        os.path.join(path, file),
+                        "r",
+                        encoding="utf-8"
+                    ) as f:
+
+                        patterns[
+                            file.replace(
+                                ".sql",
+                                ""
+                            ).upper()
+                        ] = f.read().strip()
+
+
+
+        if not patterns:
+
+            logging.warning(
+                "No patterns found"
+            )
+
+
+        return patterns
+
+
+
+    # --------------------------------
     # BigQuery Logs
-    # -------------------------------
+    # --------------------------------
 
 
     def fetch_logs(
@@ -99,21 +127,21 @@ class AgentSecurityAuditor:
         """
 
 
-        rows = self.bigquery.query(
+        result = self.bigquery.query(
             query
         ).result()
 
 
         return [
             dict(row)
-            for row in rows
+            for row in result
         ]
 
 
 
-    # -------------------------------
+    # --------------------------------
     # Threat Detection
-    # -------------------------------
+    # --------------------------------
 
 
     def scan_text(
@@ -125,20 +153,29 @@ class AgentSecurityAuditor:
         findings = []
 
 
-        for name, pattern in self.SECURITY_PATTERNS.items():
+        for name, pattern in self.patterns.items():
 
+            try:
 
-            if re.search(
-                pattern,
-                text
-            ):
+                if re.search(
+                    pattern,
+                    text
+                ):
 
-                findings.append(
-                    {
-                        "type": name,
-                        "severity":
+                    findings.append(
+                        {
+                            "type": name,
+                            "severity":
                             self.severity(name)
-                    }
+                        }
+                    )
+
+            except re.error as error:
+
+                logging.error(
+                    "Invalid pattern %s: %s",
+                    name,
+                    error
                 )
 
 
@@ -148,15 +185,14 @@ class AgentSecurityAuditor:
 
     def audit_logs(
         self,
-        logs
+        logs: List[Dict[str,Any]]
     ):
 
 
-        results = []
+        findings = []
 
 
         for index, log in enumerate(logs):
-
 
             content = json.dumps(
                 log,
@@ -171,28 +207,28 @@ class AgentSecurityAuditor:
 
             if issues:
 
-                results.append(
+                findings.append(
                     {
                         "row": index,
-                        "time":
+                        "timestamp":
                         datetime.utcnow().isoformat(),
                         "issues": issues
                     }
                 )
 
 
-        return results
+        return findings
 
 
 
-    # -------------------------------
-    # BigQuery ML Anomaly
-    # -------------------------------
+    # --------------------------------
+    # BigQuery ML
+    # --------------------------------
 
 
     def anomaly_detection(
         self,
-        table_id
+        model_id: str
     ):
 
 
@@ -200,8 +236,10 @@ class AgentSecurityAuditor:
 
         SELECT *
         FROM ML.DETECT_ANOMALIES(
-            MODEL `{table_id}_model`,
-            STRUCT(0.95 AS contamination)
+            MODEL `{model_id}`,
+            STRUCT(
+                0.95 AS contamination
+            )
         )
 
         """
@@ -220,12 +258,11 @@ class AgentSecurityAuditor:
             ]
 
 
-        except Exception as e:
-
+        except Exception as error:
 
             logging.warning(
-                "BigQuery ML unavailable: %s",
-                e
+                "BigQuery ML anomaly detection unavailable: %s",
+                error
             )
 
 
@@ -236,44 +273,49 @@ class AgentSecurityAuditor:
 
 
 
-    # -------------------------------
-    # Save Security Report
-    # -------------------------------
+    # --------------------------------
+    # Save Report
+    # --------------------------------
 
 
     def save_report(
         self,
-        table_id,
-        report
+        table_id: str,
+        report: dict
     ):
+
+
+        rows = [
+
+            {
+                "timestamp":
+                datetime.utcnow().isoformat(),
+
+                "report":
+                json.dumps(report)
+            }
+
+        ]
 
 
         errors = self.bigquery.insert_rows_json(
             table_id,
-            [
-                {
-                    "timestamp":
-                    datetime.utcnow().isoformat(),
-
-                    "report":
-                    json.dumps(report)
-                }
-            ]
+            rows
         )
 
 
-        return errors == []
+        return not errors
 
 
 
-    # -------------------------------
-    # Alerts
-    # -------------------------------
+    # --------------------------------
+    # Alert System
+    # --------------------------------
 
 
     def send_alert(
         self,
-        message
+        report
     ):
 
 
@@ -290,21 +332,23 @@ class AgentSecurityAuditor:
 
         self.publisher.publish(
             topic,
-            json.dumps(message).encode(
-                "utf-8"
-            )
+            json.dumps(
+                report
+            ).encode("utf-8")
         )
 
 
-    # -------------------------------
-    # Final Audit
-    # -------------------------------
+
+    # --------------------------------
+    # Main Audit
+    # --------------------------------
 
 
     def run_audit(
         self,
-        logs_table,
-        report_table=None
+        logs_table: str,
+        report_table: str = None,
+        ml_model: str = None
     ):
 
 
@@ -318,9 +362,14 @@ class AgentSecurityAuditor:
         )
 
 
-        anomalies = self.anomaly_detection(
-            logs_table
-        )
+        anomalies = {}
+
+
+        if ml_model:
+
+            anomalies = self.anomaly_detection(
+                ml_model
+            )
 
 
         risk = (
@@ -362,7 +411,6 @@ class AgentSecurityAuditor:
             self.send_alert(
                 report
             )
-
 
 
         return report
