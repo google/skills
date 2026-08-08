@@ -17,6 +17,30 @@ npx skills add google/skills
 From the `npx install` command, you can select the specific skills from this
 repo to install.
 
+### Pinning a version
+
+To install a specific version of a skill, append a git reference (`#ref`) to
+the package path — the ref can be a commit SHA, tag, or branch:
+
+```bash
+# Pin a skill to a specific commit
+npx skills add google/skills/skills/cloud/gke-basics#6f0b877
+
+# Pin to a branch
+npx skills add google/skills/skills/cloud/gke-basics#main
+```
+
+This works with other agent package managers too, e.g. Microsoft's
+[`apm`](https://github.com/microsoft/apm):
+
+```bash
+apm install -g google/skills/skills/cloud/gke-basics#6f0b877
+```
+
+Pinning is useful for reproducible agent setups (CI pipelines, team
+workspaces) where you want to control exactly which version of a skill is in
+use.
+
 ## Available Skills
 
 <!-- BEGIN SKILLS -->
