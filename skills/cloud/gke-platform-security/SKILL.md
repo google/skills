@@ -192,8 +192,8 @@ gcloud projects add-iam-policy-binding <PROJECT_ID> \
 
 - [GKE Cluster Hardening Guide](https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster)
 - [GKE RBAC Best Practices](https://cloud.google.com/kubernetes-engine/docs/best-practices/rbac)
-- [Secret Manager Add-on for GKE](https://cloud.google.com/kubernetes-engine/docs/how-to/secret-manager)
-- [Binary Authorization on GKE](https://cloud.google.com/binary-authorization/docs/getting-started-gke)
+- [Secret Manager Add-on for GKE](https://cloud.google.com/secret-manager/docs/secret-manager-managed-csi-component)
+- [Binary Authorization on GKE](https://cloud.google.com/binary-authorization/docs/setting-up)
 - [Shielded GKE Nodes](https://cloud.google.com/kubernetes-engine/docs/how-to/shielded-gke-nodes)
-- [GKE Sandbox (gVisor)](https://cloud.google.com/kubernetes-engine/docs/concepts/sandbox)
+- [GKE Sandbox (gVisor)](https://cloud.google.com/kubernetes-engine/docs/concepts/sandbox-pods)
 ```

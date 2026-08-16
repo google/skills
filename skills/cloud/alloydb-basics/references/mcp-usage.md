@@ -22,7 +22,7 @@ Replace `REGION` with the target Google Cloud region ID (e.g., `us-central1`).
 
 ## Resources
 
--   [AlloyDB API Documentation](https://cloud.google.com/alloydb/docs/reference/)
+-   [AlloyDB API Documentation](https://cloud.google.com/alloydb/docs/reference/rest)
 -   [MCP Toolbox](https://mcp-toolbox.dev/): Use this open-source tool as a
     local alternative to run the remote MCP server in development environments.
     -   [MCP Toolbox AlloyDB Integration](https://mcp-toolbox.dev/integrations/alloydb/source/)
