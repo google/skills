@@ -236,6 +236,6 @@ This will log connection details to Cloud Logging.
 
 -   [Workload Identity Federation for GKE](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity)
 -   [GKE Network Policies](https://cloud.google.com/kubernetes-engine/docs/how-to/network-policy)
--   [Pod Security Standards in GKE](https://cloud.google.com/kubernetes-engine/docs/how-to/pod-security-standards)
--   [Google Secret Manager CSI Driver](https://cloud.google.com/kubernetes-engine/docs/how-to/secret-manager)
+-   [Pod Security Standards in GKE](https://cloud.google.com/kubernetes-engine/docs/how-to/podsecurityadmission)
+-   [Google Secret Manager CSI Driver](https://cloud.google.com/secret-manager/docs/secret-manager-managed-csi-component)
 -   [GKE Dataplane V2 Network Logging](https://cloud.google.com/kubernetes-engine/docs/how-to/network-policy-logging)

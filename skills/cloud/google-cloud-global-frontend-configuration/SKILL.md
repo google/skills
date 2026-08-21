@@ -122,7 +122,7 @@ Propose a "Recommended Configuration" based entirely on the Workload Type from S
 ---
 
 ## Relevant Documentation & Supportive Links
-- [Cloud Load Balancing Overview](https://cloud.google.com/load-balancing/docs/overview)
+- [Cloud Load Balancing Overview](https://cloud.google.com/load-balancing/docs/load-balancing-overview)
 - [Cloud CDN Documentation](https://cloud.google.com/cdn/docs)
 - [Cloud Armor Documentation](https://cloud.google.com/armor/docs)
 - [Cloud Load Balancing Service Extensions](https://cloud.google.com/service-extensions/docs/overview)
