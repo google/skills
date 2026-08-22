@@ -36,19 +36,19 @@ Each plugin is pinned to the release tag shown. To update the working tree to th
 | :--- | :--- | :--- | :--- |
 | **AlloyDB for PostgreSQL** | [alloydb](https://github.com/gemini-cli-extensions/alloydb) | `0.2.0` | Create, connect, and interact with an AlloyDB for PostgreSQL database and data. |
 | **AlloyDB Omni** | [alloydb-omni](https://github.com/gemini-cli-extensions/alloydb-omni) | `0.2.1` | Create, connect, and interact with an AlloyDB Omni database and data. |
-| **BigQuery Data Analytics** | [bigquery-data-analytics](https://github.com/gemini-cli-extensions/bigquery-data-analytics) | `0.2.1` | Connect, query, and generate data insights for BigQuery datasets and data. |
+| **BigQuery Data Analytics** | [bigquery-data-analytics](https://github.com/gemini-cli-extensions/bigquery-data-analytics) | `0.2.2` | Connect, query, and generate data insights for BigQuery datasets and data. |
 | **Cloud SQL for MySQL** | [cloud-sql-mysql](https://github.com/gemini-cli-extensions/cloud-sql-mysql) | `0.2.0` | Connect and interact with a Cloud SQL for MySQL database and data. |
 | **Cloud SQL for PostgreSQL** | [cloud-sql-postgresql](https://github.com/gemini-cli-extensions/cloud-sql-postgresql) | `0.4.0` | Create, connect, and interact with a Cloud SQL for PostgreSQL database and data. |
 | **Cloud SQL for SQL Server** | [cloud-sql-sqlserver](https://github.com/gemini-cli-extensions/cloud-sql-sqlserver) | `0.2.0` | Connect to and interact with a Cloud SQL for SQL Server database. |
-| **Data Agent Kit Starter Pack** | [data-agent-kit-starter-pack](https://github.com/gemini-cli-extensions/data-agent-kit-starter-pack) | `0.6.1` | A specialized suite of skills for data engineers and database practitioners on Google Cloud — architect data pipelines, transform data with dbt, write Spark/BigQuery notebooks, and orchestrate end-to-end workflows. |
+| **Data Agent Kit Starter Pack** | [data-agent-kit-starter-pack](https://github.com/gemini-cli-extensions/data-agent-kit-starter-pack) | `0.8.0` | A specialized suite of skills for data engineers and database practitioners on Google Cloud — architect data pipelines, transform data with dbt, write Spark/BigQuery notebooks, and orchestrate end-to-end workflows. |
 | **Dataproc** | [dataproc](https://github.com/gemini-cli-extensions/dataproc) | `0.1.0` | Manage Dataproc clusters and jobs. |
-| **DB Context Engineering Agent** | [db-context-enrichment](https://github.com/GoogleCloudPlatform/db-context-enrichment) | `v0.6.0` | Author and maintain QueryData / Conversational Analytics API context sets that teach the NL→SQL planner your schema vocabulary and golden query shapes. |
-| **Firestore** | [firestore-native](https://github.com/gemini-cli-extensions/firestore-native) | `0.3.1` | Connect and interact with Cloud Firestore. |
-| **Google Cloud Storage** | [google-cloud-storage](https://github.com/gemini-cli-extensions/google-cloud-storage) | `1.2.0` | Vetted Google Cloud Storage skills for your coding agent. |
-| **Knowledge Catalog** | [knowledge-catalog](https://github.com/gemini-cli-extensions/knowledge-catalog) | `0.5.2` | Connect to Knowledge Catalog (formerly Dataplex) to discover, manage, monitor, and govern data and AI artifacts across your data platform. |
-| **Looker** | [looker](https://github.com/gemini-cli-extensions/looker) | `0.3.5` | Connect to Looker and interact with your data using LookML. |
-| **Oracle Database** | [oracledb](https://github.com/gemini-cli-extensions/oracledb) | `0.2.3` | Connect, query, and interact with Oracle Databases and their data. |
-| **Spanner** | [spanner](https://github.com/gemini-cli-extensions/spanner) | `0.3.1` | Connect and interact with Spanner data using natural language. |
+| **DB Context Engineering Agent** | [db-context-enrichment](https://github.com/GoogleCloudPlatform/db-context-enrichment) | `v0.7.2` | Author and maintain QueryData / Conversational Analytics API context sets that teach the NL→SQL planner your schema vocabulary and golden query shapes. |
+| **Firestore** | [firestore-native](https://github.com/gemini-cli-extensions/firestore-native) | `0.3.4` | Connect and interact with Cloud Firestore. |
+| **Google Cloud Storage** | [google-cloud-storage](https://github.com/gemini-cli-extensions/google-cloud-storage) | `2.6.0` | Vetted Google Cloud Storage skills for your coding agent. |
+| **Knowledge Catalog** | [knowledge-catalog](https://github.com/gemini-cli-extensions/knowledge-catalog) | `0.5.3` | Connect to Knowledge Catalog (formerly Dataplex) to discover, manage, monitor, and govern data and AI artifacts across your data platform. |
+| **Looker** | [looker](https://github.com/gemini-cli-extensions/looker) | `0.3.10` | Connect to Looker and interact with your data using LookML. |
+| **Oracle Database** | [oracledb](https://github.com/gemini-cli-extensions/oracledb) | `0.2.6` | Connect, query, and interact with Oracle Databases and their data. |
+| **Spanner** | [spanner](https://github.com/gemini-cli-extensions/spanner) | `0.3.5` | Connect and interact with Spanner data using natural language. |
 
 ## Updating a pinned version
 

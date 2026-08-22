@@ -9,7 +9,7 @@
 [submodule "bigquery-data-analytics"]
 	path = plugins/cloud/data-agent-kit/bigquery-data-analytics
 	url = https://github.com/gemini-cli-extensions/bigquery-data-analytics
-	branch = 0.2.1
+	branch = 0.2.2
 [submodule "cloud-sql-mysql"]
 	path = plugins/cloud/data-agent-kit/cloud-sql-mysql
 	url = https://github.com/gemini-cli-extensions/cloud-sql-mysql
@@ -25,7 +25,7 @@
 [submodule "data-agent-kit-starter-pack"]
 	path = plugins/cloud/data-agent-kit/data-agent-kit-starter-pack
 	url = https://github.com/gemini-cli-extensions/data-agent-kit-starter-pack
-	branch = 0.6.1
+	branch = 0.8.0
 [submodule "dataproc"]
 	path = plugins/cloud/data-agent-kit/dataproc
 	url = https://github.com/gemini-cli-extensions/dataproc
@@ -33,31 +33,31 @@
 [submodule "db-context-enrichment"]
 	path = plugins/cloud/data-agent-kit/db-context-enrichment
 	url = https://github.com/GoogleCloudPlatform/db-context-enrichment
-	branch = v0.6.0
+	branch = v0.7.2
 [submodule "firestore-native"]
 	path = plugins/cloud/data-agent-kit/firestore-native
 	url = https://github.com/gemini-cli-extensions/firestore-native
-	branch = 0.3.1
+	branch = 0.3.4
 [submodule "google-cloud-storage"]
 	path = plugins/cloud/data-agent-kit/google-cloud-storage
 	url = https://github.com/gemini-cli-extensions/google-cloud-storage
-	branch = 1.2.0
+	branch = 2.6.0
 [submodule "knowledge-catalog"]
 	path = plugins/cloud/data-agent-kit/knowledge-catalog
 	url = https://github.com/gemini-cli-extensions/knowledge-catalog
-	branch = 0.5.2
+	branch = 0.5.3
 [submodule "looker"]
 	path = plugins/cloud/data-agent-kit/looker
 	url = https://github.com/gemini-cli-extensions/looker
-	branch = 0.3.5
+	branch = 0.3.10
 [submodule "oracledb"]
 	path = plugins/cloud/data-agent-kit/oracledb
 	url = https://github.com/gemini-cli-extensions/oracledb
-	branch = 0.2.3
+	branch = 0.2.6
 [submodule "spanner"]
 	path = plugins/cloud/data-agent-kit/spanner
 	url = https://github.com/gemini-cli-extensions/spanner
-	branch = 0.3.1
+	branch = 0.3.5
 [submodule "cloud-bigtable-ecosystem"]
 	path = plugins/cloud/data-agent-kit/cloud-bigtable-ecosystem
 	url = https://github.com/GoogleCloudPlatform/cloud-bigtable-ecosystem.git
