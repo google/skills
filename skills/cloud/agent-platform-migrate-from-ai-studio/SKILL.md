@@ -264,7 +264,7 @@ echo "Project number: $PROJECT_NUMBER"
 Within a Compute Engine VM, run:
 
 ```bash
-export PROJECT_NUMBER=$(curl "http://metadata.google.internal/computeMetadata/v1/project/project-id" -H "Metadata-Flavor: Google")
+export PROJECT_NUMBER=$(curl "http://metadata.google.internal/computeMetadata/v1/project/numeric-project-id" -H "Metadata-Flavor: Google")
 echo "Project number: $PROJECT_NUMBER"
 ```
 
