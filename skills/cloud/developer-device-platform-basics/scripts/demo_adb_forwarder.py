@@ -13,9 +13,7 @@ import struct
 import sys
 from typing import Any
 
-from absl import app
-from absl import flags
-from absl import logging
+from absl import app, flags, logging
 from google.api_core import client_options
 from google.cloud import devicestreaming_v1
 from google.oauth2 import credentials
@@ -285,7 +283,7 @@ class AdbForwarder:
     """
     await send_packet(writer, OKAY, local_id, local_id)
     reason = "reverse forwarding not supported"
-    fail_str = f"FAIL{len(reason):04X}{reason}".encode("utf-8")
+    fail_str = f"FAIL{len(reason):04X}{reason}".encode()
     await send_packet(writer, WRTE, local_id, local_id, fail_str)
     await send_packet(writer, CLSE, local_id, local_id)
 
