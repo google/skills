@@ -253,39 +253,21 @@ these steps.
     Account) has the `aiplatform.user` IAM role - see Authentication and
     Authorization section above.
 
-3.  Get the project number from the user's project ID. Outside of GCE, run:
+3.  Authenticate using Application Default Credentials (ADC) appropriate for
+    the runtime:
 
-```bash
-export PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format="value(projectNumber)")
-echo "Project number: $PROJECT_NUMBER"
+    * On a Compute Engine VM, ADC automatically uses the VM's attached Service
+      Account. Do not create, copy, or configure a Service Account key file.
+    * On a workstation, authenticate with your user identity:
 
-```
+      ```bash
+      gcloud auth application-default login
+      ```
 
-Within a Compute Engine VM, run:
+    * On a non-Google-Cloud host, use [Workload Identity Federation](https://docs.cloud.google.com/iam/docs/workload-identity-federation)
+      rather than a downloaded Service Account key.
 
-```bash
-export PROJECT_NUMBER=$(curl "http://metadata.google.internal/computeMetadata/v1/project/project-id" -H "Metadata-Flavor: Google")
-echo "Project number: $PROJECT_NUMBER"
-```
-
-4.  From outside the GCE instance, generate `GOOGLE_APPLICATION_CREDENTIALS`
-    using the Google Cloud project number. Then, `scp` these credentials to the
-    GCE VM.
-
-```bash
-mkdir -p ~/.config/gcloud
-gcloud iam service-accounts keys create ~/.config/gcloud/application_default_credentials.json --iam-account="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
-```
-
-> ⚠️ **Troubleshooting Policy Constraints on New Orgs**: New Google
-> Cloud organizations (created on or after May 4th, 2024) enforce a [legacy Organization Policy, restricting Service Account Key Creation](https://docs.cloud.google.com/organization-policy/restrict-service-accounts.md.txt). To complete this step, this Org Policy must be temporarily disabled.
-> An Organization Policy Admin must set this policy to Inactive. 
-> To the agent: Check if this policy is enforced, and if it is: pause, and 
-> prompt the user to disable it at this Console link: 
-> https://console.cloud.google.com/iam-admin/orgpolicies
-
-
-5.  Edit the configuration file that's usually located at:
+4.  Edit the configuration file that's usually located at:
     `~/.openclaw/openclaw.json`. Ensure you prefix the Gemini model with
     `google-vertex/`.
 
@@ -300,8 +282,7 @@ gcloud iam service-accounts keys create ~/.config/gcloud/application_default_cre
   "env": {
     "vars": {
       "GOOGLE_CLOUD_PROJECT": "PROJECT_ID",
-      "GOOGLE_CLOUD_LOCATION": "global",
-      "GOOGLE_APPLICATION_CREDENTIALS": "~/.config/gcloud/application_default_credentials.json"
+      "GOOGLE_CLOUD_LOCATION": "global"
     }
   },
   "agents": {
