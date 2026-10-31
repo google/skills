@@ -3,7 +3,7 @@ name: secops-detection-engineering
 metadata:
   category: Security
   author: Google LLC
-  version: "1.1.2"
+  version: "1.2.0"
   status: published
 description: >-
   Author, validate, test, and deploy YARA-L 2.0 detection rules and evaluate
@@ -74,18 +74,20 @@ Choose **Detection Coverage Evaluation** when analyzing external intelligence to
 
 Before initiating detection engineering operations, verify tool availability in the environment:
 
-| Capability | Remote MCP Tool (Primary) | Local Tool (Fallback) | Description |
+<!-- disableFinding(LINE_OVER_80) -->
+
+| Capability & Stage | Primary / Fallback Tool | Key Input Arguments | Return Values / Output |
 | :--- | :--- | :--- | :--- |
-| **Validate Rule Syntax** | `validate_rule` | `validate_rule` | Validates YARA-L 2.0 syntax before deployment. |
-| **Test / Check Detections** | `list_rule_detections` | `list_rule_detections` | Evaluates rule detections against historical events. |
-| **Inspect Rule Configuration** | `get_rule` | `get_rule` | Fetches rule text, author, version, and alerting status. |
-| **List Environment Rules** | `list_rules` | `list_rules` | Queries active or archived tenant rules. |
-| **Deploy New Rule** | `create_rule` | `create_rule` | Deploys validated YARA-L rule into SecOps. |
-| **Generate TDOs** | `generate_threat_detection_opportunity` | `generate_threat_detection_opportunity` | Extracts TDOs from threat intelligence text. |
-| **Generate Synthetic Events** | `generate_synthetic_events` | `generate_synthetic_events` | Simulates attacker behaviors as UDM events. |
-| **Evaluate Rule Coverage** | `evaluate_rule_coverage_long_running` | `evaluate_rule_coverage` | Tests synthetic events against tenant rule corpus. |
-| **Poll Async Operations** | `get_operation` | `get_operation` | Checks status of long-running coverage evaluation. |
-| **Mitigate Coverage Gaps** | `generate_rules` | `generate_rules` | Codifies YARA-L detection logic for verified gaps. |
+| **Validate Syntax** (W1.2) | `validate_rule` (`scripts/validate_yaral_rule.py`) | `rule`: YARA-L text (`--input {rule_or_doc_path}`) | Compilation status, errors |
+| **Test Detections** (W1.3) | `list_rule_detections` | `rule_id` or filters | Historical hits, timestamps |
+| **Inspect Rule** (W1/W2) | `get_rule` | `rule_id`: Rule ID | Config, YARA-L, `alertingEnabled` |
+| **List Rules** (W1/W2) | `list_rules` | `page_size`, `page_token` | Active/archived rule summaries |
+| **Deploy Rule** (W1/W2) | `create_rule` | `rule`: Validated YARA-L | Created rule with `rule_id` |
+| **Generate TDOs** (W2.2) | `generate_threat_detection_opportunity` | Cleaned CTI text | Threat Detection Opportunities |
+| **Synthetic Events** (W2.3) | `generate_synthetic_events` | `threatDetectionOpportunity` | `syntheticEvents` (`udmJson`) |
+| **Evaluate Coverage** (W2.4) | `evaluate_rule_coverage_long_running` (`evaluate_rule_coverage`) | `threatDetectionOpportunityEvents` | `google.longrunning.Operation` |
+| **Poll Async Ops** (W2.4) | `get_operation` | `name`: Operation name | `done: bool`, `result.response` |
+| **Mitigate Gaps** (W2.6) | `generate_rules` | Gap TDO objects | Drafted YARA-L 2.0 rules |
 
 ---
 
@@ -109,13 +111,13 @@ rule suspicious_lolbin_execution {
 
   events:
     $e.metadata.event_type = "PROCESS_LAUNCH"
-    $e.target.process.file.full_path = /certutil\.exe/nocase
+    $e.target.process.file.full_path = /certutil\.exe/ nocase
     (
-      $e.target.process.command_line = /-urlcache/nocase or
-      $e.target.process.command_line = /-split/nocase
+      $e.target.process.command_line = /-urlcache/ nocase or
+      $e.target.process.command_line = /-split/ nocase
     )
-    $e.principal.user.userid = $user
-    $e.principal.hostname = $host
+    $user = $e.principal.user.userid
+    $host = $e.principal.hostname
 
   match:
     $user, $host over 5m
@@ -136,8 +138,8 @@ rule suspicious_lolbin_execution {
 2. **`events:`**:
    - Event variables prefixed with `$` (e.g., `$e`, `$net`, `$proc`).
    - Standard UDM field references (e.g., `metadata.event_type`, `principal.user.userid`, `target.process.file.full_path`).
-   - Regex matches use `/pattern/nocase` format.
-   - Bound event placeholders to match variables (e.g., `$e.principal.user.userid = $user`).
+   - Regex matches use `/pattern/ nocase` or ``re.regex($e.{field}, `pattern`) nocase`` format.
+   - Bind event placeholders on the left-hand side (e.g., `$user = $e.principal.user.userid`).
 3. **`match:`** (Mandatory for multi-event correlation or aggregation):
    - Grouping variables followed by sliding or hop window duration (e.g., `$user, $host over 5m`, `$ip over 1h`).
 4. **`condition:`**:
@@ -147,22 +149,24 @@ rule suspicious_lolbin_execution {
 
 ### Step 2: Syntax Validation
 
-Always validate rule syntax before attempting creation or running tests:
+Always validate rule syntax and structural logic before attempting creation or running tests:
 
+- Highlight and verify **`match:` sections** (correlation grouping variables and sliding/hop time windows, e.g., `$user, $host over 5m`) and **`condition:` thresholds** (event count or outcome comparison thresholds, e.g., `#e >= 1`, `#proc > 5`, or `$total >= 10`).
+- Consult [yaral_compiler_and_udm_guardrails.md](references/yaral_compiler_and_udm_guardrails.md) and run `python3 scripts/validate_yaral_rule.py --input {rule_or_doc_path}` as a fast offline pre-check (or fallback when MCP tools are unavailable) to verify canonical section ordering, `match:` windows, `condition:` thresholds, `outcome:` aggregations, external `nocase` placement, and `net.ip_in_range_cidr()` syntax.
 - Call `validate_rule` passing the complete rule text in the `rule` parameter.
 - Inspect the validation response:
-  - If syntax errors or invalid UDM field references are reported, correct the syntax and re-validate.
+  - If syntax errors, invalid UDM field references, malformed `match:` windows, or invalid `condition:` threshold expressions are reported, correct the syntax and re-validate.
   - Never proceed to testing or deployment with unvalidated or failing rule syntax, because invalid rules will fail server compilation and produce unreliable test evaluations.
 
 ### Step 3: Historical Testing and Detection Verification
 
-Verify rule behavior and detection fidelity against telemetry:
+Verify rule behavior, `match:` window correlation, `condition:` thresholds, and detection fidelity against historical telemetry or synthetic events (`evaluate_rule_coverage_long_running` / `evaluate_rule_coverage` and `generate_synthetic_events`):
 
-- Call `list_rule_detections` with rule parameters to inspect historical triggers over a lookback window (e.g., last 24 to 72 hours).
-- Assess detection volume:
-  - **Zero Detections**: Typical for novel threats. Verify event conditions against expected UDM event structures.
+- Call `list_rule_detections` with rule parameters to inspect historical triggers over a lookback window (e.g., last 24 to 72 hours), or evaluate synthetic UDM events via `generate_synthetic_events` and `evaluate_rule_coverage_long_running` (`evaluate_rule_coverage`).
+- Assess detection volume and tune `match:` windows and `condition:` thresholds:
+  - **Zero Detections**: Typical for novel threats. Verify event conditions, `match:` correlation windows, and `condition:` thresholds against expected UDM event structures.
   - **Manageable Detections (< 10)**: Inspect affected entities to confirm true-positive fidelity.
-  - **Excessive Detections (> 100)**: Likely noisy or overbroad. Refine filters, exclude benign administrative parent processes, or require multi-event correlation.
+  - **Excessive Detections (> 100)**: Likely noisy or overbroad. Refine filters, adjust `match:` windows or `condition:` thresholds, exclude benign administrative parent processes, or require multi-event correlation.
 
 ### Step 4: User Approval Gate
 
@@ -273,7 +277,7 @@ For every distinct rule ID matched in Step 4:
 
 - Call `generate_rules` **ONLY** for TDOs confirmed to have zero matching rules in Step 4.
 - If existing rules detected the threat, document existing coverage and skip new rule generation for that TDO.
-- Review generated YARA-L 2.0 rules for clarity, logic correctness, and proper event variables.
+- Review generated YARA-L 2.0 rules against [yaral_compiler_and_udm_guardrails.md](references/yaral_compiler_and_udm_guardrails.md) and run `python3 scripts/validate_yaral_rule.py --input {rule_or_doc_path}` (alongside `validate_rule`) to confirm section ordering, `outcome:` aggregations, external `nocase`, and UDM field validity before presenting rules for deployment.
 
 ### Step 7: Provide Structured Findings Summary
 
@@ -302,17 +306,10 @@ Present findings using this mandatory schema for every evaluated TDO:
 
 ---
 
-## Tool Reference Matrix
+## YARA-L 2.0 Compiler Guardrails & Local Validation
 
-| Tool Name | Workflow Stage | Input Arguments | Return Values / Output |
-| :--- | :--- | :--- | :--- |
-| `validate_rule` | Workflow 1 (Step 2) | `rule`: YARA-L rule text string | Validation status, compilation errors, syntax warnings |
-| `list_rule_detections` | Workflow 1 (Step 3) | `rule_id` or query parameters | Historical detection list, entity counts, timestamps |
-| `get_rule` | Both Workflows | `rule_id`: Rule identifier string | Rule configuration, YARA-L text, author, alerting status |
-| `list_rules` | Both Workflows | `page_size`, `page_token`, filter expressions | Array of tenant rule summaries |
-| `create_rule` | Both Workflows | `rule`: Validated YARA-L rule text | Created rule object with new `rule_id` |
-| `generate_threat_detection_opportunity` | Workflow 2 (Step 2) | Cleaned CTI text | Array of Threat Detection Opportunity (TDO) objects |
-| `generate_synthetic_events` | Workflow 2 (Step 3) | `threatDetectionOpportunity`: TDO object | `syntheticEvents` containing `rawLog`, `udm`, and `udmJson` |
-| `evaluate_rule_coverage_long_running` | Workflow 2 (Step 4) | `threatDetectionOpportunityEvents`: `[{threatDetectionOpportunityId, udmsJson}]` | `google.longrunning.Operation` with operation `name` |
-| `get_operation` | Workflow 2 (Step 4) | `name`: Operation resource name | Operation state (`done: bool`, `result.response`) |
-| `generate_rules` | Workflow 2 (Step 6) | TDO objects for verified gaps | Array of newly drafted YARA-L 2.0 detection rules |
+Before calling `validate_rule` or `create_rule`, verify rules against these resources:
+
+- **Compiler & UDM Schema Reference**: Read [yaral_compiler_and_udm_guardrails.md](references/yaral_compiler_and_udm_guardrails.md) for `match:` outcome aggregation rules, repeated-field `array_distinct()`, backtick regexes with external `nocase`, `strings.coalesce()` type homogeneity, `ENTITY_CONTEXT` namespace joins, composite detections, and log-source parser guardrails (`GCP_CLOUDAUDIT`, `KUBERNETES_AUDIT`, `WINEVTLOG`, `LINUX_SYSMON`, `GCP_DNS`, `GCP_FIREWALL`, `PFSENSE`).
+- **Offline Structural Validator**: Run [validate_yaral_rule.py](scripts/validate_yaral_rule.py) (`python3 scripts/validate_yaral_rule.py --input {rule_or_doc_path}`) to check section order, `match:` windows, `outcome:` aggregations, external `nocase`, and `net.ip_in_range_cidr()` prior to remote compilation.
+
