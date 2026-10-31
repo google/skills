@@ -1,0 +1,51 @@
+# Keycloak & Cloud Identity Attack Triage Runbooks & Hunting Selectors
+
+<!-- disableFinding(LINE_OVER_80) -->
+
+## 1. Keycloak & Cloud Identity Attack Triage
+
+### A. Keycloak UDM Schema & Parser Reference (Baseline v1 vs. Upgraded Parser v2)
+In standard Keycloak log shippers (Google Cloud Logging forwarding to Google SecOps `KEYCLOAK`), events emit as `[org.keycloak.events]`:
+
+* **`principal.user.userid` vs `additional.fields["username"]`**: On `LOGIN_ERROR`, `LOGOUT`, and `REFRESH_TOKEN`, the parser maps username to `principal.user.userid`. On `LOGIN` (success), `principal.user.userid` is often NULL, with username residing in `additional.fields["username"]`. Always use `strings.coalesce($e.principal.user.userid, $e.additional.fields["username"])`.
+* **Pre-Extension Historical Backfill Coalescing (`additional.fields["error"]`)**: Events ingested before a `KEYCLOAK` parser extension was enabled have blank `additional.fields["error"]` (`""`). Always coalesce from the raw payload when hunting across historical boundaries:
+  `strings.coalesce($e.additional.fields["error"], re.capture($e.extracted.fields["jsonPayload.message"], "error=\"([^\"]+)\""))`.
+* **Client IP Mapping & `"null"` IP Sentinel**: Ingress proxies map `ipAddress` to `intermediary.ip`. Coalesce using `strings.coalesce($e.principal.ip, $e.intermediary.ip)`. Note that internal session events (`USER_SESSION_DELETED`, `REFRESH_TOKEN_ERROR`) emit literal `ipAddress="null"`, which causes legacy v1 parser extensions to fail IP conversion unless guarded (`ipAddress != "null"`).
+* **Authentication Enums**: `extensions.auth.type` is strictly enum `SSO`, and `extensions.auth.mechanism = "NETWORK"`. Client authentication methods (`client-secret`, `private_key_jwt`) reside in `extensions.auth.auth_details` or `detection_fields["client_auth_method"]`.
+* **Admin Events (`operationType` + `resourcePath`, Upgraded Parser v2)**:
+  Keycloak Admin Events log under `[org.keycloak.events]` with `operationType="CREATE|UPDATE|DELETE|ACTION"`, `resourceType="USER|GROUP_MEMBERSHIP|REALM_ROLE_MAPPING|CLIENT"`, and `resourcePath="users/<uuid>/groups/<uuid>"` (without a `type=` key). The upgraded v2 parser normalizes:
+  * `CREATE:USER` -> `metadata.event_type = "USER_CREATION"` (`security_result.action = "ALLOW"`, `target.user.product_object_id` + `additional.fields["target_user_id"]`).
+  * `DELETE:USER` -> `metadata.event_type = "USER_DELETION"` (`security_result.action = "ALLOW"`).
+  * `CREATE:GROUP_MEMBERSHIP` / `DELETE:GROUP_MEMBERSHIP` -> `metadata.event_type = "GROUP_MODIFICATION"` (`target.group.product_object_id` + `additional.fields["target_group_id"]`).
+  * `ACTION:USER` (`reset-password`, `execute-actions-email`) & `CREATE:REALM_ROLE_MAPPING` -> `metadata.event_type = "USER_CHANGE_PERMISSIONS"` (`target.user.userid` + `additional.fields["target_user_id"]`).
+  * On unpatched v1 parsers, Admin Events fall back to `GENERIC_EVENT` and can be matched via `re.regex($e.extracted.fields["jsonPayload.message"], "operationType=\"?(CREATE|UPDATE|DELETE|ACTION)\"?")`.
+* **Dual-Event OAuth2 Authorization Code Replay (`OAuth2CodeParser` + `CODE_TO_TOKEN_ERROR`)**:
+  Replaying a single-use OAuth2 authorization code emits two correlated events in the same millisecond joinable on `$session_id = $e.network.session_id`:
+  1. `[org.keycloak.protocol.oidc.utils.OAuth2CodeParser]` (`WARN`): `Code '<code_uuid>' already used for userSession '<session_id>' and client '<client_uuid>'` (`metadata.event_type = "USER_LOGIN"`, `security_result.action = "BLOCK"`, `additional.fields["oauth_code_id"]`, `additional.fields["client_uuid"]`).
+  2. `[org.keycloak.events]` `type="CODE_TO_TOKEN_ERROR"`: `error="invalid_code"` (`metadata.event_type = "USER_LOGIN"`, `security_result.action = "BLOCK"`, `network.session_id = "<session_id>"`).
+* **PostgreSQL Switchover / Read-Only Transaction Storm (`org.hibernate.orm.jdbc.error`)**:
+  During Cloud SQL / PostgreSQL primary switchovers, Keycloak emits `[org.hibernate.engine.jdbc.spi.SqlExceptionHelper]` (`SQL Error: 0, SQLState: 25006`, `ERROR: cannot execute INSERT/UPDATE/DELETE in a read-only transaction`) and `SQLState: null` (`Failed to validate connection`), mapped to `STATUS_UPDATE` (`security_result.action = "BLOCK"`, `additional.fields["sql_state"] = "25006" | "null"`). Exclude `SQLState: 25006` database failover storms from authentication brute-force alerts.
+* **Repeated Fields in Outcome**: IP fields are repeated; always wrap in `array_distinct(...)` in `outcome:`.
+
+### B. High-Density UDM Hunting Selectors for Keycloak Identity Attacks
+
+> **On-Demand YARA-L 2.0 Generation**: When constructing UDM Search queries or translating the selectors below into detection rules (via `secops-detection-engineering`), unescape Markdown table-escaped pipes (`\|` -> `|`), append `nocase` outside string regexes, include an explicit `match:` window, and wrap all `outcome:` variables in aggregation functions.
+
+| Rule / Detection Name | MITRE ATT&CK | UDM `log_type` & `event_type` | High-Density UDM Field Predicates & Regex Selectors | Grouping Window & Threshold | Key Outcome / Triage Artifacts |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`Keycloak_CredentialAccess_PasswordBruteForce_v1`**<br>*(Single-Account Brute Force)* | `T1110.001` | `KEYCLOAK`<br>`USER_LOGIN` | • `$e.security_result.action = "FAIL"` (or `"BLOCK"`)<br>• `$err = strings.coalesce($e.additional.fields["error"], re.capture($e.extracted.fields["jsonPayload.message"], "error=\"([^\"]+)\""))`<br>• `re.regex($err, "^(invalid_user_credentials\|user_temporarily_disabled\|user_disabled)$")`<br>• `$user = strings.coalesce($e.principal.user.userid, $e.additional.fields["username"])` | `$user over 5m`<br>Threshold: `count($e.metadata.id) >= 3` | • `source_ips`: `array_distinct(strings.coalesce($e.principal.ip, $e.intermediary.ip))`<br>• `targeted_apps`: `array_distinct($e.target.resource.name)`<br>• `targeted_realms`: `array_distinct($e.additional.fields["realmId"])` |
+| **`Keycloak_PasswordSpray`**<br>*(Horizontal Password Spraying)* | `T1110.003` | `KEYCLOAK`<br>`USER_LOGIN` | • `$e.security_result.action = "FAIL"` (or `"BLOCK"`)<br>• `$err = strings.coalesce($e.additional.fields["error"], re.capture($e.extracted.fields["jsonPayload.message"], "error=\"([^\"]+)\""))`<br>• `($err = "user_not_found" or $err = "invalid_user_credentials")`<br>• `$source_ip = strings.coalesce($e.principal.ip, $e.intermediary.ip)` | `$source_ip over 10m`<br>Threshold: `count_distinct($user) >= 3` | • `attempted_users`: `array_distinct(strings.coalesce($e.principal.user.userid, $e.additional.fields["username"]))`<br>• `keycloak_nodes`: `array_distinct($e.principal.hostname)` |
+| **`Keycloak_Different_User_Session_Collision`**<br>*(OAuth Session Hijacking / Account Switching)* | `T1550` | `KEYCLOAK`<br>`USER_LOGIN` | • `$e.security_result.action = "FAIL"` (or `"BLOCK"`)<br>• `strings.coalesce($e.additional.fields["error"], re.capture($e.extracted.fields["jsonPayload.message"], "error=\"([^\"]+)\"")) = "different_user_authenticated"` | Single Event<br>(`risk_score = 70`) | • `previous_user_id`: `re.capture($e.extracted.fields["jsonPayload.message"], "previous_user=\"?([^\",\\s]+)\"?")`<br>• `client_app`: `$e.target.resource.name`<br>• `redirect_uri`: `$e.target.url` |
+| **`Keycloak_OAuth2_Authorization_Code_Replay`**<br>*(Single-Use OAuth2 Code Reuse)* | `T1528`, `T1550.001` | `KEYCLOAK`<br>`USER_LOGIN` | • **Event 1 (`$warn`)**: `metadata.product_event_type = "OAUTH2_CODE_REUSE"` or `re.regex($warn.extracted.fields["jsonPayload.message"], "OAuth2CodeParser.*already used for userSession")` (`$session_id = $warn.network.session_id`)<br>• **Event 2 (`$err`)**: `metadata.product_event_type = "CODE_TO_TOKEN_ERROR"` and `additional.fields["error"] = "invalid_code"` (`$err.network.session_id = $session_id`) | `$session_id over 5m`<br>(`risk_score = 80`) | • `replayed_code_id`: `array_distinct($warn.additional.fields["oauth_code_id"])`<br>• `client_uuid`: `array_distinct($warn.additional.fields["client_uuid"])`<br>• `source_ips`: `array_distinct(strings.coalesce($err.principal.ip, $err.intermediary.ip))` |
+| **`Keycloak_Admin_Privilege_Or_User_Mutation`**<br>*(Admin Events: User/Group/Role/Password Reset)* | `T1098`, `T1136` | `KEYCLOAK`<br>`USER_CREATION`, `USER_DELETION`, `GROUP_MODIFICATION`, `USER_CHANGE_PERMISSIONS` | • `re.regex($e.metadata.product_event_type, "^(CREATE:USER\|DELETE:USER\|CREATE:GROUP_MEMBERSHIP\|DELETE:GROUP_MEMBERSHIP\|CREATE:REALM_ROLE_MAPPING\|ACTION:USER)$")` (or `re.regex($e.extracted.fields["jsonPayload.message"], "operationType=\"?(CREATE\|DELETE\|ACTION)\"?")`) | `$actor_user over 15m`<br>(`risk_score = 80`) | • `admin_actor`: `array_distinct($e.principal.user.userid)`<br>• `target_user_id`: `array_distinct(strings.coalesce($e.target.user.userid, $e.additional.fields["target_user_id"]))`<br>• `target_group_id`: `array_distinct($e.additional.fields["target_group_id"])`<br>• `resource_path`: `array_distinct($e.target.url)` |
+| **`Keycloak_Admin_Credential_Endpoint_Probe`**<br>*(Admin Credential Reset URI Probing)* | `T1098` | `KEYCLOAK`<br>`USER_LOGIN` | • `re.regex($e.target.url, "/admin/master/console/#/[^/]+/users/[^/]+/credentials")` | Single Event<br>(`risk_score = 80`) | • `actor_user`: `strings.coalesce($e.principal.user.userid, $e.additional.fields["username"])`<br>• `auth_status`: `$e.security_result.action`<br>• `target_uri`: `$e.target.url` |
+| **`Keycloak_Container_Suspicious_Java_Child_Process`**<br>*(JVM / Container RCE Shell Spawn)* | `T1059.004` | `LINUX_SYSMON` / `AUDITD`<br>`PROCESS_LAUNCH` | • `$e.target.process.parent_process.file.name = "java"`<br>• `re.regex($e.target.process.file.name, "^(sh\|bash\|zsh\|dash\|curl\|wget\|nc\|ncat\|python\|whoami\|id)$")`<br>• `$e.principal.hostname = /.*keycloak.*/ nocase` | Single Event<br>(`severity = Critical`) | • `parent_process`: `java`<br>• `child_command_line`: `$e.target.process.command_line` |
+
+### C. Detect Token Manipulation (`INTROSPECT_TOKEN_ERROR`)
+Fires when an API gateway or backend client presents an invalid or tampered token:
+```sql
+metadata.log_type = "KEYCLOAK"
+metadata.product_event_type = "INTROSPECT_TOKEN_ERROR"
+additional.fields["error"] = "invalid_token"
+```
+*Look for `reason: "JWT check failed"` (signature bypass attempt or invalid signing key).*

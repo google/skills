@@ -3,7 +3,7 @@ name: secops-triage
 metadata:
   category: Security
   author: Google LLC
-  version: "1.1.2"
+  version: "1.2.0"
   status: published
 description: >-
   Expert guidance for security alert triage in Google SecOps. Use when
@@ -35,11 +35,13 @@ MUST read and follow the instructions in
 Before initiating any triage step, evaluate the tool capabilities available in the current environment:
 
 1. **Remote MCP Tools (Preferred)**:
-   - **SOAR Case Operations**: `get_case` (with expand parameters), `list_cases`, `list_case_alerts`, `create_case_comment`, `update_case`, `execute_bulk_close_case`
+   - **SOAR Case & Alert Operations**: `get_case` (with expand parameters),
+     `list_cases`, `list_case_alerts`, `get_case_alert`, `get_security_alert`,
+     `create_case_comment`, `update_case`, `execute_bulk_close_case`
    - **SIEM / UDM Telemetry**: `udm_search` (execute structured UDM queries), `translate_udm_query` (natural language to UDM translation)
    - **Entity & Threat Intelligence**: `summarize_entity`, `get_ioc_match`
 2. **Local Tools (Fallback)**:
-   - **SOAR Case Operations**: `get_case_full_details`, `list_cases`, `post_case_comment`, `change_case_priority`
+   - **SOAR Case & Alert Operations**: `get_case_full_details`, `list_cases`, `get_security_alert`, `post_case_comment`, `change_case_priority`
    - **SIEM / UDM Telemetry**: `search_udm` or `search_security_events`
    - **Entity & Threat Intelligence**: `lookup_entity`, `get_ioc_matches`
 
@@ -85,8 +87,8 @@ Follow the standardized end-to-end triage lifecycle:
 
 1. **Gather Context & Detection Metadata**:
    - Retrieve full case details and associated alert records:
-     - Remote: `get_case` (expand='tasks,tags,products') and `list_case_alerts`
-     - Local: `get_case_full_details`
+     - Remote: `get_case` (expand='tasks,tags,products'), `list_case_alerts`, `get_case_alert`, and `get_security_alert`
+     - Local: `get_case_full_details` and `get_security_alert`
    - Extract key detection attributes:
      - Detection title and triggering YARA-L rule name
      - Rule logic, MITRE ATT&CK technique tags, and original rule severity
@@ -119,7 +121,7 @@ Follow the standardized end-to-end triage lifecycle:
        ```udm
        metadata.event_type = "PROCESS_LAUNCH"
        AND principal.hostname = "TARGET_HOST"
-       AND target.process.file.full_path = /(\\(powershell|pwsh|cmd|wscript|cscript)\.exe|\/(ba|z|da)?sh)$/nocase
+       AND target.process.file.full_path = /(\\(powershell|pwsh|cmd|wscript|cscript)\.exe|\/(ba|z|da)?sh)$/ nocase
        ```
      - **Network Beaconing & Data Exfiltration**:
        Search `NETWORK_CONNECTION` and `NETWORK_DNS` records for anomalous bandwidth, high connection frequency, or external IPs:
@@ -128,6 +130,15 @@ Follow the standardized end-to-end triage lifecycle:
        AND principal.ip = "SOURCE_IP"
        AND network.sent_bytes > 10485760
        ```
+
+4. **Assess Involved Entities & Threat Intelligence (Always Required)**:
+   - Before dispositioning any alert (including phishing, credential, endpoint,
+     or network alerts), always enrich every involved entity (`${KEY_ENTITIES}`:
+     sender/recipient users, hosts, source/destination IPs, domains, URLs, and
+     file hashes) using `summarize_entity` (or `lookup_entity`) to assess entity
+     context and asset criticality, and query `get_ioc_match` (or
+     `get_ioc_matches`) to check for active threat intelligence and IoC matches
+     (see Section 2).
 
 ---
 
@@ -253,3 +264,22 @@ Classify the alert into one of four standard categories:
 4. **Pivoting to Hunting or Deep Investigation**:
    - Hand off to `secops-investigate` for deep host timelines and root cause analysis.
    - Hand off to `secops-hunt` for enterprise-wide proactive lateral movement sweeps.
+
+---
+
+<!-- disableFinding(LINE_OVER_80) -->
+
+## UDM Log-Source Triage References
+
+Load the domain-specific reference module matching the alert's `metadata.log_type` or attack surface for parser quirk workarounds, field-coalescing patterns, and UDM triage selectors:
+
+| Log Source / Domain | Reference Module | Key Triage Coverage |
+| :--- | :--- | :--- |
+| **Keycloak & SSO Identity** | [01_keycloak_identity.md](references/01_keycloak_identity.md) | `KEYCLOAK` username/error coalescing, OAuth2 code replay, admin mutations, DB failover storms |
+| **GCP IAM, Keys & Compute** | [02_gcp_iam_compute_and_keys.md](references/02_gcp_iam_compute_and_keys.md) | `GCP_CLOUDAUDIT` gRPC `7`/`16` vs operational `BLOCK`, `GCPPEAS`, GCE disk attach & IAP LRO dedup, SCC `IP_FORWARDING_ENABLED` |
+| **Kubernetes & Containers** | [03_kubernetes_and_containers.md](references/03_kubernetes_and_containers.md) | `KUBERNETES_AUDIT` `/exec`, `/portforward` host correlation, `/binding` naked pods, Artifact Registry, `CloudFox` |
+| **Endpoints, AuditD & Linux Containers** | [04_endpoint_auditd_vss_and_linux_containers.md](references/04_endpoint_auditd_vss_and_linux_containers.md) | Cloud VSS disk cloning, `AUDITD` hex `proctitle` & `auid`, `LINUX_SYSMON` `masscan` raw-socket bypass, `WINDOWS_DEFENDER_AV`, `OSQUERY_EDR`, K3s/RKE2 UAC forensics |
+| **Cloud DNS, Firewall, WebRTC & GTI** | [05_network_dns_webrtc_and_gti.md](references/05_network_dns_webrtc_and_gti.md) | WebRTC ICE/STUN port-scan false positives, `GCP_FIREWALL` `0.0.0.0` hairpin & `resource.name`, `GCP_DNS` `GENERIC_EVENT` downgrade, AD SRV `NXDOMAIN`, GTI domain pivots |
+| **Multi-Tenant MSSP & CMDB** | [06_mssp_and_cmdb_enrichment.md](references/06_mssp_and_cmdb_enrichment.md) | Overlapping RFC 1918 `principal.namespace` disambiguation, `SNIPE_IT` `ENTITY_CONTEXT` joins, Data RBAC, `cases:merge` entity clustering |
+| **pfSense Firewall & WireGuard** | [07_pfsense_firewall_and_wireguard.md](references/07_pfsense_firewall_and_wireguard.md) | `PFSENSE` split-brain hostnames, WireGuard peer persistence, `filterlog` state-flush DNS reply drops, serial `getty` boot autologin vs `ROOT LOGIN` |
+| **Hybrid AD-to-Cloud & AA26-237A** | [08_hybrid_ad_cloud_and_cisa_aa26_237a.md](references/08_hybrid_ad_cloud_and_cisa_aa26_237a.md) | OAuth secret injection, AD `4722` reactivation to cloud SSO, MAQ `4741` & ADCS ESC1 `4887`, Windows `4624`/`4625` dual-stream dedup, Seatbelt RE2 boundaries |
