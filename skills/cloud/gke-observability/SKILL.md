@@ -12,7 +12,7 @@ description: >-
   permission errors. Don't use to configure local application logging frameworks
   or external APMs outside GKE.
 metadata:
-  version: "1.1.14"
+  version: "1.1.15"
   category: CloudObservabilityAndMonitoring
 ---
 
@@ -78,19 +78,25 @@ link to
 https://docs.cloud.google.com/kubernetes-engine/docs/how-to/control-plane-metrics:
 
 -   **API storage utilization by resource
-    (`apiserver_resource_size_estimate_bytes`)**: Use
+    (`apiserver_resource_size_estimate_bytes`) and real-time control-plane
+    datastore (`etcd`) quota (`kubernetes.io/cluster/storage/used_bytes`
+    and `kubernetes.io/cluster/storage/limit_bytes`)**: GKE uses an
+    etcd-compatible control-plane datastore. Query
+    `kubernetes.io/cluster/storage/used_bytes` and
+    `kubernetes.io/cluster/storage/limit_bytes` in Cloud Monitoring to track
+    **real-time** control-plane storage utilization against the cluster's
+    storage limit (sampled every 60 seconds, without waiting 6 hours for delayed
+    GCP quota metrics to update), alongside `apiserver_storage_size_bytes`. Use
     `apiserver_resource_size_estimate_bytes` (or
     `kubernetes.io/master/apiserver/resource_size_estimate_bytes`, grouped by
     `group` and `resource`) alongside `apiserver_storage_objects` (grouped by
     `group` and `resource`) to identify which Kubernetes resource types or CRDs
-    consume the most API server storage bytes in etcd, complementing total
-    database size (`apiserver_storage_size_bytes`) and real-time cluster storage
-    quota metrics (`kubernetes.io/cluster/storage/used_bytes` and
-    `kubernetes.io/cluster/storage/limit_bytes` in Cloud Monitoring).
+    consume the most API server storage bytes.
     -   **Quota exhaustion (`etcdserver: mvcc: database space exceeded`), scalability limits, and
-        CRD bloat**: Configure a Cloud Monitoring alert on `kubernetes.io/cluster/storage/used_bytes /
-        kubernetes.io/cluster/storage/limit_bytes` (or `apiserver_storage_size_bytes`) before storage
-        approaches capacity, and compare per-resource byte footprints against GKE scalability limits
+        CRD bloat**: Configure a Cloud Monitoring alert when `kubernetes.io/cluster/storage/used_bytes /
+        kubernetes.io/cluster/storage/limit_bytes` (or `apiserver_storage_size_bytes`) approaches
+        capacity so leaked Pods, Jobs, or Secrets can be pruned before write quota exhaustion, and
+        compare per-resource byte footprints against GKE scalability limits
         (https://cloud.google.com/kubernetes-engine/docs/concepts/planning-large-clusters: keep total
         Pod or ReplicaSet state below ~800 MiB per resource type, keep individual ConfigMaps/Secrets
         below 1 MiB vs. the 1.5 MiB etcd hard limit, and stay below ~30,000 Secrets/ConfigMaps). When
@@ -179,11 +185,12 @@ https://docs.cloud.google.com/kubernetes-engine/docs/how-to/control-plane-metric
     `apiserver_watch_events_total` (grouped by `group`, `kind`, `version`) for
     watch event volume and rate, and `apiserver_watch_events_sizes` for watch
     event payload sizes.
--   **Pod and object churn, controller-manager workqueue backlog, and scheduler
-    lag (`workqueue_depth`, `workqueue_queue_duration_seconds`,
-    `job_controller_*`, `scheduler_pending_pods`,
-    `scheduler_schedule_attempts_total`,
-    `scheduler_scheduling_attempt_duration_seconds`, and mutating
+-   **Pod and object churn, controller-manager workqueue backlog, scheduler lag,
+    and control-plane headroom (`workqueue_depth`,
+    `workqueue_queue_duration_seconds`, `job_controller_*`,
+    `scheduler_pending_pods`, `scheduler_schedule_attempts_total`,
+    `scheduler_scheduling_attempt_duration_seconds`,
+    `apiserver_current_inflight_requests`, and mutating
     `apiserver_request_total`)**: When batch job bursts (thousands of concurrent
     Jobs) or controller loops leave newly created pods stuck in `Pending`, delay
     pod creation by 10–20 minutes, make `kubectl` commands sluggish, or cause
@@ -196,6 +203,30 @@ https://docs.cloud.google.com/kubernetes-engine/docs/how-to/control-plane-metric
     `scheduler_scheduling_attempt_duration_seconds` on `kube-scheduler` (and
     mutating `apiserver_request_total` `CREATE`, `DELETE`, `PATCH`, `UPDATE`);
     mitigate by pacing job creation or batching workloads.
+-   **Control-plane load, saturation, and headroom utilization
+    (`apiserver_flowcontrol_priority_level_seat_utilization`,
+    `apiserver_current_inflight_requests`, and
+    `apiserver_request_duration_seconds`)**: Monitor
+    `apiserver_flowcontrol_priority_level_seat_utilization`,
+    `apiserver_current_inflight_requests`, and
+    `apiserver_request_duration_seconds` (alongside
+    `apiserver_flowcontrol_request_wait_duration_seconds` and
+    `apiserver_flowcontrol_rejected_requests_total`) to gauge control-plane
+    saturation and headroom. **Always cover three operational guidance points
+    when discussing control-plane headroom or preventing overload:**
+    1.  **Correlate utilization spikes with workload changes** (such as newly
+        deployed DaemonSets, unpaginated `LIST` calls, or bursty controllers) so
+        the team can roll back or tune workloads before saturating
+        `kube-apiserver`.
+    2.  **Automatic control-plane VM scaling**: Highlight that GKE control-plane
+        VMs are autoscaled to match observed load, so control-plane capacity
+        adjusts dynamically as cluster activity grows.
+    3.  **Proactive resize via node count**: Explain that the GKE control plane
+        uses cluster node count as one of its autoscaling signals, so adding
+        more nodes upfront (for example, ahead of a planned batch or traffic
+        surge) is a relatively simple way to force a proactive control-plane
+        resize—while noting that the exact scaling rules change frequently, so
+        there is no reliable fixed threshold that GKE can share.
 
 ## Enabling Full Monitoring
 
@@ -499,15 +530,16 @@ https://docs.cloud.google.com/kubernetes-engine/docs/how-to/view-logs#control_pl
         `client`, and `total time`) aggregated by `protoPayload.authenticationInfo.principalEmail`
         (`user`), `protoPayload.requestMetadata.callerSuppliedUserAgent` (`user-agent`), and target
         namespace/resource, and correlate offender attribution with `apiserver_request_total` (grouped
-        by `verb`, `resource`, and `code`) plus `apiserver_resource_size_estimate_bytes` (or
+        by `verb`, `resource`, and `code`), `apiserver_request_duration_seconds` (`verb="LIST"`), and
+        `apiserver_response_sizes` (`verb="LIST"`) plus `apiserver_resource_size_estimate_bytes` (or
         `kubernetes.io/master/apiserver/resource_size_estimate_bytes`, grouped by `group` and
-        `resource`), `apiserver_response_sizes`, and `apiserver_watch_list_duration_seconds` to
+        `resource`) and `apiserver_watch_list_duration_seconds` to
         throttle/fix high-QPS clients and paginate or cache expensive cluster-wide `LIST` queries (such
         as `external-dns` or custom controllers).
     -   **Aggressive polling and APF saturation (`429` / `504` / `404`)**: When
-        workloads or CI runners see `429 Too Many Requests` or `504 Gateway
-        Timeout` (`context canceled`), query the APF metrics
-        `apiserver_flowcontrol_rejected_requests_total`,
+        workloads, batch job submission scripts, or CI runners see `429 Too Many
+        Requests` or `504 Gateway Timeout` (`context canceled`), query the APF
+        metrics `apiserver_flowcontrol_rejected_requests_total`,
         `apiserver_flowcontrol_current_inqueue_requests`,
         `apiserver_flowcontrol_request_wait_duration_seconds`, and
         `apiserver_flowcontrol_priority_level_seat_utilization` (grouped by
@@ -519,11 +551,14 @@ https://docs.cloud.google.com/kubernetes-engine/docs/how-to/view-logs#control_pl
         source IPs (`src_ip` / `srcIP` / `sourceIPs`) from `kube-apiserver` logs
         (or Cloud Audit Logs) to identify clients flooding the cluster with
         unpaginated `LIST` calls, tight `404` `GET` polling loops, or
-        single-digit millisecond `?timeout=` requests; replace tight
-        `GET`/`LIST` polling loops with `SharedInformer` watches, add
-        exponential backoff and client-side caching to noisy workloads (such as
-        CI runners or bursty pod creators), increase overly short client request
-        timeouts, or isolate noisy clients into a dedicated `FlowSchema` and
+        single-digit millisecond `?timeout=` requests. Explain that **APF
+        throttles noisy clients in lower-priority lanes (such as `workload-low`)
+        to protect critical system traffic** (`system`, `leader-election`,
+        `node-high`), and advise pacing client burst QPS, replacing tight
+        `GET`/`LIST` polling loops with `SharedInformer` watches, adding
+        exponential backoff and client-side caching to noisy workloads,
+        increasing overly short client request timeouts, or isolating noisy
+        service accounts via a custom `FlowSchema` and
         `PriorityLevelConfiguration`.
 
 ## Alerting
@@ -623,22 +658,26 @@ sum by (project_id, location, cluster_name) (
 4.  **Correlating with scheduled GKE maintenance windows, zonal resizes, and
     cluster access errors (`kubernetes.io/cluster/in_maintenance_window`)**:
     Query the `kubernetes.io/cluster/in_maintenance_window` metric in Cloud
-    Monitoring (and check GKE cluster operations via `gcloud container
+    Monitoring and correlate it with GKE cluster operations (`gcloud container
     operations list` or Cloud Audit Logs for `RESIZE_CLUSTER` or
-    `UPGRADE_MASTER`) to verify whether brief API server unavailability or
-    controller lease-loss alerts occurred during an active scheduled maintenance
-    window or control plane resize. Adjust the cluster's configured maintenance
-    window to a lower-traffic period or use
+    `UPGRADE_MASTER`) to verify whether brief API server unavailability,
+    blocked updates, or controller lease-loss alerts occurred during an active
+    scheduled maintenance window or control-plane resize. Adjust the cluster's
+    configured maintenance window to a lower-traffic period, use
     `kubernetes.io/cluster/in_maintenance_window` to suppress transient
-    maintenance alerts. Note that **zonal clusters** have a single control-plane
-    replica that experiences expected 15–30 minute API downtime during
-    control-plane resizes and upgrades (mitigated by migrating to a regional
-    cluster). If `kubectl` fails with `EOF` or `CLOUD_KMS_KEY_ERROR`, check
-    `gcloud container clusters describe` (`masterAuthorizedNetworksConfig`,
-    `databaseEncryption`, and cluster conditions) and project IAM/APIs to
-    resolve client IP allowlist blocks (`EOF`), disabled Cloud KMS keys
-    (`CLOUD_KMS_KEY_ERROR`), a disabled `container.googleapis.com` API, or
-    missing GKE service agent IAM bindings.
+    maintenance alerts, and **always ensure maintenance windows are not
+    configured so restrictively that they block routine control-plane upgrades
+    and repairs** (provide at least 48 hours of total maintenance availability
+    within any 32-day rolling window, in contiguous blocks of at least 4 hours).
+    Note that
+    **zonal clusters** have a single control-plane replica that experiences
+    expected 15–30 minute API downtime during control-plane resizes and upgrades
+    (mitigated by migrating to a regional cluster). If `kubectl` fails with
+    `EOF` or `CLOUD_KMS_KEY_ERROR`, check `gcloud container clusters describe`
+    (`masterAuthorizedNetworksConfig`, `databaseEncryption`, and cluster
+    conditions) and project IAM/APIs to resolve client IP allowlist blocks
+    (`EOF`), disabled Cloud KMS keys (`CLOUD_KMS_KEY_ERROR`), a disabled
+    `container.googleapis.com` API, or missing GKE service agent IAM bindings.
 
 ## Cost Considerations
 
