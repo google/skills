@@ -12,7 +12,7 @@ description: >-
   permission errors. Don't use to configure local application logging frameworks
   or external APMs outside GKE.
 metadata:
-  version: "1.1.15"
+  version: "1.1.16"
   category: CloudObservabilityAndMonitoring
 ---
 
@@ -168,11 +168,18 @@ https://docs.cloud.google.com/kubernetes-engine/docs/how-to/control-plane-metric
         Kubeflow `cache-server`), fix the backing deployment, or scope webhook
         rules and `failurePolicy` so unavailable endpoints do not block
         unrelated API operations.
-    -   **Control-plane recommendations**: Strongly warn users against ignoring
-        GKE control-plane recommendations about optimizing admission webhooks or
-        CRDs with an invalid `caBundle` because unoptimized webhooks and invalid
-        CRD `caBundle` configurations can overload or destabilize the GKE
-        control plane, and always link to
+    -   **Control-plane and admission webhook Insights & Recommendations**:
+        Check proactive GKE Insights and Recommendations in the Google Cloud
+        Console or via `gcloud recommender insights list` and `gcloud
+        recommender recommendations list`
+        (`--insight-type=google.container.DiagnosisInsight` /
+        `--recommender=google.container.DiagnosisRecommender`). **Always
+        strongly warn users against ignoring GKE control-plane
+        recommendations**—especially admission webhook recommendations (such as
+        webhooks with unavailable endpoints, high latency, or missing
+        `kube-system` exclusions) or CRDs with an invalid `caBundle`—and
+        explicitly recommend acting on them before they overload, destabilize,
+        or cause a GKE control-plane outage. Always link to
         https://docs.cloud.google.com/kubernetes-engine/docs/how-to/optimize-webhooks.md.txt
         and
         https://docs.cloud.google.com/kubernetes-engine/docs/how-to/crd-with-invalid-caBundle.md.txt.
@@ -185,28 +192,31 @@ https://docs.cloud.google.com/kubernetes-engine/docs/how-to/control-plane-metric
     `apiserver_watch_events_total` (grouped by `group`, `kind`, `version`) for
     watch event volume and rate, and `apiserver_watch_events_sizes` for watch
     event payload sizes.
--   **Pod and object churn, controller-manager workqueue backlog, scheduler lag,
-    and control-plane headroom (`workqueue_depth`,
-    `workqueue_queue_duration_seconds`, `job_controller_*`,
+-   **Pod and object churn, controller-manager workqueue backlog, retry storms,
+    and scheduler lag (`workqueue_depth`,
+    `workqueue_queue_duration_seconds`, `workqueue_adds_total`,
+    `workqueue_retries_total`, `job_controller_*`,
     `scheduler_pending_pods`, `scheduler_schedule_attempts_total`,
-    `scheduler_scheduling_attempt_duration_seconds`,
-    `apiserver_current_inflight_requests`, and mutating
-    `apiserver_request_total`)**: When batch job bursts (thousands of concurrent
-    Jobs) or controller loops leave newly created pods stuck in `Pending`, delay
-    pod creation by 10–20 minutes, make `kubectl` commands sluggish, or cause
-    controller reconciliations to lag, enable `SCHEDULER` and
-    `CONTROLLER_MANAGER` control-plane metrics and **always query all three** of
-    `workqueue_depth`, `workqueue_queue_duration_seconds`, and `job_controller_*`
+    `scheduler_scheduling_attempt_duration_seconds`, and mutating
+    `apiserver_request_total`)**: When custom controllers or
+    `kube-controller-manager` fall behind, experience workqueue depth backlogs,
+    or encounter workqueue retry storms—or when batch job bursts
+    (thousands of concurrent Jobs) delay pod creation by 10–20 minutes—enable
+    `SCHEDULER` and `CONTROLLER_MANAGER` control-plane metrics and **always
+    query** `workqueue_depth`, `workqueue_queue_duration_seconds`,
+    `workqueue_adds_total`, `workqueue_retries_total`, and `job_controller_*`
     metrics (such as `job_controller_job_sync_duration_seconds`) on
-    `kube-controller-manager` alongside `scheduler_pending_pods`,
-    `scheduler_schedule_attempts_total`, and
+    `kube-controller-manager` alongside
+    `scheduler_pending_pods`, `scheduler_schedule_attempts_total`, and
     `scheduler_scheduling_attempt_duration_seconds` on `kube-scheduler` (and
-    mutating `apiserver_request_total` `CREATE`, `DELETE`, `PATCH`, `UPDATE`);
-    mitigate by pacing job creation or batching workloads.
--   **Control-plane load, saturation, and headroom utilization
-    (`apiserver_flowcontrol_priority_level_seat_utilization`,
-    `apiserver_current_inflight_requests`, and
-    `apiserver_request_duration_seconds`)**: Monitor
+    mutating `apiserver_request_total` `CREATE`, `DELETE`, `PATCH`, `UPDATE`).
+    **Always advise correlating controller workqueue growth** (such as
+    `pod-garbage-collector` or `replicaset` controller lag) with API server
+    latency and high pod/object churn, reducing orphaned object accumulation,
+    tuning controller concurrency, and pacing job creation or batching
+    workloads.
+-   **Control-plane load, headroom, per-replica network egress (`200 MB/s`),
+    connection limits (`65k`), and Protobuf vs. JSON serialization**: Monitor
     `apiserver_flowcontrol_priority_level_seat_utilization`,
     `apiserver_current_inflight_requests`, and
     `apiserver_request_duration_seconds` (alongside
@@ -227,6 +237,22 @@ https://docs.cloud.google.com/kubernetes-engine/docs/how-to/control-plane-metric
         surge) is a relatively simple way to force a proactive control-plane
         resize—while noting that the exact scaling rules change frequently, so
         there is no reliable fixed threshold that GKE can share.
+    -   **Per-replica network egress (`200 MB/s`), connection limits (`65k`),
+        and Protobuf serialization**: State explicitly out loud that **GKE does
+        not offer a per-replica control-plane connection count metric** (so
+        active watch/long-running stream metrics serve only as an indirect
+        proxy rather than a direct per-replica TCP connection counter). To check
+        if large-scale control-plane replicas are approaching per-replica
+        network egress scalability limits (`200 MB/s` recommended max),
+        connection limits (`65k`), or high JSON vs. Protobuf serialization
+        overhead, query `apiserver_response_sizes`,
+        `apiserver_watch_events_sizes`, `apiserver_longrunning_requests`, and
+        `apiserver_request_total` grouped by `contentType` (`application/json`
+        vs. `application/vnd.kubernetes.protobuf`); configure custom controllers
+        and high-volume clients to use Protobuf serialization
+        (`application/vnd.kubernetes.protobuf`) instead of JSON and scope
+        watch/list selectors to keep per-replica network egress and active
+        connections within safe scalability limits.
 
 ## Enabling Full Monitoring
 
@@ -589,6 +615,24 @@ When designing or proposing alerting and dashboard strategies for GKE:
     `apiserver_request_duration_seconds` metric) on the dashboard as a critical
     indicator of control plane health, alongside node CPU/Memory and pod crash
     loops.
+3.  **Prometheus / Grafana / PagerDuty control-plane SLO alerting**: When users
+    ask for Grafana dashboards and multi-burn-rate Prometheus alert rules for
+    GKE control-plane metrics (`apiserver_request_duration_seconds`,
+    `apiserver_admission_webhook_admission_duration_seconds`,
+    `apiserver_flowcontrol_rejected_requests_total`, and storage utilization via
+    `kubernetes_io:cluster_storage_used_bytes /
+    kubernetes_io:cluster_storage_limit_bytes` or
+    `apiserver_storage_size_bytes`), output the YAML/JSON inline (without
+    writing local generator scripts), use `GlobalRules`
+    (`monitoring.googleapis.com/v1`) when evaluating against Cloud Monitoring /
+    GMP metrics, explain querying via the GMP Grafana data source (`GET` method
+    and two-argument `label_values(<metric>, <label>)`) with PagerDuty/Slack
+    routing, and **explicitly state that GKE control-plane `apiserver_*` metrics
+    are NOT enabled by default** alongside instructions to enable them (`gcloud
+    container clusters update {cluster_name} --region {region}
+    --monitoring=SYSTEM,API_SERVER,SCHEDULER,CONTROLLER_MANAGER,...
+    --enable-managed-prometheus`, noting `--monitoring` replaces the existing
+    component list).
 
 ### Node Health (Production Rules)
 
