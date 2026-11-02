@@ -5,7 +5,7 @@ description: >-
   Use when agent requests fail with 401/403/404/498/500/503 or Code 13, Egress request is not authorized, HTTP CONNECT fails with 404, Agent Runtime crashes on startup, or gateway/ACT/IAP/Model Armor/SGP configs fail validation.
   Don't use for general Google Cloud Identity and Access Management (IAM) debugging or networking issues unrelated to the Agent Platform stack.
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
   category: AiAndMachineLearning
 ---
 
@@ -55,7 +55,7 @@ to discover resources (e.g., active Agent Runtime instances):
 - **RESPOND ON TURN 0**: *"I cannot write or execute custom Python or bash
   scripts for resource discovery. Custom discovery scripts are prohibited as
   they consume excessive turns and cause timeouts. Instead, use standard gcloud
-  CLI commands (see [Google Cloud SDK Installation](https://docs.cloud.google.com/sdk/docs/install.md.txt))
+  CLI commands (see [Google Cloud SDK Installation](https://docs.cloud.google.com/sdk/docs/install-sdk.md.txt))
   or curl REST API calls with application default credentials:
   `gcloud agent-registry agents list --location=us-central1` or `curl -H "Authorization: Bearer $(gcloud auth application-default print-access-token)" "https://us-central1-aiplatform.googleapis.com/v1/projects/PROJECT_ID/locations/us-central1/reasoningEngines"`"*
 

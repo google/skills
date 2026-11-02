@@ -270,7 +270,7 @@ xychart-beta
 ### Step 0 — Establish context & Disable prompts
 
 Before running any diagnostics, ensure the gcloud CLI is installed (see
-[Google Cloud SDK Installation](https://docs.cloud.google.com/sdk/docs/install.md.txt)),
+[Google Cloud SDK Installation](https://docs.cloud.google.com/sdk/docs/install-sdk.md.txt)),
 your environment is configured correctly, and prompts are disabled to prevent
 commands from hanging:
 
