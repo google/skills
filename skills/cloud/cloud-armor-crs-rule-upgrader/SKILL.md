@@ -2,7 +2,7 @@
 name: cloud-armor-crs-rule-upgrader
 metadata:
   category: Security
-  version: "1.0.0"
+  version: "1.0.1"
 description: >-
   Upgrades Google Cloud Armor security policies from OWASP CRS 3.0 and 3.3 to OWASP CRS 4.22. Preserves signature opt-in and opt-out lists, translates evaluatePreconfiguredExpr to native evaluatePreconfiguredWaf dictionary parameters, remaps signature IDs to v042200, drops retired signature IDs, and updates structured preconfiguredWafConfig fine-tuning exclusions. Evaluates operational risk (High Breaking Change, Medium Attention Required, Low Clean Upgrade) including Method Enforcement breaking changes (PUT/PATCH/DELETE blocking) and sensitivity coverage expansions. Supports both in-place rule upgrades and smooth preview mode deployments with priority spacing and a 200-rule quota guardrail. Use when a user or agent needs to audit, upgrade, or transition Cloud Armor WAF rules to CRS 4.22. Don't use for non-WAF Cloud Armor rules (IP rate-limiting, geo-blocking, reCAPTCHA) or AWS/Azure WAF migrations.
 ---
@@ -166,51 +166,16 @@ execute this 5-step workflow:
 
 Evaluate each in-scope rule against standard operational risk categories:
 
-| Risk Level        | Impact Category        | Criteria and Recommended Action |
-| ----------------- | ---------------------- | ------------------------------- |
-| 🔴 **High Risk**   | **Breaking Change**    | Immediate risk of blocking      |
-:                   :                        : legitimate production traffic   :
-:                   :                        : upon cutover. Example\:         :
-:                   :                        : `methodenforcement-v422-stable` :
-:                   :                        : only permits `GET`, `HEAD`,     :
-:                   :                        : `POST`, `OPTIONS`, and **blocks :
-:                   :                        : `PUT`, `PATCH`, `DELETE`**      :
-:                   :                        : requests. Requires customer     :
-:                   :                        : confirmation and API            :
-:                   :                        : path/signature exemptions.      :
-| 🟡 **Medium Risk** | **Attention Required** | Behavioral shifts that should   |
-:                   :                        : be validated in Preview Mode    :
-:                   :                        : before enforcement\:<br>•       :
-:                   :                        : **Coverage Expansion**\:        :
-:                   :                        : Sensitivity level 4 activates   :
-:                   :                        : significantly more signatures   :
-:                   :                        : (for example, RCE expands from  :
-:                   :                        : 11/15 to 44 signatures; SQLi    :
-:                   :                        : expands to 60 signatures).<br>• :
-:                   :                        : **Deprecated Exemption Lost**\: :
-:                   :                        : Legacy rule opted out of any of :
-:                   :                        : the 15 retired CRS 3.0/3.3 IDs  :
-:                   :                        : (`981172`, `981173`, `980130`,  :
-:                   :                        : `949110`; SQLi\: `942110`;      :
-:                   :                        : RCE\: `932100`, `932105`,       :
-:                   :                        : `932106`, `932110`, `932115`,   :
-:                   :                        : `932150`; Scanner Detection\:   :
-:                   :                        : `913101`, `913102`, `913110`,   :
-:                   :                        : `913120`), which are omitted in :
-:                   :                        : 4.22.<br>• **Custom Filter      :
-:                   :                        : Continuity**\: Preserved custom :
-:                   :                        : header/cookie/query/IP          :
-:                   :                        : conditions combined with WAF    :
-:                   :                        : calls.                          :
-| 🟢 **Low Risk**    | **Clean Upgrade**      | Direct 1:1 ruleset translation  |
-:                   :                        : with preserved active opt-outs  :
-:                   :                        : and no expected behavioral      :
-:                   :                        : divergence (for example,        :
-:                   :                        : standard SQLi or XSS rules).    :
-| ⚪ **No Action**   | **Pass-Through**       | Non-OWASP rules (pure IP        |
-:                   :                        : allowlist/denylist, rate        :
-:                   :                        : limiting, default rule).        :
-:                   :                        : Carried over unchanged.         :
+<!-- mdformat off -->
+
+| Risk Level | Impact Category | Criteria and Recommended Action |
+| :--- | :--- | :--- |
+| 🔴 **High Risk** | **Breaking Change** | Immediate risk of blocking legitimate production traffic upon cutover. Example: `methodenforcement-v422-stable` only permits `GET`, `HEAD`, `POST`, `OPTIONS`, and **blocks `PUT`, `PATCH`, `DELETE`** requests. Requires customer confirmation and API path/signature exemptions. |
+| 🟡 **Medium Risk** | **Attention Required** | Behavioral shifts that should be validated in Preview Mode before enforcement:<br>• **Coverage Expansion**: Sensitivity level 4 activates significantly more signatures (for example, RCE expands from 11/15 to 44 signatures; SQLi expands to 60 signatures).<br>• **Deprecated Exemption Lost**: Legacy rule opted out of any of the 15 retired CRS 3.0/3.3 IDs (`981172`, `981173`, `980130`, `949110`; SQLi: `942110`; RCE: `932100`, `932105`, `932106`, `932110`, `932115`, `932150`; Scanner Detection: `913101`, `913102`, `913110`, `913120`), which are omitted in 4.22.<br>• **Custom Filter Continuity**: Preserved custom header/cookie/query/IP conditions combined with WAF calls. |
+| 🟢 **Low Risk** | **Clean Upgrade** | Direct 1:1 ruleset translation with preserved active opt-outs and no expected behavioral divergence (for example, standard SQLi or XSS rules). |
+| ⚪ **No Action** | **Pass-Through** | Non-OWASP rules (pure IP allowlist/denylist, rate limiting, default rule). Carried over unchanged. |
+
+<!-- mdformat on -->
 
 ### Step 3: Upgrade Mode Selection and User Alignment
 

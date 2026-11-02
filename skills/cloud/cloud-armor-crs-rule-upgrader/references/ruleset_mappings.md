@@ -8,11 +8,11 @@ Cloud Armor.
 
 ## Table of Contents
 
--   [1. Ruleset Name Mappings](#1-ruleset-name-mappings): Lines 19-61
--   [2. Signature Counts and Sensitivity Expansion (Sensitivity 4)](#2-signature-counts-and-sensitivity-expansion-sensitivity-4): Lines 64-112
--   [3. Deprecated Signature IDs in CRS 4.22](#3-deprecated-signature-ids-in-crs-422): Lines 115-134
--   [4. Signature ID Format Remapping](#4-signature-id-format-remapping): Lines 137-151
--   [5. Special and Standalone Preconfigured Rulesets](#5-special-and-standalone-preconfigured-rulesets): Lines 154-188
+-   [1. Ruleset Name Mappings](#1-ruleset-name-mappings): Lines 19-69
+-   [2. Signature Counts and Sensitivity Expansion (Sensitivity 4)](#2-signature-counts-and-sensitivity-expansion-sensitivity-4): Lines 72-103
+-   [3. Deprecated Signature IDs in CRS 4.22](#3-deprecated-signature-ids-in-crs-422): Lines 107-127
+-   [4. Signature ID Format Remapping](#4-signature-id-format-remapping): Lines 131-144
+-   [5. Special and Standalone Preconfigured Rulesets](#5-special-and-standalone-preconfigured-rulesets): Lines 148-183
 
 --------------------------------------------------------------------------------
 
@@ -23,35 +23,43 @@ example, `evaluatePreconfiguredWaf('ruleset-name')`).
 
 ### CRS 3.0 to CRS 4.22
 
-Threat Category       | CRS 3.0 Stable             | CRS 4.22 Stable                 | CRS 3.0 Canary             | CRS 4.22 Canary
---------------------- | -------------------------- | ------------------------------- | -------------------------- | ---------------
-SQL Injection         | `sqli-stable`              | `sqli-v422-stable`              | `sqli-canary`              | `sqli-v422-canary`
-Cross-Site Scripting  | `xss-stable`               | `xss-v422-stable`               | `xss-canary`               | `xss-v422-canary`
-Local File Inclusion  | `lfi-stable`               | `lfi-v422-stable`               | `lfi-canary`               | `lfi-v422-canary`
-Remote File Inclusion | `rfi-stable`               | `rfi-v422-stable`               | `rfi-canary`               | `rfi-v422-canary`
-Remote Code Execution | `rce-stable`               | `rce-v422-stable`               | `rce-canary`               | `rce-v422-canary`
-Method Enforcement    | `methodenforcement-stable` | `methodenforcement-v422-stable` | `methodenforcement-canary` | `methodenforcement-v422-canary`
-Scanner Detection     | `scannerdetection-stable`  | `scannerdetection-v422-stable`  | `scannerdetection-canary`  | `scannerdetection-v422-canary`
-Protocol Attack       | `protocolattack-stable`    | `protocolattack-v422-stable`    | `protocolattack-canary`    | `protocolattack-v422-canary`
-PHP Attack            | `php-stable`               | `php-v422-stable`               | `php-canary`               | `php-v422-canary`
-Session Fixation      | `sessionfixation-stable`   | `sessionfixation-v422-stable`   | `sessionfixation-canary`   | `sessionfixation-v422-canary`
+<!-- mdformat off -->
+
+| Threat Category       | CRS 3.0 Stable             | CRS 4.22 Stable                 | CRS 3.0 Canary             | CRS 4.22 Canary                 |
+| :-------------------- | :------------------------- | :------------------------------ | :------------------------- | :------------------------------ |
+| SQL Injection         | `sqli-stable`              | `sqli-v422-stable`              | `sqli-canary`              | `sqli-v422-canary`              |
+| Cross-Site Scripting  | `xss-stable`               | `xss-v422-stable`               | `xss-canary`               | `xss-v422-canary`               |
+| Local File Inclusion  | `lfi-stable`               | `lfi-v422-stable`               | `lfi-canary`               | `lfi-v422-canary`               |
+| Remote File Inclusion | `rfi-stable`               | `rfi-v422-stable`               | `rfi-canary`               | `rfi-v422-canary`               |
+| Remote Code Execution | `rce-stable`               | `rce-v422-stable`               | `rce-canary`               | `rce-v422-canary`               |
+| Method Enforcement    | `methodenforcement-stable` | `methodenforcement-v422-stable` | `methodenforcement-canary` | `methodenforcement-v422-canary` |
+| Scanner Detection     | `scannerdetection-stable`  | `scannerdetection-v422-stable`  | `scannerdetection-canary`  | `scannerdetection-v422-canary`  |
+| Protocol Attack       | `protocolattack-stable`    | `protocolattack-v422-stable`    | `protocolattack-canary`    | `protocolattack-v422-canary`    |
+| PHP Attack            | `php-stable`               | `php-v422-stable`               | `php-canary`               | `php-v422-canary`               |
+| Session Fixation      | `sessionfixation-stable`   | `sessionfixation-v422-stable`   | `sessionfixation-canary`   | `sessionfixation-v422-canary`   |
+
+<!-- mdformat on -->
 
 ### CRS 3.3 to CRS 4.22
 
-Threat Category       | CRS 3.3 Stable                 | CRS 4.22 Stable                 | CRS 3.3 Canary                 | CRS 4.22 Canary
---------------------- | ------------------------------ | ------------------------------- | ------------------------------ | ---------------
-SQL Injection         | `sqli-v33-stable`              | `sqli-v422-stable`              | `sqli-v33-canary`              | `sqli-v422-canary`
-Cross-Site Scripting  | `xss-v33-stable`               | `xss-v422-stable`               | `xss-v33-canary`               | `xss-v422-canary`
-Local File Inclusion  | `lfi-v33-stable`               | `lfi-v422-stable`               | `lfi-v33-canary`               | `lfi-v422-canary`
-Remote File Inclusion | `rfi-v33-stable`               | `rfi-v422-stable`               | `rfi-v33-canary`               | `rfi-v422-canary`
-Remote Code Execution | `rce-v33-stable`               | `rce-v422-stable`               | `rce-v33-canary`               | `rce-v422-canary`
-Method Enforcement    | `methodenforcement-v33-stable` | `methodenforcement-v422-stable` | `methodenforcement-v33-canary` | `methodenforcement-v422-canary`
-Scanner Detection     | `scannerdetection-v33-stable`  | `scannerdetection-v422-stable`  | `scannerdetection-v33-canary`  | `scannerdetection-v422-canary`
-Protocol Attack       | `protocolattack-v33-stable`    | `protocolattack-v422-stable`    | `protocolattack-v33-canary`    | `protocolattack-v422-canary`
-PHP Attack            | `php-v33-stable`               | `php-v422-stable`               | `php-v33-canary`               | `php-v422-canary`
-Session Fixation      | `sessionfixation-v33-stable`   | `sessionfixation-v422-stable`   | `sessionfixation-canary`       | `sessionfixation-v422-canary`
-Java Attack           | `java-v33-stable`              | `java-v422-stable`              | `java-v33-canary`              | `java-v422-canary`
-Node.js / Generic     | `nodejs-v33-stable`            | `generic-v422-stable`           | `nodejs-v33-canary`            | `generic-v422-canary`
+<!-- mdformat off -->
+
+| Threat Category       | CRS 3.3 Stable                 | CRS 4.22 Stable                 | CRS 3.3 Canary                 | CRS 4.22 Canary                 |
+| :-------------------- | :----------------------------- | :------------------------------ | :----------------------------- | :------------------------------ |
+| SQL Injection         | `sqli-v33-stable`              | `sqli-v422-stable`              | `sqli-v33-canary`              | `sqli-v422-canary`              |
+| Cross-Site Scripting  | `xss-v33-stable`               | `xss-v422-stable`               | `xss-v33-canary`               | `xss-v422-canary`               |
+| Local File Inclusion  | `lfi-v33-stable`               | `lfi-v422-stable`               | `lfi-v33-canary`               | `lfi-v422-canary`               |
+| Remote File Inclusion | `rfi-v33-stable`               | `rfi-v422-stable`               | `rfi-v33-canary`               | `rfi-v422-canary`               |
+| Remote Code Execution | `rce-v33-stable`               | `rce-v422-stable`               | `rce-v33-canary`               | `rce-v422-canary`               |
+| Method Enforcement    | `methodenforcement-v33-stable` | `methodenforcement-v422-stable` | `methodenforcement-v33-canary` | `methodenforcement-v422-canary` |
+| Scanner Detection     | `scannerdetection-v33-stable`  | `scannerdetection-v422-stable`  | `scannerdetection-v33-canary`  | `scannerdetection-v422-canary`  |
+| Protocol Attack       | `protocolattack-v33-stable`    | `protocolattack-v422-stable`    | `protocolattack-v33-canary`    | `protocolattack-v422-canary`    |
+| PHP Attack            | `php-v33-stable`               | `php-v422-stable`               | `php-v33-canary`               | `php-v422-canary`               |
+| Session Fixation      | `sessionfixation-v33-stable`   | `sessionfixation-v422-stable`   | `sessionfixation-canary`       | `sessionfixation-v422-canary`   |
+| Java Attack           | `java-v33-stable`              | `java-v422-stable`              | `java-v33-canary`              | `java-v422-canary`              |
+| Node.js / Generic     | `nodejs-v33-stable`            | `generic-v422-stable`           | `nodejs-v33-canary`            | `generic-v422-canary`           |
+
+<!-- mdformat on -->
 
 > **Note on Node.js**: In CRS 4.22, the Node.js attack ruleset was merged into
 > and replaced by `generic-v422-stable` / `generic-v422-canary`. Consequently,
@@ -69,40 +77,24 @@ When `evaluatePreconfiguredWaf('ruleset-name')` is called without an explicit
 
 Upgrading to CRS 4.22 expands signature coverage significantly:
 
-| Threat        | CRS 3.0    | CRS 3.3    | CRS 4.22   | Coverage Delta     |
-: Category      : Signatures : Signatures : Signatures :                    :
-| ------------- | ---------- | ---------- | ---------- | ------------------ |
-| **Remote Code | 11         | 15         | **44**     | +29 to +33         |
-: Execution     :            :            :            : signatures         :
-: (RCE)**       :            :            :            : (+200-300%)        :
-| **SQL         | 38         | 49         | **60**     | +11 to +22         |
-: Injection     :            :            :            : signatures         :
-: (SQLi)**      :            :            :            : (+22-58%)          :
-| **Cross-Site  | 25         | 30         | **33**     | +3 to +8           |
-: Scripting     :            :            :            : signatures         :
-: (XSS)**       :            :            :            : (+10-32%)          :
-| **PHP         | 13         | 16         | **20**     | +4 to +7           |
-: Injection**   :            :            :            : signatures         :
-:               :            :            :            : (+25-54%)          :
-| **Protocol    | 9          | 10         | **17**     | +7 to +8           |
-: Attack**      :            :            :            : signatures         :
-:               :            :            :            : (+70-89%)          :
-| **Java        | N/A        | 9          | **14**     | +5 signatures      |
-: Attack**      :            :            :            : (+55%)             :
-| **Generic /   | N/A        | 1          | **10**     | +9 signatures      |
-: Node.js**     :            :            :            : (+900%)            :
-| **Local File  | 4          | 4          | **5**      | +1 signature       |
-: Inclusion     :            :            :            :                    :
-: (LFI)**       :            :            :            :                    :
-| **Remote File | 4          | 4          | **5**      | +1 signature       |
-: Inclusion     :            :            :            :                    :
-: (RFI)**       :            :            :            :                    :
-| **Session     | 3          | 3          | **3**      | No change          |
-: Fixation**    :            :            :            :                    :
-| **Method      | 1          | 1          | **1**      | Behavior change    |
-: Enforcement** :            :            :            : (PUT/PATCH/DELETE) :
-| **Scanner     | 5          | 5          | **1**      | Consolidated       |
-: Detection**   :            :            :            :                    :
+<!-- mdformat off -->
+
+| Threat Category                 | CRS 3.0 Signatures | CRS 3.3 Signatures | CRS 4.22 Signatures | Coverage Delta                         |
+| :------------------------------ | :----------------- | :----------------- | :------------------ | :------------------------------------- |
+| **Remote Code Execution (RCE)** | 11                 | 15                 | **44**              | +29 to +33 signatures (+200-300%)      |
+| **SQL Injection (SQLi)**        | 38                 | 49                 | **60**              | +11 to +22 signatures (+22-58%)        |
+| **Cross-Site Scripting (XSS)**  | 25                 | 30                 | **33**              | +3 to +8 signatures (+10-32%)          |
+| **PHP Injection**               | 13                 | 16                 | **20**              | +4 to +7 signatures (+25-54%)          |
+| **Protocol Attack**             | 9                  | 10                 | **17**              | +7 to +8 signatures (+70-89%)          |
+| **Java Attack**                 | N/A                | 9                  | **14**              | +5 signatures (+55%)                   |
+| **Generic / Node.js**           | N/A                | 1                  | **10**              | +9 signatures (+900%)                  |
+| **Local File Inclusion (LFI)**  | 4                  | 4                  | **5**               | +1 signature                           |
+| **Remote File Inclusion (RFI)** | 4                  | 4                  | **5**               | +1 signature                           |
+| **Session Fixation**            | 3                  | 3                  | **3**               | No change                              |
+| **Method Enforcement**          | 1                  | 1                  | **1**               | Behavior change (PUT/PATCH/DELETE)     |
+| **Scanner Detection**           | 5                  | 5                  | **1**               | Consolidated                           |
+
+<!-- mdformat on -->
 
 **Why this matters**: The massive increase in active signatures (especially in
 RCE, SQLi, and Protocol Attack) increases protection against modern CVEs, but
