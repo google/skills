@@ -1,7 +1,7 @@
 ---
 name: agent-platform-eval-flywheel
 metadata:
-  version: "1.0.3"
+  version: "1.0.4"
   category: AiAndMachineLearning
 description: >-
   Measures and improves the quality of AI models and agents on Google Cloud
@@ -18,6 +18,19 @@ description: >-
 
 Help users evaluate and iteratively improve GenAI models and agents using the
 Agent Platform GenAI Evaluation SDK (`google.genai` / `agentplatform`).
+
+## Attribution
+
+**MUST READ**: Before executing any `gcloud`, REST API, or MCP command, you MUST
+read [Usage Attribution](references/attribution.md). For commands executed
+directly in the terminal (never in generated scripts, Terraform, or user code),
+prefix `gcloud` with `CLOUDSDK_METRICS_REQUEST_ATTRIBUTION` and append the
+attribution suffix to `User-Agent` headers:
+
+```text
+CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:agent-platform-eval-flywheel)"
+User-Agent: <existing_user_agent> agent-skills/1.0 (skill:agent-platform-eval-flywheel)
+```
 
 ## When to use this skill
 
@@ -44,12 +57,20 @@ to the following safety tiers based on the action requested:
     *   **Rule**: No confirmation needed. You may execute these helper scripts
         immediately to inspect data, validate schemas, parse traces, or compare
         evaluation results.
-2.  **Tier M: Read-only with Compute Costs (`client.evals.run_inference`,
+2.  **Tier M: Evaluation & Generation Runs (`client.evals.run_inference`,
     `client.evals.evaluate`, `client.evals.generate_conversation_scenarios`,
     `client.evals.generate_loss_clusters`)**
-    *   **Rule**: These operations invoke LLMs or remote evaluation services
-        that consume compute resources and incur costs. This requires
-        **interactive confirmation** with 'Yes'/'No' options.
+    *   **Rule**: For predictable user approval over dataset reads, result
+        writes (`dest`), and remote compute/API usage, every call to
+        `client.evals.evaluate()`, `client.evals.run_inference()`,
+        `client.evals.generate_conversation_scenarios()`, or
+        `client.evals.generate_loss_clusters()` — whether using remote metrics
+        (LLM/rubric metrics or sandboxed `types.CodeExecutionMetric`) or local
+        in-process metrics (`types.Metric` with a Python callable) — requires
+        presenting a dry-run confirmation preview showing the proposed
+        evaluation call and parameters and waiting for explicit 'Yes'/'No' user
+        approval (do not quote remote compute charges when only local in-process
+        `types.Metric` callables are used without `dest` or model inference).
     *   **Confirmation for EVERY evaluation run**: Every evaluation,
         re-evaluation, metric update, parameter change, or synthetic scenario
         generation requires its own dry-run preview and interactive
@@ -61,14 +82,13 @@ to the following safety tiers based on the action requested:
         for the user's reply; only execute after explicit 'Yes' / approval.
         Printing a preview and then calling the tool before the user can answer
         does not count as obtaining confirmation.
-    *   **No Pre-Execution of Remote Evaluation**: NEVER execute
+    *   **No Pre-Execution of Evaluation Calls**: NEVER execute
         `client.evals.evaluate()`, `client.evals.run_inference()`,
         `client.evals.generate_conversation_scenarios()`, or run any script
-        invoking these remote operations before user confirmation. In the
-        initial turn, you may prepare local data structures and compose the
-        script, but you MUST present the dry-run preview card and obtain
-        explicit user confirmation before running any remote evaluation or
-        scenario generation call.
+        invoking these SDK methods before user confirmation. In the initial
+        turn, you may write the evaluation script to disk, but you MUST present
+        the dry-run confirmation preview and obtain explicit user confirmation
+        before running `client.evals.evaluate()`.
     *   **Immediate Execution Upon Approval**: Once the user explicitly approves
         (e.g., 'Yes', 'Approved', 'Go ahead', 'Proceed'), proceed directly to
         executing the previewed evaluation script via `run_command` and report

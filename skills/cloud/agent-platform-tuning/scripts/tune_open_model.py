@@ -18,8 +18,27 @@ def tune_open_model(
     learning_rate: float,
     tuning_mode: str,
     adapter_size: int | None = None,
+    method: str = "SUPERVISED",
+    teacher_model: str | None = None,
 ) -> types.TuningJob:
   """Launches a Agent Platform model tuning job."""
+  if method == "DISTILLATION":
+    if not teacher_model:
+      raise ValueError("teacher_model is required for DISTILLATION.")
+    method_args = {
+        "method": types.TuningMethod.DISTILLATION,
+        "base_teacher_model": teacher_model,
+    }
+  elif method == "SUPERVISED":
+    if teacher_model:
+      raise ValueError("teacher_model only applies to DISTILLATION.")
+    method_args = {}
+  else:
+    raise ValueError(
+        f"Unsupported method: {method}. Supported methods are: SUPERVISED,"
+        " DISTILLATION."
+    )
+
   training_ds = types.TuningDataset(gcs_uri=train_dataset)
   validation_ds = (
       types.TuningValidationDataset(gcs_uri=validation_dataset)
@@ -54,6 +73,7 @@ def tune_open_model(
       adapter_size=mapped_adapter,
       output_uri=output_uri,
       labels={"mg-source": "agent-platform-tuning-skill"},
+      **method_args,
   )
   with genai.Client(
       enterprise=True, project=project, location=location
@@ -97,8 +117,18 @@ if __name__ == "__main__":
   parser.add_argument(
       "--adapter_size",
       type=int,
-      choices=(1, 4, 8, 16, 32),
+      choices=(1, 2, 4, 8, 16, 32),
       help="Adapter size for PEFT",
+  )
+  parser.add_argument(
+      "--method", choices=("SUPERVISED", "DISTILLATION"), default="SUPERVISED"
+  )
+  parser.add_argument(
+      "--teacher_model",
+      help=(
+          "Teacher model for DISTILLATION, e.g."
+          " moonshotai/kimi-k2-thinking-maas"
+      ),
   )
 
   args = parser.parse_args()

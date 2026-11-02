@@ -1,7 +1,7 @@
 ---
 name: agent-platform-tuning
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: AiAndMachineLearning
 description: >-
   Agent Platform Model Tuning. Use when you need to fine-tune open models
@@ -12,6 +12,19 @@ description: >-
 ---
 
 # Agent Platform Model Tuning
+
+## Attribution
+
+**MUST READ**: Before executing any `gcloud`, REST API, or MCP command, you MUST
+read [Usage Attribution](references/attribution.md). For commands executed
+directly in the terminal (never in generated scripts, Terraform, or user code),
+prefix `gcloud` with `CLOUDSDK_METRICS_REQUEST_ATTRIBUTION` and append the
+attribution suffix to `User-Agent` headers:
+
+```text
+CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:agent-platform-tuning)"
+User-Agent: <existing_user_agent> agent-skills/1.0 (skill:agent-platform-tuning)
+```
 
 ## Overview
 
@@ -63,12 +76,13 @@ configuration, monitoring, and deployment.
             command in setup instructions, and do NOT assume a non-existent
             bucket exists (users may not have bucket creation permissions and
             will provide their own existing bucket).
-        *   You MUST explicitly conclude your response by asking whether they
-            want to tune an **Open Model** or a **Gemini Model**. Never provide
-            setup instructions without asking for the model category choice.
-            (Note: if they ask to actively check or verify a project whose ID or
-            region is missing, ask for the project and region first without
-            running tool calls).
+        *   You MUST explicitly conclude your prose response with the direct
+            question: **"Would you like to tune an Open Model or a Gemini
+            Model?"** (do NOT bury this choice inside a bulleted "Suggested Next
+            Steps" list). Never provide setup instructions without explicitly
+            asking this question in prose. (Note: if they ask to actively check
+            or verify a project whose ID or region is missing, ask for the
+            project and region first without running tool calls).
     -   If the user provides a specific tuning purpose, you should recommend
         three models: one Open Model, one Gemini Model, and a third generally
         recommended choice. Briefly list the pros and cons of each (e.g., Gemini
@@ -85,6 +99,11 @@ configuration, monitoring, and deployment.
         unsupported by the tuning service. If the user names a model that is not
         in the catalog, follow the fallback rule in that catalog. Do not proceed
         with model configuration until the category is confirmed.
+    -   **Distillation requests**: If the user asks to distill a model, names a
+        teacher model, or wants a smaller model to learn from a larger one, this
+        is an Open Model workflow using distillation. Read "Distillation" in
+        `references/models.md` and use only the teacher and student models
+        listed there.
     -   **Yes** → Proceed.
 
 3.  **Environment Check**: Has the environment (Auth, APIs, IAM, Venv) been
@@ -382,24 +401,35 @@ environment: they would downgrade packages other tools may share.
     > applicable. - Ask the user to confirm the column mapping or specify which
     > columns to use.
 
+    For distillation, map only the prompt column. The teacher model writes the
+    responses, so no completion column is needed.
+
 ### 1.1 Formatting & Validation
 
 -   **Conversion**: If data is in CSV, JSON, or Parquet, use
     `scripts/prepare_dataset.py` to convert.
--   **Validation Split Confirmation**: Whenever generating or preparing a single
-    dataset without an explicit validation set (including when generating sample
-    chat/instruction datasets or preparing training datasets), you MUST generate
-    or process the data using Python via `run_command` and **you MUST prompt the
-    user** to seek permission to split the training dataset 90/10 to form a
-    validation dataset (using `--validation_split 0.1` or Python script). If
-    they agree, proceed with the split. If they decline, just use the training
-    dataset without a validation dataset. Do **NOT** offer an 80/20 split; the
-    tuning service rejects it, for the reason given in
+-   **Validation Split Confirmation**: Except for prompt-only distillation data
+    (next bullet), whenever generating or preparing a single dataset without an
+    explicit validation set (including when generating sample chat/instruction
+    datasets or preparing training datasets), you MUST generate or process the
+    data using Python via `run_command` and **you MUST prompt the user** to seek
+    permission to split the training dataset 90/10 to form a validation dataset
+    (using `--validation_split 0.1` or Python script). If they agree, proceed
+    with the split. If they decline, just use the training dataset without a
+    validation dataset. Do **NOT** offer an 80/20 split; the tuning service
+    rejects it, for the reason given in
     the
     [Data Preparation Guide](references/data_prep.md#sizing-the-validation-split).
  Do NOT proceed to upload the dataset or
     submit the tuning job before asking the user about the 90/10 validation
     split!
+-   **Distillation training data**: Convert with `--prompt_only` and no
+    `--completion_col`; see the
+    [Data Preparation Guide](references/data_prep.md#distillation-datasets). Do
+    **NOT** offer the 90/10 split for a prompt-only file: the split would have
+    no responses, and a validation dataset must include them. Validation is
+    optional for distillation; use one only if the user has separate data with
+    responses, and convert it the normal way.
 -   **Validation**: If data is already in JSONL, validate it before uploading.
     Simply having a `.jsonl` extension is not enough. You must verify that the
     content schema is valid for tuning (e.g. correct system/user/model roles).
@@ -417,14 +447,27 @@ for required schemas.
 
 ### 1.2 Upload
 
-Upload formatted `.jsonl` files to GCS using a unique directory (e.g., with a
-datetime timestamp) to avoid overwriting outputs from different runs. If the
-user named a bucket (e.g., `gs://mybucket`), use that bucket name EXACTLY as
-provided (verbatim) and NEVER prepend the project ID or modify the bucket name.
+Upload formatted `.jsonl` files (both training and validation splits, if
+applicable) to GCS using a unique directory (e.g., with a datetime timestamp) to
+avoid overwriting outputs from different runs. If the user named a bucket (e.g.,
+`gs://mybucket`), use that bucket name EXACTLY as provided (verbatim) and NEVER
+prepend the project ID or modify the bucket name. Upload local `.jsonl` splits
+to an existing bucket via `google.cloud.storage.Client` in Python (do NOT create
+a missing bucket unprompted here; see Phase 3 if a bucket needs to be proposed
+and confirmed):
 
-```bash
-ARTIFACTS="gs://YOUR_BUCKET/tuning_agent_job_<datetime>/dataset.jsonl"
-gcloud storage cp dataset.jsonl "$ARTIFACTS"
+```python
+from google.cloud import storage
+
+storage_client = storage.Client(project=PROJECT)
+bucket = storage_client.bucket(BUCKET_NAME)
+bucket.blob(f"tuning_agent_job_{TIMESTAMP}/train.jsonl").upload_from_filename(
+    "/tmp/train.jsonl"
+)
+if VAL_DATASET_PATH:
+    bucket.blob(f"tuning_agent_job_{TIMESTAMP}/val.jsonl").upload_from_filename(
+        VAL_DATASET_PATH
+    )
 ```
 
 ## Phase 2: Model Configuration & Recommendation {#phase-2}
@@ -494,6 +537,12 @@ Output: `{"models": [...], "total_count": N, "truncated": bool}`.
     `--model` takes either the display name (`Qwen 3 8B`) or the same resource
     name you pass to `--base_model` (`qwen/qwen3@qwen3-8b`), so the value chosen
     in Step 2.1 can be reused as-is.
+
+> [!NOTE] **Distillation cost:** `scripts/calculate_cost.py` counts only the
+> text in the dataset. For a prompt-only distillation dataset it leaves out the
+> teacher's responses, which the student also trains on, and it does not include
+> the teacher model calls, which are billed separately at the teacher's
+> managed-model price. Present the figure as a lower bound.
 
 > [!NOTE] **Handling Missing Dataset Errors:** If `scripts/calculate_cost.py`
 > fails because the dataset file (e.g. `my_data.jsonl` or `dummy_data.jsonl`)
@@ -595,26 +644,56 @@ python3 scripts/tune_open_model.py \
     --project YOUR_PROJECT \
     --location global \
     --base_model BASE_MODEL_ID \
-    --train_dataset gs://YOUR_BUCKET/tuning_agent_job_<datetime>/dataset.jsonl \
+    --train_dataset gs://YOUR_BUCKET/tuning_agent_job_<datetime>/train.jsonl \
     --output_uri gs://YOUR_BUCKET/tuning_agent_job_<datetime>/output \
     --epochs EPOCHS \
     --learning_rate LR \
     --tuning_mode MODE
 ```
 
-*(If `scripts/tune_open_model.py` is not in the current working directory, run
-the Python SDK snippet directly with `python3 -c "..."` or write it to
-`/tmp/submit_open_tuning.py` using `client.tunings.tune`.)*
+*(Run `scripts/tune_open_model.py`, which maps `--tuning_mode` (`FULL` /
+`PEFT_ADAPTER`) to `types.TuningMode`, sets adapter sizes and labels, and passes
+`output_uri` into `CreateTuningJobConfig(output_uri=...)`.)*
 
 This script is open model only, and `--location` falls back to `global` if
 omitted. Always pass the location the user confirmed in section 0.2 explicitly,
-so it is visible in the command string you present for approval.
+so it is visible in the command string you present for approval. If job
+submission fails (e.g., due to a missing or invalid parameter), report the error
+verbatim and present a fresh confirmation prompt showing the updated command
+before resubmitting.
 
-> [!WARNING] **`--output_uri` is required for open models.** The Python SDK
-> declares it as `output_uri: Optional[str] = None`, but the tuning backend
-> rejects open model jobs that omit it with `INVALID_ARGUMENT: The output_uri
-> field is required for this model.` Treat the SDK's "optional" signature as
-> wrong here and always pass a GCS destination.
+#### Distillation
+
+Add `--method DISTILLATION` and `--teacher_model`. `--base_model` is the
+student. Use only the teacher and student models listed under "Distillation" in
+`references/models.md`.
+
+```bash
+python3 scripts/tune_open_model.py \
+    --project YOUR_PROJECT \
+    --location global \
+    --method DISTILLATION \
+    --teacher_model TEACHER_MODEL_ID \
+    --base_model STUDENT_MODEL_ID \
+    --train_dataset gs://YOUR_BUCKET/tuning_agent_job_<datetime>/prompts.jsonl \
+    --output_uri gs://YOUR_BUCKET/tuning_agent_job_<datetime>/output \
+    --epochs EPOCHS \
+    --learning_rate LR \
+    --tuning_mode MODE
+```
+
+-   The training dataset can contain prompts only; the teacher writes the
+    responses. A validation dataset must include responses.
+-   Teacher calls draw on the project's quota for the teacher model.
+-   The job writes the teacher-labeled data to
+    `distillation_labelled_dataset.jsonl` in the output directory.
+
+> [!WARNING] **`--output_uri` / `output_uri` is required for open models.** The
+> Python SDK declares it as `output_uri: Optional[str] = None`, but the tuning
+> backend rejects open model jobs that omit it with `INVALID_ARGUMENT: The
+> output_uri field is required for this model.` Treat the SDK's "optional"
+> signature as wrong here and always pass a GCS destination (`output_uri`) both
+> in CLI flags and in `CreateTuningJobConfig(output_uri=...)`.
 
 Because the flag is mandatory, you must establish where the tuned model is
 written before you can submit. **Never invent a bucket name, derive one from the
@@ -644,14 +723,10 @@ below.
 
 > [!IMPORTANT] **Interactive Confirmation Required (Tier M):** Before proceeding
 > with job submission, you **MUST** present the proposed command string showing
-> all literal flags in a confirmation prompt to the user with 'Yes' and 'No'
-> options.
-
-> **CRITICAL:** When presenting this confirmation prompt to the user, you MUST
-> output it as a direct plain text response and stop tool execution immediately.
-> Do NOT call any command execution or interactive tools in the same turn, as
-> unexpected tool calls may be auto-replied by the simulation harness and cause
-> an infinite loop. Yield immediately for the user's reply.
+> all literal flags (including `--output_uri` for open models and estimated
+> cost) in a confirmation prompt to the user with 'Yes' and 'No' options. Do NOT
+> execute the tuning job submission via `run_command` in the same turn as
+> presenting the confirmation prompt; yield immediately for the user's reply.
 
 ## Phase 4: Monitoring {#phase-4-monitoring}
 
@@ -670,7 +745,12 @@ the status.
 
 Once the tuning job is `SUCCEEDED`, deploy the tuned checkpoint by registering
 it in Model Registry with the base model's serving container, then deploying
-that registered model to a new endpoint.
+that registered model to a new endpoint. **CRITICAL:** If the tuning job is
+still pending/running (`tuned_model_name` is `None` or not yet generated),
+**NEVER deploy the untuned base model (e.g., `google/gemma3@...`) as a
+substitute!** Instead, explicitly inform the user that deployment of the tuned
+model cannot proceed until the tuning job finishes (`JOB_STATE_SUCCEEDED`) and
+generates the tuned model artifact.
 
 Deployment requires a real region — `global` is not valid here. If the job ran
 on `global`, read the region out of the tuned model's resource name
@@ -785,13 +865,9 @@ project.
 > with deployment, you **MUST** present the three write commands (steps 2-4)
 > with all literal values filled in, plus the generated flags files (container
 > image, args, machine type, accelerator config), in a confirmation prompt to
-> the user with 'Yes' and 'No' options.
-
-> **CRITICAL:** When presenting this confirmation prompt to the user, you MUST
-> output it as a direct plain text response and stop tool execution immediately.
-> Do NOT call any command execution or interactive tools in the same turn, as
-> unexpected tool calls may be auto-replied by the simulation harness and cause
-> an infinite loop. Yield immediately for the user's reply.
+> the user with 'Yes' and 'No' options. Do NOT execute the deployment commands
+> via `run_command` in the same turn as presenting the confirmation prompt;
+> yield immediately for the user's reply.
 
 Refer to [Models Catalog](references/models.md) for hardware recommendations for
 specific open models.

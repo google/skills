@@ -1,7 +1,7 @@
 ---
 name: agent-platform-prompt-management
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   category: AiAndMachineLearning
 description: >-
   Manages and orchestrates prompts in Agent Platform. Use when you need to create,
@@ -9,6 +9,19 @@ description: >-
   for model training, model deployment to endpoints, or managing non-Agent Platform
   prompts.
 ---
+
+## Attribution
+
+**MUST READ**: Before executing any `gcloud`, REST API, or MCP command, you MUST
+read [Usage Attribution](references/attribution.md). For commands executed
+directly in the terminal (never in generated scripts, Terraform, or user code),
+prefix `gcloud` with `CLOUDSDK_METRICS_REQUEST_ATTRIBUTION` and append the
+attribution suffix to `User-Agent` headers:
+
+```text
+CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:agent-platform-prompt-management)"
+User-Agent: <existing_user_agent> agent-skills/1.0 (skill:agent-platform-prompt-management)
+```
 
 ## Usage Guide
 
@@ -55,6 +68,16 @@ accidental mutation or permanent deletion of prompt resources:
         > *   **Display Name**: `Customer Support Greeting`
         > *   **Target Model**: `gemini-2.5-pro`
         > *   **Template Text**: "Hello {{user_name}}, how can I help..."
+        >
+        > ```python
+        > vertexai.init(project="<PROJECT_ID>", location="<LOCATION_ID>")
+        > prompt = Prompt(
+        >     prompt_data=["Hello {user_name}, how can I help..."],
+        >     model_name="gemini-2.5-pro",
+        >     prompt_name="Customer Support Greeting",
+        > )
+        > created_prompt = prompts.create_version(prompt=prompt)
+        > ```
         >
         > Do you confirm? [Yes/No]
 
@@ -191,10 +214,15 @@ prompts.delete(prompt_id="PROMPT_ID")
 
 ### Verification After Deletion
 
-When the user asks to list prompts or check that a deleted prompt is gone, list
-the prompts and explicitly state whether the deleted prompt ID is present. If it
-is not found, explicitly confirm: *"I have verified that the prompt with ID
-`<PROMPT_ID>` is no longer present in the project."*
+Whenever listing prompts or verifying state after deleting a prompt in the same
+conversation, you **MUST**:
+
+1.  Check in Python whether the deleted `prompt_id` appears in `prompts.list()`.
+2.  In your prose reply (even when the list is also shown as a card):
+    *   If it is not found, explicitly confirm: *"I have verified that the
+        deleted prompt (ID: `<PROMPT_ID>`) is no longer present in project
+        `<PROJECT_ID>` (`<LOCATION_ID>`)."*
+    *   If it is still listed, report its current presence and ID to the user.
 
 ## 2. Best Practices
 

@@ -109,8 +109,9 @@ def convert_to_jsonl(
     output_file: str,
     format_type: str,
     prompt_col: str,
-    completion_col: str,
-    validation_split: float | None = DEFAULT_VALIDATION_SPLIT,
+    completion_col: str | None,
+    validation_split: float | None = None,
+    prompt_only: bool = False,
 ):
   """Converts a file to JSONL format for Agent Platform tuning.
 
@@ -123,9 +124,28 @@ def convert_to_jsonl(
     prompt_col: Name of the column containing the prompt/user message.
     completion_col: Name of the column containing the completion/response.
     validation_split: Optional fraction of data to split for validation.
+    prompt_only: Write the prompt only, as distillation training data. The
+      teacher model writes the responses.
   """
   if not os.path.exists(input_file):
     logging.error("Input file not found: %s", input_file)
+    sys.exit(1)
+
+  if prompt_only:
+    if format_type != "messages":
+      logging.error("--prompt_only requires --format messages")
+      sys.exit(1)
+    if validation_split:
+      # A validation file is scored against its responses, so a prompt-only
+      # one is unusable; it has to come from separate data that has them.
+      logging.error(
+          "A prompt-only dataset can't be split for validation, because a"
+          " validation file needs responses. Pass --validation_split 0 and"
+          " prepare a separate validation file with responses if you want one."
+      )
+      sys.exit(1)
+  elif not completion_col:
+    logging.error("completion_col is required unless prompt_only is set")
     sys.exit(1)
 
   try:
@@ -157,8 +177,9 @@ def convert_to_jsonl(
     logging.exception("Failed to read input file: %s", e)
     sys.exit(1)
 
-  for col in [prompt_col, completion_col]:
-    if col not in dataset.column_names:  # pyrefly: ignore[not-iterable]
+  columns = [prompt_col] if prompt_only else [prompt_col, completion_col]
+  for col in columns:
+    if col not in dataset.column_names:
       logging.error(
           "Column '%s' not found. Available columns: %s",
           col,
@@ -169,6 +190,8 @@ def convert_to_jsonl(
   # Remove rows with empty values in critical columns
   def is_valid(example):
     prompt_text = str(example[prompt_col]).strip().lower()
+    if prompt_only:
+      return prompt_text not in ("", "nan", "none")
     completion_text = str(example[completion_col]).strip().lower()
     return (
         len(prompt_text) > 0
@@ -179,15 +202,17 @@ def convert_to_jsonl(
         and completion_text != "none"
     )
 
-  initial_len = len(dataset)  # pyrefly: ignore[bad-argument-type]
+  initial_len = len(dataset)
   dataset = dataset.filter(is_valid)
-  if len(dataset) < initial_len:  # pyrefly: ignore[bad-argument-type]
+  if len(dataset) < initial_len:
     logging.warning(
-        "Dropped %d rows with empty or NaN values", initial_len - len(dataset)  # pyrefly: ignore[bad-argument-type]
+        "Dropped %d rows with empty or NaN values", initial_len - len(dataset)
     )
 
   def format_example(example):
     prompt_text = str(example[prompt_col])
+    if prompt_only:
+      return {"messages": [{"role": "user", "content": prompt_text}]}
     completion_text = str(example[completion_col])
     if format_type == "messages":
       return {
@@ -203,7 +228,7 @@ def convert_to_jsonl(
       }
 
   formatted_dataset = dataset.map(
-      format_example, remove_columns=dataset.column_names  # pyrefly: ignore[bad-argument-type]
+      format_example, remove_columns=dataset.column_names
   )
 
   if validation_split and validation_split > 0:
@@ -212,7 +237,7 @@ def convert_to_jsonl(
       sys.exit(1)
 
     # Use the datasets library to perform the split as requested
-    split_dict = formatted_dataset.train_test_split(  # pyrefly: ignore[missing-attribute]
+    split_dict = formatted_dataset.train_test_split(
         seed=42, test_size=validation_split
     )
     train_ds = split_dict["train"]
@@ -245,10 +270,10 @@ def convert_to_jsonl(
       logging.error("%s", ratio_error)
       sys.exit(1)
   else:
-    formatted_dataset.to_json(output_file, force_ascii=False, lines=True)  # pyrefly: ignore[missing-attribute]
+    formatted_dataset.to_json(output_file, force_ascii=False, lines=True)
     logging.info(
         "Successfully saved %d examples to %s",
-        len(formatted_dataset),  # pyrefly: ignore[bad-argument-type]
+        len(formatted_dataset),
         output_file,
     )
 
@@ -287,10 +312,18 @@ if __name__ == "__main__":
   parser.add_argument(
       "--validation_split",
       type=float,
-      default=DEFAULT_VALIDATION_SPLIT,
       help=(
           "Fraction of data to hold out for validation. Keep it at or below"
-          f" {DEFAULT_VALIDATION_SPLIT}; see references/data_prep.md."
+          f" {DEFAULT_VALIDATION_SPLIT}, the default; see"
+          " references/data_prep.md. Defaults to 0 with --prompt_only."
+      ),
+  )
+  parser.add_argument(
+      "--prompt_only",
+      action="store_true",
+      help=(
+          "Write prompts only, as distillation training data. Needs no"
+          " --completion_col and cannot be split for validation."
       ),
   )
   parser.add_argument(
@@ -308,12 +341,23 @@ if __name__ == "__main__":
     success = validate_jsonl(args.input, args.format)
     sys.exit(0 if success else 1)
   else:
-    if not all([args.input, args.prompt_col, args.completion_col]):
+    if args.prompt_only:
+      if not all([args.input, args.prompt_col]):
+        logging.error(
+            "--input and --prompt_col are required for --prompt_only"
+            " conversion"
+        )
+        sys.exit(1)
+    elif not all([args.input, args.prompt_col, args.completion_col]):
       logging.error(
           "--input, --prompt_col, and --completion_col are required for"
           " conversion"
       )
       sys.exit(1)
+    if args.validation_split is None:
+      args.validation_split = (
+          0 if args.prompt_only else DEFAULT_VALIDATION_SPLIT
+      )
     convert_to_jsonl(
         args.input,
         args.output,
@@ -321,4 +365,5 @@ if __name__ == "__main__":
         args.prompt_col,
         args.completion_col,
         args.validation_split,
+        prompt_only=args.prompt_only,
     )

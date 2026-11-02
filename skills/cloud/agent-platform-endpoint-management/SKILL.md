@@ -1,7 +1,7 @@
 ---
 name: agent-platform-endpoint-management
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: AiAndMachineLearning
 description: >-
   Manages Agent Platform serving endpoints. Use when you need to create, list,
@@ -12,6 +12,19 @@ description: >-
 ---
 
 # Agent Platform Endpoint Management
+
+## Attribution
+
+**MUST READ**: Before executing any `gcloud`, REST API, or MCP command, you MUST
+read [Usage Attribution](references/attribution.md). For commands executed
+directly in the terminal (never in generated scripts, Terraform, or user code),
+prefix `gcloud` with `CLOUDSDK_METRICS_REQUEST_ATTRIBUTION` and append the
+attribution suffix to `User-Agent` headers:
+
+```text
+CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:agent-platform-endpoint-management)"
+User-Agent: <existing_user_agent> agent-skills/1.0 (skill:agent-platform-endpoint-management)
+```
 
 ## Overview
 

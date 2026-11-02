@@ -1,7 +1,7 @@
 ---
 name: agent-platform-deploy
 metadata:
-  version: "1.0.4"
+  version: "1.0.5"
   category: AiAndMachineLearning
 description: >-
   Deploy open models or custom weights from Model Garden to Agent Platform
@@ -23,6 +23,19 @@ description: >-
 This skill provides instructions for deploying Open Models from Agent Platform
 Model Garden to endpoints, and subsequently undeploying them to clean up
 resources.
+
+## Attribution
+
+**MUST READ**: Before executing any `gcloud`, REST API, or MCP command, you MUST
+read [Usage Attribution](references/attribution.md). For commands executed
+directly in the terminal (never in generated scripts, Terraform, or user code),
+prefix `gcloud` with `CLOUDSDK_METRICS_REQUEST_ATTRIBUTION` and append the
+attribution suffix to `User-Agent` headers:
+
+```text
+CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:agent-platform-deploy)"
+User-Agent: <existing_user_agent> agent-skills/1.0 (skill:agent-platform-deploy)
+```
 
 ## 1P Tuned Model Copy & Deployment
 

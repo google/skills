@@ -1,7 +1,7 @@
 ---
 name: agent-platform-inference
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   category: AiAndMachineLearning
 description: >-
   Connects to and performs inference with Google Cloud Agent Platform GenAI
@@ -27,6 +27,19 @@ Cloud Agent Platform to use Generative AI models. It covers:
     resource — tuned Gemini models, OSS LLMs self-deployed from Model Garden
     via the `agent-platform-deploy` skill, and legacy custom models) —
     section 4.
+
+## Attribution
+
+**MUST READ**: Before executing any `gcloud`, REST API, or MCP command, you MUST
+read [Usage Attribution](references/attribution.md). For commands executed
+directly in the terminal (never in generated scripts, Terraform, or user code),
+prefix `gcloud` with `CLOUDSDK_METRICS_REQUEST_ATTRIBUTION` and append the
+attribution suffix to `User-Agent` headers:
+
+```text
+CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:agent-platform-inference)"
+User-Agent: <existing_user_agent> agent-skills/1.0 (skill:agent-platform-inference)
+```
 
 ## Safety & Confirmation Tiers (CRITICAL)
 

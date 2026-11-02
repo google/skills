@@ -124,6 +124,12 @@ MODEL_DATA: dict[str, dict[str, Any]] = {
             'PEFT': {'tokens_per_character': 0.295, 'cost_per_1m_tokens': 5.77},
         },
     },
+    'qwen/qwen3.8@qwen3.8-27b': {
+        'display_name': 'Qwen 3.8 27B',
+        'modes': {
+            'PEFT': {'tokens_per_character': 0.290, 'cost_per_1m_tokens': 3.69},
+        },
+    },
     'qwen/qwen3-6@qwen3.6-27b': {
         'display_name': 'Qwen 3.6 27B',
         'modes': {

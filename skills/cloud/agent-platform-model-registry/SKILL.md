@@ -1,7 +1,7 @@
 ---
 name: agent-platform-model-registry
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: AiAndMachineLearning
 description: >-
   Agent Platform Model Registry Management. Use when you need to upload, list,
@@ -11,6 +11,19 @@ description: >-
 ---
 
 # Agent Platform Model Registry Management
+
+## Attribution
+
+**MUST READ**: Before executing any `gcloud`, REST API, or MCP command, you MUST
+read [Usage Attribution](references/attribution.md). For commands executed
+directly in the terminal (never in generated scripts, Terraform, or user code),
+prefix `gcloud` with `CLOUDSDK_METRICS_REQUEST_ATTRIBUTION` and append the
+attribution suffix to `User-Agent` headers:
+
+```text
+CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:agent-platform-model-registry)"
+User-Agent: <existing_user_agent> agent-skills/1.0 (skill:agent-platform-model-registry)
+```
 
 ## Overview
 
@@ -72,9 +85,11 @@ are known:
     if a session location or project is already set from prior turns, reuse it
     without re-asking. If missing from both prompt and session context, at most
     one direct lookup is permitted (e.g. `gcloud config get project` or `gcloud
-    config get compute/region`). If still unresolved or ambiguous, pause and
-    explicitly ask the user for the missing parameter before executing mutating
-    or resource-specific commands.
+    config get compute/region`). If the user refers to "my project" or their
+    configured environment and `compute/region` is `(unset)`, fall back to
+    `us-central1` per base environment grounding; otherwise, if the region is
+    still unresolved, pause and explicitly ask the user for the missing
+    parameter before executing regional commands.
 2.  **Missing Model ID**: If the user asks to update or describe a model without
     providing the model ID, pause and ask the user for the model ID, or offer to
     list models first to help them find it.

@@ -1,7 +1,7 @@
 ---
 name: agent-platform-rag-engine-management
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: AiAndMachineLearning
 description: >-
   Manage and query Agent Platform RAG Engine Corpora and retrieve grounded
@@ -17,6 +17,19 @@ This skill provides instructions on how to interact with Agent Platform RAG
 Engine using the Agent Platform Python SDK. You MUST use the `vertexai` Python
 SDK to perform RAG Engine operations, rather than raw REST calls or MCP tools,
 because this code is intended to be run by external clients.
+
+## Attribution
+
+**MUST READ**: Before executing any `gcloud`, REST API, or MCP command, you MUST
+read [Usage Attribution](references/attribution.md). For commands executed
+directly in the terminal (never in generated scripts, Terraform, or user code),
+prefix `gcloud` with `CLOUDSDK_METRICS_REQUEST_ATTRIBUTION` and append the
+attribution suffix to `User-Agent` headers:
+
+```text
+CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:agent-platform-rag-engine-management)"
+User-Agent: <existing_user_agent> agent-skills/1.0 (skill:agent-platform-rag-engine-management)
+```
 
 ## Safety & Confirmation Tiers (CRITICAL)
 

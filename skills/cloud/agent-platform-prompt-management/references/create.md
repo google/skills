@@ -11,17 +11,16 @@ name, and model before executing the creation code. After the user approves with
 'Yes', execute the creation snippet using `run_command` in the execution
 environment.
 
-> [!IMPORTANT]
-> **Interactive Confirmation Required (Tier M):** Before proceeding with prompt
-> creation, you **MUST** present the proposed Python code in a confirmation
-> prompt to the user with 'Yes' and 'No' options.
-> **CRITICAL:** When presenting this confirmation prompt to the user, you MUST
-> output it as a direct plain text response and stop tool execution immediately.
-> Do NOT call any command execution or interactive tools in the same turn, as
-> unexpected tool calls may be auto-replied by the simulation harness and cause
-> an infinite loop. Yield immediately for the user's reply. After the user
-> replies with 'Yes', proceed to execute the code via `run_command`.
-
+> [!IMPORTANT] **Interactive Confirmation Required (Tier M):** Before executing
+> prompt creation via `run_command`, you **MUST** pause and present an
+> interactive confirmation showing the exact `prompts.create_version(...)`
+> Python snippet with every parameter resolved (target project, location,
+> display name, target model, and prompt template text) alongside 'Yes' and 'No'
+> options. **CRITICAL:** Do NOT execute the prompt creation Python snippet
+> (`run_command`) in the same turn as presenting the confirmation. End your turn
+> and wait for the user's explicit confirmation ('Yes' / approval) before
+> running `run_command`.
+>
 ```python
 import vertexai
 from vertexai.preview import prompts
@@ -51,6 +50,7 @@ print(f"Version ID: {persisted_prompt.version_id}")
 
 ### Execution After Confirmation
 Once the user confirms prompt creation (replies 'Yes' or approves):
+
 1. Immediately execute the `prompts.create_version` snippet via `run_command`
    in the execution environment.
 2. Capture and report the newly created prompt ID and version ID to the user.

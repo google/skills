@@ -28,6 +28,32 @@ Suitable for base models or simple completion tasks.
 }
 ```
 
+### Distillation datasets
+
+The training dataset can contain prompts only, because the teacher model writes
+the responses. Use the messages format with just the user turn:
+
+```json
+{"messages": [{"role": "user", "content": "What is 17 * 24?"}]}
+```
+
+To build it from a CSV, JSON, Parquet or Hugging Face export, map only the
+prompt column and pass `--prompt_only`:
+
+```bash
+python3 scripts/prepare_dataset.py \
+    --input questions.csv \
+    --output prompts.jsonl \
+    --prompt_col question \
+    --prompt_only
+```
+
+A validation dataset must still include responses, because it is used to score
+the student during tuning. So don't split a prompt-only file: `--prompt_only`
+writes no validation split and rejects a nonzero `--validation_split`.
+Validation is optional; if the user wants it, prepare it separately from data
+that has responses, using the normal conversion.
+
 ## Dataset Requirements
 
 - **File Type**: Must be `.jsonl`.
