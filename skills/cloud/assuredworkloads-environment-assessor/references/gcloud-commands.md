@@ -8,10 +8,7 @@ This reference documents the read-only Google Cloud CLI (`gcloud`) commands and 
 * [2. Resource Telemetry Ingestion (Cloud Asset Inventory)](#2-resource-telemetry-ingestion-cloud-asset-inventory)
 * [3. Assured Workloads Framework & Control Discovery](#3-assured-workloads-framework-control-discovery)
 * [4. Organization Policy Inspection](#4-organization-policy-inspection)
-* [5. Assured Workloads Provisioning Contracts (Console UI, v1 GA, and v2 Preview)](#5-assured-workloads-provisioning-contracts-console-ui-v1-ga-and-v2-preview)
-  * [5.1 Google Cloud Console](#51-google-cloud-console)
-  * [5.2 Assured Workloads v1 GA Provisioning Contract](#52-assured-workloads-v1-ga-provisioning-contract)
-  * [5.3 Assured Workloads v2 Preview Contract](#53-assured-workloads-v2-preview-contract)
+* [5. Framework Deployment via Google Cloud Console](#5-framework-deployment-via-google-cloud-console)
 
 ---
 
@@ -108,60 +105,21 @@ gcloud org-policies describe gcp.restrictTLSVersion \
 
 ---
 
-## 5. Assured Workloads Provisioning Contracts (Console UI, v1 GA, and v2 Preview)
+## 5. Framework Deployment via Google Cloud Console
 
-### 5.1 Google Cloud Console
-Direct the customer or cloud administrator to the Assured Workloads creation wizard in the console:
-```
-https://console.cloud.google.com/compliance/assuredworkloads?organizationId=ORGANIZATION_ID
-```
-
-### 5.2 Assured Workloads v1 GA Provisioning Contract
-The public, generally available endpoint for creating a greenfield Assured
-Workloads environment:
+After completing the read-only compliance assessment, guide the customer or
+cloud administrator to deploy the recommended framework in the Google Cloud
+Console **Assured Workloads -> Frameworks** tab:
 
 ```
-POST https://assuredworkloads.googleapis.com/v1/organizations/{organizationId}/locations/{location}/workloads
+https://console.cloud.google.com/compliance/configure/frameworks?organizationId=ORGANIZATION_ID
 ```
 
-**Request Payload Structure (v1 GA):**
-```json
-{
-  "displayName": "Sovereign-Workload-Enclave",
-  "complianceRegime": "FEDRAMP_HIGH",
-  "resourceSettings": [
-    {
-      "displayName": "Enclave-Folder",
-      "resourceType": "CONSUMER_FOLDER"
-    }
-  ]
-}
-```
+### Recommended Deployment Modes
 
-### 5.3 Assured Workloads v2 Preview Contract (In-Place Brownfield Adoption)
-For environments binding an Assured Workloads framework directly to an existing
-folder or project in Monitor Mode (`DETECTIVE`):
-
-```
-POST https://assuredworkloads.googleapis.com/v2/organizations/{organizationId}/locations/{location}/workloads
-```
-
-**Request Payload Structure (v2 Preview):**
-```json
-{
-  "displayName": "Sovereign-Workload-Enclave",
-  "resourceConfig": {
-    "existingFolder": "folders/123456"
-  },
-  "framework": {
-    "framework": "organizations/123456789/locations/global/frameworks/builtin-il5"
-  },
-  "cloudControlConfigs": [
-    {
-      "cloudControl": "organizations/123456789/locations/global/cloudControls/builtin-restrict-resource-locations",
-      "cloudControlRevision": 1,
-      "enforcementMode": "DETECTIVE"
-    }
-  ]
-}
-```
+* **Existing Workloads (Folders or Projects)**: Deploy in
+  **Monitoring (`Detective`) mode** first to assess posture and remediate
+  findings with zero Day 0 Organization Policy mutations, and then transition
+  to **Preventive** mode.
+* **New Workloads (Folders or Projects)**: Start directly in **Preventive**
+  mode or in **Monitoring (`Detective`) mode**.

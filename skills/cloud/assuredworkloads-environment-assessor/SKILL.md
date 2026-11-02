@@ -1,7 +1,7 @@
 ---
 name: assuredworkloads-environment-assessor
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: SecurityAndCompliance
 description: >-
   Discover Google Cloud resource telemetry and effective Org Policies, evaluate brownfield workloads against
@@ -44,14 +44,26 @@ To prevent hallucinations, incorrect compliance assessments, and false blockers 
 1. **Strict Prohibition on Generic LLM Pre-Training Priors**:
    * You MUST NOT derive compliance rules, API semantics, or deployment constraints from generic web pre-training (e.g., generic NIST/FedRAMP certification audit checklists, AWS/Azure architectures, or legacy on-prem IT auditor mindsets).
    * In traditional IT audits, non-compliance is a binary go/no-go gate that
-     blocks deployment. In Google Cloud Assured Workloads v2, **Monitor Mode
-     deploys detective controls without mutating existing Organization
-     Policies**, allowing continuous observability without halting Day 0
-     rollout. You MUST NOT confuse these paradigms.
-2. **Authoritative Google Cloud API Contracts & Scope Grounding**:
-   * All API assumptions MUST be grounded in published Google Cloud API contracts:
-     - **Assured Workloads v1 GA API** (`assuredworkloads.googleapis.com/v1`): Greenfield-only. Contract only creates a brand-new folder (`resourceType: CONSUMER_FOLDER`). It CANNOT adopt or bind to existing brownfield folders (`folders/...`) or projects in-place.
-     - **Assured Workloads v2 API** (`assuredworkloads.googleapis.com/v2`): Brownfield-native. Contract binds directly to existing resource hierarchies (`existingFolder`, `existingProject`) and supports non-mutating Monitor Mode (`enforcementMode: DETECTIVE`).
+     blocks deployment. In Google Cloud Assured Workloads, deploying in
+     **Monitoring (`Detective`) mode** enables detective controls without
+     mutating existing Organization Policies, allowing continuous observability
+     without halting Day 0 rollout. You MUST NOT confuse these paradigms.
+2. **Authoritative Assured Workloads Scope & Deployment Grounding**:
+   * Assured Workloads binds compliance frameworks directly to existing or new
+     Google Cloud folders (`folders/...`) and projects (`projects/...`).
+   * **Existing Workloads (Folders or Projects)**: Recommend deploying in
+     **Monitoring (`Detective`) mode** first to assess and remediate findings
+     safely without mutating existing Organization Policies, and then
+     transitioning to **Preventive** mode.
+   * **New Workloads (Folders or Projects)**: Recommend starting in
+     **Preventive** mode or **Monitoring (`Detective`) mode**.
+   * **Google Cloud Console Deployment**: Always guide the user to deploy the
+     recommended framework via the **Assured Workloads Frameworks tab in Google
+     Cloud Console**
+     (`https://console.cloud.google.com/compliance/configure/frameworks?organizationId=ORGANIZATION_ID`).
+     Do NOT recommend `gcloud assured workloads create` (which only provisions
+     new greenfield folders using legacy regime enums and cannot bind frameworks
+     to existing folders or projects).
 3. **Client-Side Org Policy Readiness vs. Server-Side CES Boundary**:
    * **Client-Side Scope**: Pre-flight evaluation via
      `scripts/evaluate_control_rules.py` assesses **ONLY the 3 high-confidence
@@ -79,21 +91,33 @@ To prevent hallucinations, incorrect compliance assessments, and false blockers 
      uniform across organizations. Fetch `frameworks.json` once per session and
      reuse the cached file across all candidate evaluations and follow-up
      queries.
-   * **Personnel Support Model**: A framework requires a **Paid
-     Sovereign/Regulated Support Subscription** when
-     `builtin-restrict-technical-support-services` is present in its
-     `cloudControlDetails` (as reflected in its `displayName` and
-     `description`). Frameworks without
-     `builtin-restrict-technical-support-services` (e.g.,
-     `builtin-us-data-boundary`, `builtin-eu-data-boundary`) use **Standard
-     Commercial Support** ($0 support uplift).
+   * **Personnel Support Model**: Determine whether a framework requires a
+     **Paid Sovereign/Regulated Support Subscription** or uses **Standard
+     Commercial Support** ($0 support uplift) from the framework's public
+     `displayName` and `description` in `frameworks.json`:
+     - **Paid Sovereign/Regulated Support Subscription**: Frameworks whose
+       `description` specifies support personnel access controls (e.g.,
+       `"Support access controls are set to ..."`, `-and-support` variants
+       such as `builtin-eu-data-boundary-and-support` and
+       `builtin-us-data-boundary-and-support`, or regulated standards such as
+       `builtin-il4`, `builtin-il5`, `builtin-itar`, `builtin-fedramp-high`,
+       `builtin-cjis`).
+     - **Standard Commercial Support ($0 support uplift)**: Regional-only Data
+       Boundary frameworks whose `description` sets data location controls only
+       without a support access controls clause (e.g.,
+       `builtin-us-data-boundary`, `builtin-eu-data-boundary`,
+       `builtin-uk-data-boundary`, `builtin-japan-data-boundary`).
+     - **Important**: Do NOT use the mere presence of
+       `builtin-restrict-technical-support-services` in `cloudControlDetails`
+       as a discriminator, because both regional-only and paid-support Data
+       Boundary frameworks include that control.
    * **Key Access Justifications (KAJ) & EKM**: Recommend
      `-with-access-justifications` framework variants only when the customer
      **explicitly requests KAJ/EKM**, or when disambiguating between matching
      regional variants in `frameworks.json`.
 5. **Deterministic Tool Gating**:
    * You MUST NOT guess compatibility scores ($$S_{\text{composite}}$$) or resource inventories.
-   * You MUST execute `scripts/evaluate_control_rules.py` with `--frameworks-file=frameworks.json` and `scripts/validate_workload_payload.py` with `--frameworks-file=frameworks.json`.
+   * You MUST execute `scripts/evaluate_control_rules.py` with `--frameworks-file=frameworks.json`.
 
 ## Prerequisites
 
@@ -111,7 +135,7 @@ Before executing environment assessment, ensure your local or Cloud Shell enviro
      ```bash
      gcloud config set compute/region us-central1
      ```
-   * Consult official region availability documentation: [Google Cloud Locations](https://cloud.google.com/about/locations). Note that preview models or APIs are often restricted to `global` or `us-central1`.
+   * Consult official region availability documentation: [Google Cloud Locations](https://cloud.google.com/about/locations).
 4. **Required API Enablement**:
    * Enable the required Google Cloud APIs on the administrative project:
      ```bash
@@ -225,8 +249,8 @@ To guarantee 100% coverage across the scope hierarchy while keeping payloads com
    ```
    * *Session Caching*: Because built-in `ASSURED_WORKLOADS` frameworks are
      static definitions uniform across organizations, cache the output in
-     `frameworks.json` and reuse it for all candidate evaluations, payload
-     validations, and follow-up questions.
+     `frameworks.json` and reuse it for all candidate evaluations and follow-up
+     questions.
 2. **Filter Candidates by Location + SUR Footprint & Clarify Intent**:
    * Exclude location-less control-plane management metadata
      (`cloudresourcemanager.googleapis.com/*`, `orgpolicy.googleapis.com/*`,
@@ -261,15 +285,14 @@ To guarantee 100% coverage across the scope hierarchy while keeping payloads com
        that is not present as a built-in `ASSURED_WORKLOADS` framework in
        `frameworks.json` (such as CMMC, UK GDPR, SOC 2, or PCI-DSS), DO NOT
        fabricate or pass non-existent framework IDs (e.g., `builtin-cmmc` or
-       `builtin-uk-gdpr`) to `evaluate_control_rules.py` or
-       `validate_workload_payload.py`. Explicitly state that the requested
-       standard is not a standalone Assured Workloads Data Boundary framework,
-       explain the catalog scope boundary (Data Boundary enforces regional data
-       residency, SUR, CMEK, and sovereign support routing rather than legal
-       privacy or third-party certification audits), and offer the closest
-       adjacent `ASSURED_WORKLOADS` frameworks from `frameworks.json` that match
-       their active regional footprint (e.g., `builtin-il5` or
-       `builtin-fedramp-high` for US defense/CUI workloads, or
+       `builtin-uk-gdpr`) to `evaluate_control_rules.py`. Explicitly state that
+       the requested standard is not a standalone Assured Workloads Data
+       Boundary framework, explain the catalog scope boundary (Data Boundary
+       enforces regional data residency, SUR, CMEK, and sovereign support
+       routing rather than legal privacy or third-party certification audits),
+       and offer the closest adjacent `ASSURED_WORKLOADS` frameworks from
+       `frameworks.json` that match their active regional footprint (e.g.,
+       `builtin-il5` or `builtin-fedramp-high` for US defense/CUI workloads, or
        `builtin-eu-data-boundary-and-support` / `builtin-eu-data-boundary` /
        `builtin-uk-data-boundary` for European/UK regional residency).
 
@@ -319,13 +342,6 @@ To guarantee 100% coverage across the scope hierarchy while keeping payloads com
      `*-regulatory-settings` controls like
      `builtin-cloud-logging-regulatory-settings`) and summarize their workflow
      impact in the final report.
-4. **Validate Turnkey Assured Workloads Payload**:
-   ```bash
-   python3 scripts/validate_workload_payload.py \
-     --payload-json='{"displayName":"Sovereign-Workload-Enclave","resourceConfig":{"existingFolder":"folders/FOLDER_ID"},"framework":{"framework":"organizations/ORGANIZATION_ID/locations/global/frameworks/FRAMEWORK_ID"}}' \
-     --org-id=ORGANIZATION_ID \
-     --frameworks-file=frameworks.json
-   ```
 
 ### Step 5: Render Executive Assessment Report (Minto Pyramid Structure)
 
@@ -339,17 +355,19 @@ Plan):
 ## 1. Executive Conclusion & Recommendation (Bottom Line Up Front)
 * **Primary Recommendation**: [Framework Name] (`organizations/{org_id}/locations/global/frameworks/{framework_id}`)
 * **Org Policy Readiness Alignment**: [Composite Fit %]
-* **Value & Safety Invariant**: In-place brownfield adoption via Assured Workloads v2 in **Monitor Mode** (`enforcementMode: DETECTIVE`).
-  * **Zero Production Outage Risk**: Mutates zero Organization Policies on Day 0.
+* **Recommended Deployment Mode**:
+  * **Existing Workloads (Folders or Projects)**: Deploy in **Monitoring (`Detective`) mode** first, then transition to **Preventive** mode after remediating findings.
+  * **New Workloads (Folders or Projects)**: Start in **Preventive** mode or **Monitoring (`Detective`) mode**.
+  * **Zero Production Outage Risk**: Monitoring (`Detective`) mode mutates zero Organization Policies on Day 0.
   * **Continuous Server-Side CES Observability**: Activates real-time Continuous Evaluation Service (CES) monitoring across all framework controls.
-  * **No Migration Required**: Protects existing resources in-place without provisioning separate folders.
+  * **No Migration Required**: Protects existing folders and projects in-place without migrating resources.
 
 ---
 
 ## 2. Core Value Drivers: Why Assured Workloads Fits This Scope
 1. **Residency & Boundary Alignment (`gcp.resourceLocations`)**: Active regional workloads are evaluated against allowed regions ([e.g. 100% US-contained]).
 2. **Service & API Compatibility (`gcp.restrictServiceUsage` / SUR)**: Active service APIs are evaluated against accredited service allowlists ([e.g. 100% approved services]).
-3. **Non-Disruptive Posture Hardening**: Enrolling in Monitor Mode provides server-side CES posture evaluation while allowing your team to triage Org Policy readiness safely.
+3. **Non-Disruptive Posture Hardening**: Enrolling existing workloads in Monitoring (`Detective`) mode provides server-side CES posture evaluation while allowing your team to triage Org Policy readiness safely before moving to Preventive mode.
 
 ---
 
@@ -365,8 +383,8 @@ Plan):
 * **Discovered Inventory**: [Total Assets count] across [Active resource types and regions].
 * **Effective Org Policy Baseline**: [Effective `gcp.resourceLocations`, `gcp.restrictServiceUsage`, and `gcp.restrictTLSVersion` posture].
 
-### Pre-Flight Org Policy Readiness Recommendations (Prior to Enforced Mode)
-*Pre-flight drift indicators do NOT block Day 0 deployment in Monitor Mode. Address these prior to enabling preventive policy enforcement (authoritative CES and REST control evaluations run server-side after deployment):*
+### Pre-Flight Org Policy Readiness Recommendations (Prior to Preventive Mode)
+*Pre-flight drift indicators do NOT block Day 0 deployment in Monitoring (`Detective`) mode. Address these prior to enabling Preventive policy enforcement (authoritative CES and REST control evaluations run server-side after deployment):*
 * **[Priority 1]**: [e.g. Configure CMEK keys on unencrypted resources before toggling `builtin-require-cmek` to `PREVENTIVE`].
 * **[Priority 2]**: [e.g. Operational impact of bound controls such as `builtin-restrict-kms-protection-levels` or `builtin-cloud-logging-regulatory-settings`].
 
@@ -374,13 +392,14 @@ Plan):
 
 ## 4. Deployment Action Plan & Commercial Advisory
 
-### Deploy via Google Cloud Console (Recommended)
-Review and deploy the recommended framework directly in the Google Cloud Console:
-👉 **[Open Assured Workloads Console](https://console.cloud.google.com/compliance/assuredworkloads?organizationId=ORGANIZATION_ID)**
-*(The Console deployment wizard binds composing controls in Monitor Mode with zero infrastructure mutations).*
+### Deploy via Google Cloud Console — Assured Workloads Frameworks Tab (Recommended)
+Review and deploy the recommended framework directly in the Google Cloud Console **Assured Workloads -> Frameworks** tab:
+👉 **[Open Assured Workloads Frameworks Console](https://console.cloud.google.com/compliance/configure/frameworks?organizationId=ORGANIZATION_ID)**
+* **Existing Workloads (Folders or Projects)**: Deploy in **Monitoring (`Detective`) mode** to evaluate posture and remediate findings with zero Day 0 Organization Policy mutations, then transition to **Preventive** mode.
+* **New Workloads (Folders or Projects)**: Start directly in **Preventive** mode or in **Monitoring (`Detective`) mode**.
 
 ### Commercial & Licensing Advisory
-* Assured Workloads compliance regimes may carry support routing or licensing entitlements depending on whether `builtin-restrict-technical-support-services` is bound (standard commercial support vs. paid sovereign/regulated support).
+* Assured Workloads compliance regimes may carry support routing or licensing entitlements depending on whether the framework enforces regional data location controls only (standard commercial support, $0 support uplift) or specifies support personnel access controls in its `displayName` and `description` (paid sovereign/regulated support).
 * Review full pricing details and entitlement tiers at: https://cloud.google.com/assured-workloads/pricing
 ```
 
