@@ -12,21 +12,18 @@ the **Developer Knowledge MCP server** into a single portable package.
 
 ## Installation
 
-### Antigravity CLI
+### Antigravity
 
-1.  Install the plugin directly via the CLI using its path in the Google Agent
-    Skills repository:
+Install the plugin from the Antigravity Marketplace:
 
-    ```bash
-    agy plugin install https://github.com/google/skills/plugins/cloud/google-cloud-developer
-    ```
+1. In Antigravity 2.0, go to Customizations > Marketplace and search for "Google Cloud Developer".
+2. Click the **Add** button.
 
-1.  Enable the Developer Knowledge API in your Google Cloud project by using the
-    gcloud CLI:
+Alternatively, install the plugin using the Antigravity CLI:
 
-    ```bash
-    gcloud services enable developerknowledge.googleapis.com --project=<YOUR_PROJECT_ID>
-    ```
+```bash
+agy plugin install google-cloud-developer
+```
 
 ### Claude Code
 

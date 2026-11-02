@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "google-cloud-developer",
   "displayName": "Google Cloud Developer",
-  "version": "1.1.15",
+  "version": "1.1.16",
   "description": "Google Cloud guidance for coding agents: first-project onboarding, authentication and credential selection, and safety-critical validation for gcloud CLI commands. Includes the Google Developer Knowledge MCP server for grounded, up-to-date Google Cloud documentation.",
   "logo": "assets/logo.svg",
   "author": {
