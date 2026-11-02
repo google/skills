@@ -49,6 +49,7 @@ This command gives you an option to also remove obsolete skills.
   - [**RAG for enterprise search using GKE and AlloyDB**](./skills/cloud/google-cloud-solution-rag-enterprise-search-gke-sqldb)
   - [**Secure n-tier serverless web application with strict private application tiers**](./skills/cloud/google-cloud-solution-n-tier-serverless-web-app)
 - **AI/ML**
+  - [**Agent Access Audit**](./skills/cloud/agent-platform-access-audit)
   - [**Agent Platform Alert Configuration**](./skills/cloud/agent-platform-alert-configuration)
   - [**Agent Platform Endpoint Management**](./skills/cloud/agent-platform-endpoint-management)
   - [**Agent Platform Eval Flywheel Skill**](./skills/cloud/agent-platform-eval-flywheel)
