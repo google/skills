@@ -67,6 +67,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Gemini API in Agent Platform**](./skills/cloud/gemini-api)
   - [**Gemini Enterprise Agent Platform - Managed Agents API Skill**](./skills/cloud/gemini-agents-api)
   - [**Gemini Interactions API Skill**](./skills/cloud/gemini-interactions-api)
+  - [**Gemini platform Architecture and Engineering Guide**](./skills/cloud/agent-platform-architecture)
   - [**Genkit Dart**](./skills/cloud/developing-genkit-dart)
   - [**Genkit Go**](./skills/cloud/developing-genkit-go)
   - [**Genkit JS**](./skills/cloud/developing-genkit-js)
