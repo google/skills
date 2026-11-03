@@ -83,6 +83,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Cloud Storage Bucket Architect**](./skills/cloud/google-cloud-storage-bucket-architect)
   - [**Cloud Storage Diagnostic**](./skills/cloud/google-cloud-storage-diagnostic)
   - [**Cloud Storage FUSE**](./skills/cloud/google-cloud-storage-fuse)
+  - [**Compute Engine On-Demand Reservations**](./skills/cloud/compute-on-demand-reservations)
   - [**Designing and Deploying GCP Infrastructure with Application Design Center**](./skills/cloud/application-design-center-design-deploy)
   - [**Filestore Auditing Skill**](./skills/cloud/google-cloud-filestore-auditing)
   - [**Filestore Autoscale**](./skills/cloud/google-cloud-filestore-autoscale)
