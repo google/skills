@@ -10,7 +10,7 @@ description: >-
   or custom frameworks (use assuredworkloads-environment-assessor or
   assuredworkloads-frameworks-*), or non-compliant folders.
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   category: Security
 ---
 

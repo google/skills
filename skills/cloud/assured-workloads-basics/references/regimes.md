@@ -121,7 +121,7 @@ Each partner control package is bound to specific supported regions and billing 
 * [Assured Workloads Supported Locations](https://docs.cloud.google.com/assured-workloads/docs/locations.md.txt)
 * [Supported Products by Control Package](https://docs.cloud.google.com/assured-workloads/docs/supported-products.md.txt)
 * [Create an Assured Workloads Folder](https://docs.cloud.google.com/assured-workloads/docs/create-folder.md.txt)
-* [gcloud assured workloads create Reference](https://docs.cloud.google.com/sdk/gcloud/reference/assured/workloads/create.md.txt)
+* [gcloud assured workloads create Reference](https://cloud.google.com/sdk/gcloud/reference/assured/workloads/create)
 * [REST Resource: workloads (ComplianceRegime Enum Reference)](https://docs.cloud.google.com/assured-workloads/docs/reference/rest/Shared.Types/Workload.md.txt#ComplianceRegime)
 * [Sovereign Controls by Partners Overview](https://cloud.google.com/sovereign-controls-by-partners/docs/overview)
 * [Sovereign Controls by Partners Locations](https://cloud.google.com/sovereign-controls-by-partners/docs/locations)
