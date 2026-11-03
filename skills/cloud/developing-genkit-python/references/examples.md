@@ -197,9 +197,9 @@ response = await ai.generate(prompt='Weather in Paris?', tools=[get_weather])
 ## Embeddings
 
 ```python
-from genkit_google_genai import GeminiEmbeddingModels
+from genkit_google_genai import GoogleAI
 
-embedder = f'googleai/{GeminiEmbeddingModels.GEMINI_EMBEDDING_001}'
+embedder = GoogleAI.embedding('gemini-embedding-001')
 embeddings = await ai.embed(embedder=embedder, content='The sky is blue.')
 vector = embeddings[0].embedding
 
@@ -209,4 +209,17 @@ embeddings = await ai.embed_many(
 )
 ```
 
-Common embedders: `googleai/gemini-embedding-001`, `googleai/gemini-embedding-exp-03-07`.
+Common embedders: `googleai/gemini-embedding-001` (text), `googleai/gemini-embedding-2`
+(multimodal: text, image, video). Plain string ids (`embedder='googleai/gemini-embedding-001'`)
+also work.
+
+Multimodal input goes in a `Document`:
+
+```python
+from genkit import Document
+
+image_embeddings = await ai.embed(
+    embedder=GoogleAI.embedding('gemini-embedding-2'),
+    content=Document.from_media('data:image/png;base64,...', 'image/png'),
+)
+```

@@ -174,3 +174,40 @@ genkit.DefinePrompt(g, "characters",
 	ai.WithOutputFormat(ai.OutputFormatJSONL),
 )
 ```
+
+## Embeddings
+
+```go
+res, err := genkit.Embed(ctx, g,
+	ai.WithEmbedderName("googleai/gemini-embedding-001"),
+	ai.WithTextDocs("The sky is blue.", "Grass is green."), // one embedding per doc
+)
+if err != nil {
+	return err
+}
+vector := res.Embeddings[0].Embedding // []float32
+
+// Optional tuning (default is 3072 dimensions)
+res, err = genkit.Embed(ctx, g,
+	ai.WithEmbedderName("googleai/gemini-embedding-001"),
+	ai.WithTextDocs("The sky is blue."),
+	ai.WithConfig(&genai.EmbedContentConfig{
+		OutputDimensionality: genai.Ptr[int32](768),
+		TaskType:             "RETRIEVAL_DOCUMENT",
+	}),
+)
+```
+
+Common embedders: `googleai/gemini-embedding-001` (text),
+`googleai/gemini-embedding-2` (multimodal: text, image, video).
+
+Multimodal input goes in a document's media parts:
+
+```go
+res, err := genkit.Embed(ctx, g,
+	ai.WithEmbedderName("googleai/gemini-embedding-2"),
+	ai.WithDocs(&ai.Document{Content: []*ai.Part{
+		ai.NewMediaPart("image/png", "data:image/png;base64,..."),
+	}}),
+)
+```

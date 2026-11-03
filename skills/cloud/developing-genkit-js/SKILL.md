@@ -195,7 +195,7 @@ See [CLI Reference](references/docs-and-cli.md) for more commands, and `genkit -
 -   [Docs & CLI Reference](references/docs-and-cli.md): Documentation search, CLI tasks, and workflows.
 -   [Common Errors](references/common-errors.md): Critical "gotchas", migration guide, and troubleshooting.
 -   [Setup Guide](references/setup.md): Manual setup instructions for new projects.
--   [Examples](references/examples.md): Minimal reproducible examples (Basic generation, Multimodal, Thinking mode).
+-   [Examples](references/examples.md): Minimal reproducible examples (Basic generation, Multimodal, Thinking mode, Embeddings).
 -   [Agents (Beta)](references/agents.md): Agent basics, serving, and client-managed state. Deeper topics: [sessions](references/agents-sessions.md), [human-in-the-loop](references/agents-human-in-the-loop.md), [branching](references/agents-branching.md), [background agents](references/agents-background.md), [state](references/agents-state.md), [artifacts](references/agents-artifacts.md), [multi-agent](references/agents-multi-agent.md), [custom agents](references/agents-custom.md), [deployment](references/agents-deployment.md).
 -   [Middleware](references/middleware.md): using middleware and the `@genkit-ai/middleware` package. See also [building custom middleware](references/middleware-custom.md).
 -   [Observability](references/observability.md): `@genkit-ai/otel` (OpenTelemetry GenAI semantic conventions), custom `Instrumentation`, and the reflection API outside dev.
