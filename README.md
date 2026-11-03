@@ -160,6 +160,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Cloud Monitoring Notification Channels Configuration**](./skills/cloud/cloud-monitoring-notification-channels-configuration)
   - [**Cloud Monitoring PromQL Generator**](./skills/cloud/cloud-monitoring-promql-query)
   - [**Cloud Trace Querying Skill (`cloud-trace-querying`)**](./skills/cloud/cloud-trace-querying)
+  - [**Configure Cloud Monitoring Alerts**](./skills/cloud/cloud-monitoring-alert-configuration)
   - [**Configuring Cloud Logging**](./skills/cloud/cloud-logging-configuration-basics)
   - [**Configuring Cross-Project Logging**](./skills/cloud/cloud-logging-cross-project-configuration)
   - [**Generate Logging Query Language queries**](./skills/cloud/cloud-logging-query-generation)
