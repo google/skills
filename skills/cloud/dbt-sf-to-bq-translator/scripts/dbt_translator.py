@@ -254,6 +254,12 @@ def translate_interval_expressions(sql_content):
 
 
 def sanitize_jinja_and_sql_edge_cases(sql_content):
+    # 0. Translate residual Snowflake TRY_CAST(...) to SAFE_CAST(...)
+    # while preserving standard CAST(...) and Jinja macros
+    sql_content = re.sub(
+        r"(?<!\.)\btry_cast\s*\(", "SAFE_CAST(", sql_content, flags=re.IGNORECASE
+    )
+
     # 1. Replace Snowflake date/time cast suffix ::date and ::timestamp
     sql_content = translate_cast_suffixes(sql_content)
 
@@ -547,7 +553,9 @@ def clean_json_path(path):
     return path_unescaped
 
 
-def make_json_extract(col, path, as_type=None):
+def make_json_extract(col, path, as_type=None, safe=False):
+    """Builds a standardized BigQuery JSON or ARRAY<STRUCT> extraction."""
+    cast_fn = "SAFE_CAST" if safe else "CAST"
     col_clean = clean_json_col(col)
     path_clean = clean_json_path(path)
     m_arr_struct = re.match(r"^\$\[(\d+)\]\.([a-zA-Z0-9_\.]+)$", path_clean)
@@ -559,18 +567,27 @@ def make_json_extract(col, path, as_type=None):
         idx_str, field_path = m_arr_struct.group(1), m_arr_struct.group(2)
         expr = f"{col_clean}[SAFE_OFFSET({idx_str})].{field_path}"
         if as_type and as_type.upper() != "STRING":
-            return f"CAST({expr} AS {as_type.upper()})"
+            return f"{cast_fn}({expr} AS {as_type.upper()})"
         return expr
     if "parse_json" in col_clean.lower():
         if as_type and as_type.upper() != "STRING":
-            return f"CAST(JSON_EXTRACT_SCALAR({col_clean}, '{path_clean}') AS {as_type.upper()})"
+            return (
+                f"{cast_fn}(JSON_EXTRACT_SCALAR({col_clean}, '{path_clean}')"
+                f" AS {as_type.upper()})"
+            )
         elif as_type:
-            return f"cast(JSON_EXTRACT_SCALAR({col_clean}, '{path_clean}') as STRING)"
+            return (
+                f"{cast_fn.lower()}(JSON_EXTRACT_SCALAR({col_clean},"
+                f" '{path_clean}') as STRING)"
+            )
         else:
             return f"JSON_EXTRACT_SCALAR({col_clean}, '{path_clean}')"
     else:
         if as_type and as_type.upper() != "STRING":
-            return f"CAST(json_value({col_clean}, '{path_clean}') AS {as_type.upper()})"
+            return (
+                f"{cast_fn}(json_value({col_clean}, '{path_clean}')"
+                f" AS {as_type.upper()})"
+            )
         else:
             return f"json_value({col_clean}, '{path_clean}')"
 
@@ -671,17 +688,25 @@ def sanitize_json_extractions(sql_content):
         flags=re.IGNORECASE,
     )
 
-    # 6.5. Replace cast(json_extract_scalar(col, path) as TYPE) if not parse_json
+    # 6.5. Replace (safe_)cast(json_extract_scalar(col, path) as TYPE)
+    # if not parse_json
     def replace_cast_json_extract_scalar(m):
-        col = m.group(1)
-        path = m.group(2)
-        target_type = m.group(3).upper()
+        is_safe = m.group(1).lower() == "safe_cast"
+        col = m.group(2)
+        path = m.group(3)
+        target_type = m.group(4).upper()
         if "parse_json" not in col.lower():
-            return make_json_extract(col, path, as_type=target_type)
+            return make_json_extract(
+                col, path, as_type=target_type, safe=is_safe
+            )
         return m.group(0)
 
+    cast_scalar_re = (
+        rf"\b(safe_cast|cast)\(\s*json_extract_scalar\(\s*([^,]+),"
+        rf"\s*{escaped_str}\s*\)\s*as\s+([a-zA-Z0-9_]+)\s*\)"
+    )
     sql_content = re.sub(
-        rf"cast\(\s*json_extract_scalar\(\s*([^,]+),\s*{escaped_str}\s*\)\s*as\s+([a-zA-Z0-9_]+)\s*\)",
+        cast_scalar_re,
         replace_cast_json_extract_scalar,
         sql_content,
         flags=re.IGNORECASE,
@@ -771,7 +796,9 @@ def sanitize_json_extractions(sql_content):
     # Convert JSON extraction casts from DATETIME to TIMESTAMP.
     idx = 0
     while True:
-        m = re.search(r"\bcast\s*\(", sql_content[idx:], re.IGNORECASE)
+        m = re.search(
+            r"\b(safe_cast|cast)\s*\(", sql_content[idx:], re.IGNORECASE
+        )
         if not m:
             break
         start = idx + m.start()
@@ -794,8 +821,11 @@ def sanitize_json_extractions(sql_content):
                     expr_part,
                     re.IGNORECASE,
                 ):
-                    new_cast = f"cast({expr_part} as TIMESTAMP)"
-                    sql_content = sql_content[:start] + new_cast + sql_content[pos:]
+                    cast_fn = m.group(1).lower()
+                    new_cast = f"{cast_fn}({expr_part} as TIMESTAMP)"
+                    sql_content = (
+                        sql_content[:start] + new_cast + sql_content[pos:]
+                    )
                     idx = start + len(new_cast)
                     continue
         idx = args_start
@@ -959,6 +989,11 @@ def standardize_casing_and_joins(sql_content):
     sql_temp = re.sub(r'"[^"\\]*(?:\\.[^"\\]*)*"', mask_string, sql_temp)
 
     # --- SQL Cleanup (Masked version) ---
+
+    # 0. Translate residual Snowflake TRY_CAST(...) to safe_cast(...)
+    sql_temp = re.sub(
+        r"\btry_cast\s*\(", "safe_cast(", sql_temp, flags=re.IGNORECASE
+    )
 
     # A. Simplify explicit cast to bytes for cryptographic functions:
     # sha256(CAST(expr AS BYTES)) -> sha256(expr)

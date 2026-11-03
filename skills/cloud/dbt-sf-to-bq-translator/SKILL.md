@@ -1,7 +1,7 @@
 ---
 name: dbt-sf-to-bq-translator
 metadata:
-  version: "1.1.2"
+  version: "1.1.3"
   category: BigDataAndAnalytics
 description: >-
   Translates Snowflake dbt SQL models to Standardized BigQuery SQL. Handles SQL
@@ -137,22 +137,36 @@ Every translated file **MUST** start with the following exact header at the very
 
 ### 2. Standardized JSON & Array Extraction
 Never use Snowflake colon notation (`:`) in BigQuery SQL because BigQuery Standard SQL does not recognize colon syntax for semi-structured field access and throws a syntax error. Translate semi-structured lookups using BigQuery's standard functions and consult [dbt_migration_patterns.md](references/dbt_migration_patterns.md) for detailed patterns and error remedies:
-- **Scalar & Stringified JSON Extraction**: Use `JSON_VALUE(json_col, '$.path')` for native `JSON` columns (omit dots before array indexes, e.g., `$.items[1]`), and `CAST(JSON_EXTRACT_SCALAR(SAFE.PARSE_JSON(CAST(source.col AS STRING)), '$.path') AS TYPE)` for stringified JSON columns. Wrap typed extractions in `SAFE_CAST(... AS INT64|BOOL|TIMESTAMP|NUMERIC)` when strict typing is required.
+- **Scalar & Stringified JSON Extraction**: Use `JSON_VALUE(json_col, '$.path')`
+  for native `JSON` columns (omit dots before array indexes, e.g.,
+  `$.items[1]`), and
+  `CAST(JSON_EXTRACT_SCALAR(SAFE.PARSE_JSON(CAST(source.col AS STRING)), '$.path') AS TYPE)`
+  for stringified JSON columns. Preserve 1:1 warehouse cast semantics: wrap
+  typed extractions in `CAST(... AS INT64|BOOL|TIMESTAMP|NUMERIC)` for Snowflake
+  `CAST` / `::TYPE` / `TO_*` (failing fast on invalid data), and use
+  `SAFE_CAST(...)` only when the Snowflake source explicitly uses `TRY_CAST` or
+  `TRY_TO_*` (returning `NULL` on malformed values).
 - **Array Extraction, Exploding & Untyped Arrays (`::array`)**: Use `JSON_EXTRACT_STRING_ARRAY` or `JSON_EXTRACT_ARRAY` and explode with `CROSS JOIN UNNEST(...)`. Map BQMS `ARRAY<JSON>` casts from Snowflake `::array` to `ARRAY<STRING>` by default (or `STRING` / `JSON_EXTRACT_STRING_ARRAY` based on source schema; see Section 3 of [dbt_migration_patterns.md](references/dbt_migration_patterns.md)).
 - **JSON Timestamps (ISO-8601 with `'Z'`)**: Cast JSON timestamp extractions to `TIMESTAMP` (`CAST(JSON_EXTRACT_SCALAR(json_col, '$.updated_at') AS TIMESTAMP)`) because direct `CAST(... AS DATETIME)` fails at runtime on ISO-8601 strings ending in `'Z'`. If `DATETIME` is required downstream, cast via `TIMESTAMP` first (see Section 5 of [dbt_migration_patterns.md](references/dbt_migration_patterns.md)).
 - **BigQuery `STRUCT` & `ARRAY<STRUCT>` Columns**: Use direct dot notation (`col.field`, e.g., `source.struct_col.count`) for native `STRUCT` columns and `source.col[SAFE_OFFSET(0)].field` (or `JSON_VALUE(TO_JSON(source.col), '$[0].field')`) for `ARRAY<STRUCT>` columns, because `JSON_VALUE()` and `CAST(... AS JSON)` do not accept `STRUCT` types (see Section 6 of [dbt_migration_patterns.md](references/dbt_migration_patterns.md)).
 - **Snowflake Bracket Notation (`col['field']`) & `error_unimplemented`**: Normalize `col['field']` to `col:field` during pre-processing and replace any residual BQMS `error_unimplemented` or 16MB `substr(string(...), 1, 16777216)` wrappers with `col.field` (for `STRUCT` columns) or `JSON_VALUE(col, '$.field')` (for `JSON` columns; see Sections 7–8 of [dbt_migration_patterns.md](references/dbt_migration_patterns.md)).
 
 ### 3. Explicit Type Safety
-- **Comparisons**: Always use `SAFE_CAST` on both sides of a join or filter if types are not identical. Use `AS STRING` for universal comparison safety if necessary.
+- **Comparisons**: Use `CAST` on both sides of a join or filter when types are
+  not identical (using `AS STRING` for universal comparison safety if
+  necessary). Preserve 1:1 cast parity with Snowflake (`CAST` / `::TYPE` to
+  `CAST`, and `TRY_CAST` / `TRY_TO_*` to `SAFE_CAST`); do not introduce
+  `SAFE_CAST` for standard Snowflake casts because silently coercing malformed
+  keys to `NULL` changes warehouse behavior and masks join or primary-key
+  errors.
 - **ID Fields**: Prefer `INT64` for all system IDs (e.g., `ticket_id`, `user_id`).
 - **Null Handling**:
-    - For placeholder columns, always use explicit type casting: `SAFE_CAST(NULL AS TYPE)`.
+    - For placeholder columns, always use explicit type casting: `CAST(NULL AS TYPE)`.
 
 ### 4. Prescriptive String & Date Functions
 - **Truncation**: Use `LEFT(col, length)` or `SUBSTR(col, 1, length)`.
 - **Search**: Use `LOWER(col) LIKE '%pattern%'` instead of `REGEXP_CONTAINS`.
-- **Date Add**: Use `DATE_ADD(SAFE_CAST(col AS DATETIME), INTERVAL num HOUR)`.
+- **Date Add**: Use `DATE_ADD(CAST(col AS DATETIME), INTERVAL num HOUR)`.
 
 ### 5. Mandatory Deduplication & Joins
 - **Deduplication**: If the source model requires deduplication on a primary key:

@@ -27,7 +27,7 @@ WITH raw_json AS (
     SELECT
         a.data as json_data,
         a._extracted_at,
-        SAFE_CAST(JSON_EXTRACT_SCALAR(a.data, '$.id') AS INT64) as primary_id,
+        CAST(JSON_EXTRACT_SCALAR(a.data, '$.id') AS INT64) as primary_id,
         row_number() over (partition by JSON_EXTRACT_SCALAR(a.data, '$.id') order by a._extracted_at desc) as rn
     FROM {{ source('...', '...') }} as a
     {% if is_incremental() %}
@@ -38,8 +38,8 @@ WITH raw_json AS (
 transform_layer AS (
     SELECT
         primary_id,
-        SAFE_CAST(JSON_EXTRACT_SCALAR(json_data, '$.field_name') AS STRING) as field_name,
-        SAFE_CAST(JSON_EXTRACT_SCALAR(json_data, '$.is_active') AS BOOL) as is_active,
+        CAST(JSON_EXTRACT_SCALAR(json_data, '$.field_name') AS STRING) as field_name,
+        CAST(JSON_EXTRACT_SCALAR(json_data, '$.is_active') AS BOOL) as is_active,
         _extracted_at
     FROM raw_json
 )
@@ -53,6 +53,7 @@ SELECT * FROM transform_layer
 | **JSON Path** | `data:user:id::int` | `json_value(data, '$.user.id')` |
 | **JSON Array Element** | `data:items[1]::varchar` | `json_value(data, '$.items[1]')` |
 | **JSON Scalar (Numeric)** | `TRY_PARSE_JSON(json_col):val::number` | `cast(json_extract_scalar(safe.parse_json(cast(source.json_col as STRING)), '$.val') as NUMERIC)` |
+| **Safe Cast (`TRY_CAST` / `TRY_TO_*`)** | `TRY_CAST(data:val::string AS INT)` | `safe_cast(json_value(data, '$.val') as INT64)` |
 | **JSON Timestamp (ISO-8601 with Z)** | `TRY_PARSE_JSON(json_col):updated_at::TIMESTAMP_NTZ` | `cast(json_extract_scalar(safe.parse_json(cast(source.json_col as STRING)), '$.updated_at') as TIMESTAMP)` |
 | **JSON Datetime (via Timestamp)** | `TRY_PARSE_JSON(json_col):updated_at::TIMESTAMP_NTZ` | `cast(cast(json_extract_scalar(safe.parse_json(cast(source.json_col as STRING)), '$.updated_at') as TIMESTAMP) as DATETIME)` |
 | **JSON String Array** | `data:tags` | `json_extract_string_array(safe.parse_json(cast(source.data as STRING)), '$.tags')` |
@@ -65,8 +66,8 @@ SELECT * FROM transform_layer
 | **Truncation** | `LEFT(comment, 2000)` | `SUBSTR(comment, 1, 2000)` |
 | **Search** | `comment LIKE '%urgent%'` | `LOWER(comment) LIKE '%urgent%'` |
 | **Array Explode** | `LATERAL FLATTEN(input => data:tags)` | `CROSS JOIN UNNEST(JSON_EXTRACT_ARRAY(data, '$.tags'))` |
-| **Date Add** | `DATEADD(hour, 1, date)` | `DATE_ADD(SAFE_CAST(date AS DATETIME), INTERVAL 1 HOUR)` |
-| **Window Alias** | `SELECT id, ROW_NUMBER() OVER(PARTITION BY id...)` | `SELECT SAFE_CAST(JSON_EXTRACT_SCALAR(data, '$.id') AS INT64) as id, ROW_NUMBER() OVER(PARTITION BY SAFE_CAST(JSON_EXTRACT_SCALAR(data, '$.id') AS INT64)...)` |
+| **Date Add** | `DATEADD(hour, 1, date)` | `DATE_ADD(CAST(date AS DATETIME), INTERVAL 1 HOUR)` |
+| **Window Alias** | `SELECT id, ROW_NUMBER() OVER(PARTITION BY id...)` | `SELECT CAST(JSON_EXTRACT_SCALAR(data, '$.id') AS INT64) as id, ROW_NUMBER() OVER(PARTITION BY CAST(JSON_EXTRACT_SCALAR(data, '$.id') AS INT64)...)` |
 | **STRUCT Field Access** | `struct_col:count::numeric` | `cast(source.struct_col.count as NUMERIC)` |
 | **STRUCT Field Access (Named / Quoted)** | `obj_col:"id"::varchar` | `obj_col.id as obj_id` |
 | **STRUCT Nested Access** | `struct_col:nested:flag` | `source.struct_col.nested.flag` |
@@ -114,7 +115,7 @@ When updating tables in a `post_hook`, always use explicit type casting in the `
 `where t.ticket_id = stage.id`
 
 **Correct**:
-`where SAFE_CAST(t.ticket_id AS STRING) = SAFE_CAST(stage.id AS STRING)`
+`where CAST(t.ticket_id AS STRING) = CAST(stage.id AS STRING)`
 
 ## 5. Datetime and Timestamp Standards for JSON Extractions
 In BigQuery Standard SQL, `CAST(string_expr AS DATETIME)` strictly requires strings formatted as `YYYY-[M]M-[D]D[ { |T}[H]H:[M]M:[S]S[.F_SCHEME]]` without any trailing timezone offsets or trailing `'Z'`. When parsing ISO-8601 UTC timestamp strings ending in `'Z'` (e.g. `'2026-09-07T17:04:54.811Z'`), BigQuery raises a runtime query error:
