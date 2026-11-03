@@ -12,7 +12,7 @@ description: >-
   permission errors. Don't use to configure local application logging frameworks
   or external APMs outside GKE.
 metadata:
-  version: "1.2.0"
+  version: "1.2.1"
   category: CloudObservabilityAndMonitoring
 ---
 
@@ -48,15 +48,17 @@ and append `agent-skills/1.0 (skill:gke-observability)` to `User-Agent` headers
     publicly exposed) and customer-visible alternatives; cluster etcd /
     etcd-compatible storage left, quota & per-resource scalability limits;
     admission webhook latency, system namespace/Lease/upgrade exclusions,
-    `APIService` discovery bloat & proactive GKE Recommender insights; watch
-    storms; controller-manager workqueue & scheduler lag; or control-plane
-    headroom, VM autoscaling & node-count pre-scaling, per-replica egress
-    (`200 MB/s`), connections (`65k`, no per-replica metric) & Protobuf.
+    `APIService` discovery bloat, client discovery caching bursts
+    (`/apis/custom.metrics.k8s.io`, `/apis/metrics.k8s.io`) & proactive GKE
+    Recommender insights; watch storms; controller-manager workqueue & scheduler
+    lag; or control-plane headroom, VM autoscaling & node-count pre-scaling,
+    network egress, connections (`65k`, no per-replica metric) & Protobuf.
 2.  **[Cloud Logging, Audit Attribution, APF & API Server Traces](references/logging-audit-and-apiserver-traces.md)**:
     Read for `kube-apiserver` slow-request `Trace[` logs (`trace.go` & KEP-647);
     `httplog.go` client load (`user_agent`, `verb`, `apf_iseats`); Cloud Audit
-    Log noisy-neighbor & heavy `LIST` attribution; API Priority and Fairness
-    (APF) `429`/`504`/`404` throttling; `409 Conflict` hot objects &
+    Log noisy-neighbor, heavy `LIST` & unindexed CRD `fieldSelector` scan
+    tail-latency attribution; API Priority and Fairness (APF) `429`/`504`/`404`
+    throttling; `409 Conflict` hot objects (`ConfigMap` -> `Lease` heartbeats) &
     `RenewDeadline / 2` leader-election timeouts; `pods/exec` saturation,
     Konnectivity (`No agent available`), disabled Cloud KMS keys, or in-cluster
     GCP IAM OAuth token webhook authorizer saturation.

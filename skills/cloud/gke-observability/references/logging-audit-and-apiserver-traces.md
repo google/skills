@@ -3,10 +3,10 @@
 ## Table of Contents
 
 -   **1. API Server Slow-Request Trace Logs (`trace.go`)** (Lines 11–54)
--   **2. Heavy API Clients (`httplog.go`), Audit Attribution & Slow `LIST`s** (Lines 56–98)
--   **3. API Priority & Fairness (APF) Throttling (`429` / `504` / `404`)** (Lines 100–124)
--   **4. Hot-Object `409 Conflict`s & Leader-Election `RenewDeadline` Timeouts** (Lines 126–146)
--   **5. `pods/exec`, Konnectivity, Cloud KMS & IAM Webhook Authorizer** (Lines 148–188)
+-   **2. Heavy API Clients (`httplog.go`), Audit Attribution & Slow `LIST`s** (Lines 56–117)
+-   **3. API Priority & Fairness (APF) Throttling (`429` / `504` / `404`)** (Lines 119–143)
+-   **4. Hot-Object `409 Conflict`s & Leader-Election `RenewDeadline` Timeouts** (Lines 145–169)
+-   **5. `pods/exec`, Konnectivity, Cloud KMS & IAM Webhook Authorizer** (Lines 171–211)
 
 ## 1. API Server Slow-Request Trace Logs (`trace.go`)
 
@@ -97,6 +97,24 @@ when recommending `apiserver` log analysis.
         `argocd-server`, or custom operators listing all pods), use
         `resourceVersion="0"` (watch cache reads), or switch to cached
         `SharedInformer` watches.
+3.  **Unindexed CRD custom `fieldSelector` scans & in-flight tail latency**:
+    Custom resources are stored as JSON and have **no** secondary indexes in
+    backend storage or the `kube-apiserver` watch cache for custom
+    `fieldSelector` paths (even when `spec.versions[].selectableFields` is
+    declared; only `metadata.name` and `metadata.namespace` are indexed). Every
+    `LIST` with a custom `fieldSelector` (e.g., across 50,000 CRD instances)
+    forces `kube-apiserver` to scan and JSON-deserialize every object into
+    memory (`unstructured.Unstructured`) to evaluate the filter—acquiring
+    multiple API Priority and Fairness (APF) concurrency seats (`apf_iseats` in
+    `httplog.go`, `apiserver_flowcontrol_priority_level_seat_utilization`) for
+    the full scan duration (`apf_execution_time`) and churning Go heap/garbage
+    collection, which queues concurrent requests
+    (`apiserver_flowcontrol_request_wait_duration_seconds`) and causes
+    in-flight tail-latency regressions (`apiserver_request_duration_seconds`,
+    visible in opt-in `API_SERVER` `Trace[` and `httplog.go` logs). Replace
+    custom `fieldSelector` `LIST`s with indexed **`labelSelector`s** or watch
+    via a **`SharedIndexInformer`** with controller-side **`cache.Indexers`**
+    (`IndexField`).
 
 ## 3. API Priority & Fairness (APF) Throttling (`429` / `504` / `404`)
 
@@ -135,7 +153,11 @@ Requests` or `504 Gateway Timeout` (`context canceled`):
     `protoPayload.authenticationInfo.principalEmail`) and inspect
     `kube-apiserver` `GuaranteedUpdate` `Trace[` logs to pinpoint the hot object
     and responsible agent. Mitigate by reducing the operator's checkpoint/sync
-    frequency (e.g., increasing `refreshInterval`) and lowering client QPS.
+    frequency (e.g., increasing `refreshInterval`) and lowering client QPS; if
+    pods or microservices write frequent status heartbeats or distributed locks
+    into a single shared `ConfigMap` (causing serialized optimistic-concurrency
+    `resourceVersion` contention and `409 Conflict` storms), migrate per-replica
+    heartbeats or locks to dedicated `coordination.k8s.io` `Lease` objects.
 -   **Leader-election `RenewDeadline / 2` (`?timeout=5s`) timeouts**: When
     third-party operators (e.g., KEDA, VictoriaMetrics) lose Lease leadership
     with `context deadline exceeded` after 5s despite higher general client

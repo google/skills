@@ -5,10 +5,10 @@
 -   **1. Control-Plane Metrics Prerequisites & KCP VM Boundaries** (Lines 13–34)
 -   **2. Etcd-Compatible Storage Backend & Remaining-Capacity Queries** (Lines 36–52)
 -   **3. Real-Time Storage Quota Alerts, Per-Resource Footprint & Cleanup** (Lines 54–92)
--   **4. Admission Webhooks, Exclusions, Discovery & Recommendations** (Lines 94–151)
--   **5. Watch Activity & Watch Storms** (Lines 153–159)
--   **6. Pod Churn, Controller-Manager Workqueues & Scheduler Lag** (Lines 161–179)
--   **7. Control-Plane Headroom, Egress (200 MB/s), Connections & Protobuf** (Lines 181–217)
+-   **4. Admission Webhooks, Exclusions, Discovery & Recommendations** (Lines 94–159)
+-   **5. Watch Activity & Watch Storms** (Lines 161–167)
+-   **6. Pod Churn, Controller-Manager Workqueues & Scheduler Lag** (Lines 169–187)
+-   **7. Control-Plane Headroom, Network Egress, Connections & Protobuf** (Lines 189–224)
 
 ## 1. Control-Plane Metrics Prerequisites & KCP VM Boundaries
 
@@ -138,6 +138,14 @@ kubernetes_io:cluster_storage_limit_bytes{monitored_resource="k8s_cluster"} - ku
         (`custom.metrics.k8s.io`, `external.metrics.k8s.io`). Disable or filter
         unbounded custom metrics exporters (e.g., Airflow or Prometheus adapters
         exporting thousands of series into API discovery).
+    -   When custom scripts, cron jobs, or CLI invocations flood
+        `/apis/custom.metrics.k8s.io` and `/apis/metrics.k8s.io` with thousands
+        of requests per minute (visible in Cloud Audit Logs / `httplog.go`
+        `userAgent` and `apiserver_request_total`), clients are polling API
+        discovery without a persistent local cache; enable client-side discovery
+        caching (`client-go` `disk.NewCachedDiscoveryClientForConfig` /
+        `memory.NewMemCacheClient` or a persistent shared `kubectl --cache-dir`
+        rather than ephemeral per-run directories).
 -   **Proactive GKE Control-Plane & Webhook Insights / Recommendations**: Check
     GKE Insights and Recommendations in the Cloud Console or via `gcloud
     recommender insights list` and `gcloud recommender recommendations list`
@@ -178,7 +186,7 @@ when custom controllers fall behind:
     lag) with API server latency and high churn; prune orphaned objects, tune
     controller concurrency, and pace or batch job submissions.
 
-## 7. Control-Plane Headroom, Egress (200 MB/s), Connections & Protobuf
+## 7. Control-Plane Headroom, Network Egress, Connections & Protobuf
 
 -   **Saturation, headroom & control-plane VM autoscaling**: Monitor
     `apiserver_flowcontrol_priority_level_seat_utilization`,
@@ -200,18 +208,17 @@ when custom controllers fall behind:
         surge) is a relatively simple way to force a proactive control-plane
         resize—while noting that the exact scaling rules change frequently, so
         there is no reliable fixed threshold that GKE can share.
--   **Per-replica network egress (`200 MB/s`), connections (`65k`), & Protobuf**:
-    State explicitly out loud that **GKE does not offer a per-replica
-    control-plane connection count metric** (so active watch/long-running
-    stream metrics serve only as an indirect proxy). Check if large-scale
-    control-plane replicas approach per-replica network egress limits
-    (`200 MB/s` max), connection limits (`65k`), or high JSON serialization
-    overhead via `apiserver_response_sizes`, `apiserver_watch_events_sizes`,
+-   **Control-plane network egress, connections (`65k`), & Protobuf**: State
+    explicitly out loud that **GKE does not offer a per-replica control-plane
+    connection count metric** (so active watch/long-running stream metrics
+    serve only as an indirect proxy). Check for heavy response/watch payload
+    egress, connection limits (`65k`), or high JSON serialization overhead via
+    `apiserver_response_sizes`, `apiserver_watch_events_sizes`,
     `apiserver_longrunning_requests`, and `apiserver_request_total` by
     `contentType` (`application/json` vs.
     `application/vnd.kubernetes.protobuf`). Always advise both mitigations:
     (1) configure custom controllers and high-volume clients to use Protobuf
     serialization (`application/vnd.kubernetes.protobuf`) instead of JSON, and
     (2) scope `WATCH`/`LIST` selectors (`labelSelector`, `fieldSelector`, and
-    namespace-scoped informers) to keep per-replica network egress and active
-    connections within safe scalability limits.
+    namespace-scoped informers) to reduce control-plane network egress and
+    keep active connections within safe scalability limits.
