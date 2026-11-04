@@ -2,12 +2,12 @@
 
 ## Table of contents
 
-- [1. Query parameters and table conventions](#1-query-parameters-and-table-conventions): Lines 14-64
-- [2. Scenario 1: Successful data access audit logs (individual operations)](#2-scenario-1-successful-data-access-audit-logs-individual-operations): Lines 66-118
-- [3. Scenario 2: Blast radius traversal (top services, originating principals, and activity)](#3-scenario-2-blast-radius-traversal-top-services-originating-principals-and-activity): Lines 120-253
-- [4. Scenario 4: Blocked data access attempt logs (VPC-SC vs. IAM denials)](#4-scenario-4-blocked-data-access-attempt-logs-vpc-sc-vs-iam-denials): Lines 255-322
-- [5. Cloud Audit Logs (_AllLogs) schema dictionary](#5-cloud-audit-logs-_alllogs-schema-dictionary): Lines 324-383
-- [6. Supporting Google Cloud documentation](#6-supporting-google-cloud-documentation): Lines 385-409
+- [1. Query parameters and table conventions](#1-query-parameters-and-table-conventions): Lines 14-60
+- [2. Scenario 1: Successful data access audit logs (individual operations)](#2-scenario-1-successful-data-access-audit-logs-individual-operations): Lines 62-107
+- [3. Scenario 2: Blast radius traversal (top services, originating principals, and activity)](#3-scenario-2-blast-radius-traversal-top-services-originating-principals-and-activity): Lines 109-238
+- [4. Scenario 4: Blocked data access attempt logs (VPC-SC vs. IAM denials)](#4-scenario-4-blocked-data-access-attempt-logs-vpc-sc-vs-iam-denials): Lines 240-304
+- [5. Cloud Audit Logs (_AllLogs) schema dictionary](#5-cloud-audit-logs-_alllogs-schema-dictionary): Lines 306-335
+- [6. Supporting Google Cloud documentation](#6-supporting-google-cloud-documentation): Lines 337-359
 
 --------------------------------------------------------------------------------
 
@@ -313,49 +313,24 @@ query parameter (for example, `= @target_resource` with
 `--parameter="target_resource:STRING:<value>"`) rather than concatenating raw
 strings into the SQL query:
 
-| Field Concept | `_AllLogs` SQL Column Path                                                                                                               | Type        | Description / Example Values                      |
-| :------------ | :--------------------------------------------------------------------------------------------------------------------------------------- | :---------- | :------------------------------------------------ |
-| **Timestamp** | `logs.timestamp`                                                                                                                         | `TIMESTAMP` | Time the audit event was recorded                 |
-:               :                                                                                                                                          :             : (`2026-10-14T15\:28\:41Z`).                       :
-| **Log ID /    | `logs.log_id` / `logs.log_name`                                                                                                          | `STRING`    | Audit log stream                                  |
-: Name**        :                                                                                                                                          :             : (`cloudaudit.googleapis.com/data_access`,         :
-:               :                                                                                                                                          :             : `cloudaudit.googleapis.com/activity`,             :
-:               :                                                                                                                                          :             : `cloudaudit.googleapis.com/policy`).              :
-| **Severity**  | `logs.severity`                                                                                                                          | `STRING`    | Log severity (`INFO`, `NOTICE`, `WARNING`,        |
-:               :                                                                                                                                          :             : `ERROR`).                                         :
-| **Direct      | `logs.proto_payload.audit_log.authentication_info.principal_email`                                                                       | `STRING`    | Email of the authenticated caller; empty for      |
-: Principal     :                                                                                                                                          :             : 3P/federated `principal\://` identities.          :
-: Email**       :                                                                                                                                          :             :                                                   :
-| **Direct      | `logs.proto_payload.audit_log.authentication_info.principal_subject`                                                                     | `STRING`    | String representation of the caller identity      |
-: Principal     :                                                                                                                                          :             : (`principal\://...`).                             :
-: Subject**     :                                                                                                                                          :             :                                                   :
-| **Service     | `logs.proto_payload.audit_log.service_name`                                                                                              | `STRING`    | API service name (`storage.googleapis.com`,       |
-: Name**        :                                                                                                                                          :             : `bigquery.googleapis.com`, `iam.googleapis.com`). :
-| **Method      | `logs.proto_payload.audit_log.method_name`                                                                                               | `STRING`    | API method invoked                                |
-: Name**        :                                                                                                                                          :             : (`google.storage.buckets.list`,                   :
-:               :                                                                                                                                          :             : `google.cloud.bigquery.v2.JobService.InsertJob`). :
-| **Target      | `logs.proto_payload.audit_log.resource_name`                                                                                             | `STRING`    | Target Google Cloud resource URI                  |
-: Resource**    :                                                                                                                                          :             : (`projects/my-proj/datasets/ds/tables/tbl`).      :
-| **Status      | `logs.proto_payload.audit_log.status.code`                                                                                               | `INT64`     | gRPC status code (`7` = `PERMISSION_DENIED`).     |
-: Code**        :                                                                                                                                          :             :                                                   :
-| **Status      | `logs.proto_payload.audit_log.status.message`                                                                                            | `STRING`    | Error message; contains                           |
-: Message**     :                                                                                                                                          :             : `vpcServiceControlsUniqueIdentifier\: <id>` on    :
-:               :                                                                                                                                          :             : VPC-SC denials.                                   :
-| **Auth        | `logs.proto_payload.audit_log.authorization_info[SAFE_OFFSET(0)].granted`                                                                | `BOOL`      | `TRUE` if the permission check succeeded; `FALSE` |
-: Granted**     :                                                                                                                                          :             : if denied.                                        :
-| **Permission  | `logs.proto_payload.audit_log.authorization_info[SAFE_OFFSET(0)].permission_type`                                                        | `STRING`    | `DATA_READ`, `DATA_WRITE`, `ADMIN_READ`, or       |
-: Type**        :                                                                                                                                          :             : `ADMIN_WRITE`.                                    :
-| **IAM         | `logs.proto_payload.audit_log.authorization_info[SAFE_OFFSET(0)].permission`                                                             | `STRING`    | Checked IAM permission string                     |
-: Permission**  :                                                                                                                                          :             : (`storage.buckets.list`,                          :
-:               :                                                                                                                                          :             : `bigquery.tables.updateData`).                    :
-| **VPC-SC      | `JSON_VALUE(logs.proto_payload.audit_log.metadata.vpcServiceControlsUniqueId)`                                                           | `STRING`    | Unique identifier for a VPC Service Controls      |
-: Unique ID**   :                                                                                                                                          :             : violation (`null` for standard IAM denials).      :
-| **VPC-SC      | `JSON_VALUE(logs.proto_payload.audit_log.metadata.vpcServiceControlsTroubleshootToken)`                                                  | `STRING`    | Encrypted troubleshooting token populated on VPC  |
-: Troubleshoot  :                                                                                                                                          :             : Service Controls violations.                      :
-: Token**       :                                                                                                                                          :             :                                                   :
-| **VPC-SC      | `JSON_VALUE(logs.proto_payload.audit_log.metadata.violationReason)`                                                                      | `STRING`    | Reason for VPC-SC block (e.g.,                    |
-: Violation     :                                                                                                                                          :             : `RESOURCES_NOT_IN_SAME_SERVICE_PERIMETER`).       :
-: Reason**      :                                                                                                                                          :             :                                                   :
+| Field Concept | `_AllLogs` SQL Column Path | Type | Description / Example Values |
+| :--- | :--- | :--- | :--- |
+| **Timestamp** | `logs.timestamp` | `TIMESTAMP` | Time the audit event was recorded (`2026-10-14T15:28:41Z`). |
+| **Log ID / Name** | `logs.log_id` / `logs.log_name` | `STRING` | Audit log stream (`cloudaudit.googleapis.com/data_access`, `cloudaudit.googleapis.com/activity`, `cloudaudit.googleapis.com/policy`). |
+| **Severity** | `logs.severity` | `STRING` | Log severity (`INFO`, `NOTICE`, `WARNING`, `ERROR`). |
+| **Direct Principal Email** | `logs.proto_payload.audit_log.authentication_info.principal_email` | `STRING` | Email of the authenticated caller; empty for 3P/federated `principal://` identities. |
+| **Direct Principal Subject** | `logs.proto_payload.audit_log.authentication_info.principal_subject` | `STRING` | String representation of the caller identity (`principal://...`). |
+| **Service Name** | `logs.proto_payload.audit_log.service_name` | `STRING` | API service name (`storage.googleapis.com`, `bigquery.googleapis.com`, `iam.googleapis.com`). |
+| **Method Name** | `logs.proto_payload.audit_log.method_name` | `STRING` | API method invoked (`google.storage.buckets.list`, `google.cloud.bigquery.v2.JobService.InsertJob`). |
+| **Target Resource** | `logs.proto_payload.audit_log.resource_name` | `STRING` | Target Google Cloud resource URI (`projects/my-proj/datasets/ds/tables/tbl`). |
+| **Status Code** | `logs.proto_payload.audit_log.status.code` | `INT64` | gRPC status code (`7` = `PERMISSION_DENIED`). |
+| **Status Message** | `logs.proto_payload.audit_log.status.message` | `STRING` | Error message; contains `vpcServiceControlsUniqueIdentifier: <id>` on VPC-SC denials. |
+| **Auth Granted** | `logs.proto_payload.audit_log.authorization_info[SAFE_OFFSET(0)].granted` | `BOOL` | `TRUE` if the permission check succeeded; `FALSE` if denied. |
+| **Permission Type** | `logs.proto_payload.audit_log.authorization_info[SAFE_OFFSET(0)].permission_type` | `STRING` | `DATA_READ`, `DATA_WRITE`, `ADMIN_READ`, or `ADMIN_WRITE`. |
+| **IAM Permission** | `logs.proto_payload.audit_log.authorization_info[SAFE_OFFSET(0)].permission` | `STRING` | Checked IAM permission string (`storage.buckets.list`, `bigquery.tables.updateData`). |
+| **VPC-SC Unique ID** | `JSON_VALUE(logs.proto_payload.audit_log.metadata.vpcServiceControlsUniqueId)` | `STRING` | Unique identifier for a VPC Service Controls violation (`null` for standard IAM denials). |
+| **VPC-SC Troubleshoot Token** | `JSON_VALUE(logs.proto_payload.audit_log.metadata.vpcServiceControlsTroubleshootToken)` | `STRING` | Encrypted troubleshooting token populated on VPC Service Controls violations. |
+| **VPC-SC Violation Reason** | `JSON_VALUE(logs.proto_payload.audit_log.metadata.violationReason)` | `STRING` | Reason for VPC-SC block (e.g., `RESOURCES_NOT_IN_SAME_SERVICE_PERIMETER`). |
 
 --------------------------------------------------------------------------------
 
