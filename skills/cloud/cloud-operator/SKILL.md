@@ -1,7 +1,7 @@
 ---
 name: cloud-operator
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   category: CloudInfrastructureAndServices
 description: >-
   Google Cloud (GCP) assistant and operator via the autocloud MCP server. Use
