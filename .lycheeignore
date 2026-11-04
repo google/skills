@@ -1,7 +1,8 @@
-# Exclude local development URLs and example placeholders.
+# Exclude local development URLs, Cloud Console auth URLs, and example placeholders.
 ^https?://localhost(:[0-9]+)?(/.*)?$
 ^https?://127\.0\.0\.1(:[0-9]+)?(/.*)?$
 ^https?://0\.0\.0\.0(:[0-9]+)?(/.*)?$
 ^https?://([a-z0-9-]+\.)*example\.(com|org|net)(/.*)?$
+^https?://console\.cloud\.google\.com(/.*)?$
 ^https://developerknowledge\.googleapis\.com/mcp$
 ^file://

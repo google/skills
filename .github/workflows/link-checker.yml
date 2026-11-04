@@ -52,6 +52,12 @@ jobs:
 
           text = out_path.read_text(encoding="utf-8")
           urls_404 = sorted(set(re.findall(r"\* \[404\] <(https?://[^>]+)>", text)))
+          urls_error = sorted(set(re.findall(r"\* \[ERROR\] <(https?://[^>]+)>", text)))
+          other_fail_lines = [
+              line.strip()
+              for line in text.splitlines()
+              if re.match(r"^\* \[(?!404\]|ERROR\])[^\]]+\]", line.strip())
+          ]
           syntax_lines = [
               line.strip()
               for line in text.splitlines()
@@ -61,7 +67,7 @@ jobs:
           def probe_url(target_url: str) -> tuple[str, str]:
               res = subprocess.run(
                   [
-                      "curl", "-Ls", "-o", "/dev/null",
+                      "curl", "--http1.1", "-Ls", "-o", "/dev/null",
                       "-w", "%{http_code} %{url_effective}",
                       "--max-time", "10", target_url,
                   ],
@@ -177,12 +183,32 @@ jobs:
               except Exception:
                   pass
 
+          real_error_count = 0
+          for url in urls_error:
+              code, _ = probe_url(url)
+              if code in ("200", "302", "429"):
+                  rows.append((
+                      f"`{url}`",
+                      f"Transient HTTP/2 Error (HTTP {code})",
+                      "No action needed (verified live over HTTP/1.1)",
+                  ))
+              else:
+                  real_error_count += 1
+                  rows.append((
+                      f"`{url}`",
+                      f"Network / Connection Error (HTTP {code or 'ERR'})",
+                      "Verify target URL availability in source skill",
+                  ))
+
           for line in syntax_lines:
               rows.append((
                   line,
                   "Markdown Link Syntax Error",
                   "Check file line for missing closing `)` or `]`",
               ))
+
+          if not urls_404 and not syntax_lines and not other_fail_lines and real_error_count == 0 and urls_error:
+              pathlib.Path("./lychee/all_transient_ok").write_text("true\n", encoding="utf-8")
 
           if rows:
               print("\n### Automated Triage & Suggested Fixes\n")
@@ -199,7 +225,7 @@ jobs:
           LYCHEE_EXIT_CODE: ${{ steps.lychee.outputs.exit_code }}
           ISSUE_NUMBER: ${{ vars.LINK_CHECKER_ISSUE_NUMBER || env.DEFAULT_ISSUE_NUMBER }}
         run: |
-          if [ "${LYCHEE_EXIT_CODE}" != "0" ]; then
+          if [ "${LYCHEE_EXIT_CODE}" != "0" ] && [ ! -f ./lychee/all_transient_ok ]; then
             gh issue edit "${ISSUE_NUMBER}" --body-file ./lychee/issue-body.md
             gh issue reopen "${ISSUE_NUMBER}" 2>/dev/null || true
           else
