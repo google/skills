@@ -5,8 +5,8 @@ description: >-
   colloquially as GCS) access and permission denials (403 Permission Denied or
   Insufficient Permission) and access control conflicts. Use whenever a user
   encounters or asks
-  to analyze a 403 error on a bucket or object — including analysis-only
-  questions where no commands are run — or needs help with IAM bindings,
+  to analyze a 403 error on a bucket or object - including analysis-only
+  questions where no commands are run - or needs help with IAM bindings,
   fine-grained ACLs, Uniform Bucket-Level Access (UBLA), getIamPolicy
   inspection denials and least-privilege inspection roles, browser
   storage.cloud.google.com Cookieauth and Data Access Audit Logging conflicts,
@@ -18,7 +18,7 @@ description: >-
   proactive security audits, or Cloud Storage FUSE mounts.
 license: Apache-2.0
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   publisher: google
   tags: "gcs, storage, troubleshooting, diagnostic, iam, 403, permissions"
   category: Storage
