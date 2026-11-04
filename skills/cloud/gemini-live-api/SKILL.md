@@ -1,7 +1,7 @@
 ---
 name: gemini-live-api
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: AiAndMachineLearning
 description: >-
   Generates a Gemini LiveAPI client service class in the user's chosen programming
@@ -208,7 +208,7 @@ Before considering the generation complete, verify each item:
     and `ServerMessage` types.
 -   [ ] The client connects to the Live API WebSocket at
     `wss://{location}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`
-    (or the `wss://aiplatform.googleapis.com/...` global variant), and formats
+    (regional endpoint required; Live API models do not support the `global` endpoint), and formats
     the setup `model` field as
     `projects/{project_id}/locations/{location}/publishers/google/models/{model_id}`.
 -   [ ] Authentication uses ADC-provided bearer tokens sent as `Authorization:
