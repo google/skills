@@ -151,6 +151,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Google Agents CLI Onboarding**](./skills/cloud/google-agents-cli-onboarding)
   - [**Google Developer Knowledge**](./skills/developers/retrieving-developer-knowledge)
 - **Application development**
+  - [**API Gateway OpenAPI Spec Authoring**](./skills/cloud/api-gateway-openapi-spec-authoring)
   - [**Application Integration Authoring**](./skills/cloud/application-integration-authoring)
   - [**Application Integration Basics**](./skills/cloud/application-integration-basics)
   - [**Application Integration Troubleshooting**](./skills/cloud/application-integration-troubleshooting)
