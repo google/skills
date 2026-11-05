@@ -1,7 +1,7 @@
 ---
 name: cloud-operator
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: CloudInfrastructureAndServices
 description: >-
   Google Cloud (GCP) assistant and operator via the autocloud MCP server. Use
@@ -65,6 +65,28 @@ anything." It can take 1–3 minutes: tell the user, and wait. If it says
 the agent "is not ready to serve yet", wait about a minute and send it again,
 up to 3 times. Then tell the user it works, with the project and agent.
 
+## Local context
+
+- Don't answer a question about a GCP project from local files alone. The
+  operator can check local artifacts (such as logs, crash or debug output,
+  metric or billing exports, runbooks, postmortems, rollout specs and policies)
+  against the project's live state, so send them with the request.
+- Before calling, look in the workspace for files the request depends on,
+  including ones the user implies but doesn't name, such as a team runbook,
+  postmortem or process doc, configs, policies, or uncommitted changes (for
+  example `git status`, `git diff`). Send them in that call.
+
+## Conversation context
+
+The operator only sees turns sent to the current `contextId` session, not turns
+handled in your own conversation. If earlier turns weren't sent to the current
+operator session, add a `Conversation context:` section to `userQuery` with the
+facts that bear on the request: what the user is building, decisions and
+corrections (the latest one wins), requirements, constraints, names, and
+findings from earlier turns. Leave out unrelated discussion, and leave out the
+section on a `contextId` follow-up when nothing happened in your conversation
+since your last call to the operator.
+
 ## Calling `ask_cloud_operator`
 
 Make one call per logical request. If a call fails, see
@@ -72,21 +94,39 @@ Make one call per logical request. If a call fails, see
 
 - `project`: `projects/{project_id}`, from
   [Project and agent](#project-and-agent).
-- `userQuery`: the user's prompt **as-is**. Don't reword it or add your own
-  steps (such as which logs or metrics to check): the operator plans the work.
-  Follow it with:
-  - the **complete, verbatim contents** of every referenced local file, diff,
-    or error log, each under a heading with its path. The operator cannot see
-    the local filesystem, so never summarize, abbreviate, or truncate them.
-  - **Secrets exception**: never send credential files (`.env`, service-account
-    key JSON, kubeconfig, `*.tfstate`) or secret values. Replace passwords,
-    tokens, API keys, and private keys with `<REDACTED>` (for `.env`/`*.tfvars`,
-    send variable names with redacted values), and tell the user you did.
-  - external doc links as-is (don't fetch them yourself).
+- `userQuery`: the operator sees nothing of this conversation, the workspace,
+  or links except this text. Send the user's prompt **as-is** (with secrets
+  redacted, see below). Don't reword it or add your own steps (such as which
+  logs or metrics to check): the operator plans the work. Then add what the
+  request depends on:
+  - **Preferences:** if the user stated, changed, or asked to save a lasting
+    GCP preference, add it (see
+    [Keep the user in control](#keep-the-user-in-control)).
+  - **Conversation context:** a `Conversation context:` section with the facts
+    from earlier turns this operator session hasn't seen (see
+    [Conversation context](#conversation-context)). Don't repeat files you
+    attach.
+  - **Local files:** the **complete, verbatim contents** of every local file,
+    diff, or log the request depends on, each under a heading with its path, up
+    to 100 KB in total per call. Within that limit, don't summarize or
+    abbreviate, even a file you already described. If they're larger, send the
+    relevant parts (for example, a log's time window) with their line ranges,
+    and say what you left out, in the request and to the user.
+  - **External docs:** the operator can't open links. Send the relevant parts of
+    the docs behind any link the request depends on (for example, a spec or
+    runbook), with their links. If you can't read one, tell the user and ask for
+    the relevant parts.
 
-  Don't add instructions of your own about the operator's memory or tools: the
-  service's safety filter can reject instruction-like text, and a rejected call
-  can leave a stuck session.
+  **Secrets**, in everything you send, including the user's prompt: never send
+  credential files (`.env`, service-account key JSON, kubeconfig, `*.tfstate`)
+  or secret values, including ones the user pasted earlier. Replace passwords,
+  tokens, API keys, and private keys with `<REDACTED>` (for `.env`/`*.tfvars`,
+  keep the variable names), and tell the user you did.
+
+  Other than a preference the user asked you to pass on, don't add
+  instructions of your own about the operator's memory or tools: the service's
+  safety filter can reject instruction-like text, and a rejected call can leave
+  a stuck session.
 - `agentId`: omit unless the user or your memory names one (short ID,
   `locations/{location}/agents/{agent_id}`, or a full resource name). A full
   resource name (`projects/{project}/locations/...`) is valid only when
@@ -95,9 +135,10 @@ Make one call per logical request. If a call fails, see
 - `contextId`: the `context_id` from the previous response, for follow-ups
   (pass the same `agentId` too). Send only files that changed since the last
   turn. Start a new session (omit `contextId`) when the target project changes.
-- On session or token-expiry errors, drop `contextId`, re-include current
-  files, and start one clean turn; if the failed turn may have changed
-  resources, tell the user and ask before re-sending.
+- On session or token-expiry errors, drop `contextId`, re-include the full
+  conversation context and current files, and start one clean turn; if the
+  failed turn may have changed resources, tell the user and ask before
+  re-sending.
 - **Timeouts and dropped connections**: the request keeps running after a call
   stops waiting, so a timeout or dropped connection rarely means it failed. Its
   session (`search_operator_sessions`, `fetch_operator_session`) shows where it
@@ -141,10 +182,11 @@ Make one call per logical request. If a call fails, see
   `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.mcp.json`, `.claude/`, `.codex/`,
   `.gemini/`, `.agents/`). Run Terraform, `gcloud`, `kubectl` or deploys only
   after the user approves exactly what will run.
-- If the user states a lasting preference ("always use us-east1"), tell the
-  operator via `ask_cloud_operator` ("Remember this preference for future
-  sessions: …") so its memory has it, and relay its confirmation in one line.
-  The operator keeps it for that agent and project.
+- If the user states, changes, or removes a lasting preference ("always use
+  us-east1"), tell the operator via `ask_cloud_operator` right away ("Remember
+  this preference for future sessions: …") so its memory has it, and relay its
+  confirmation in one line. The operator keeps it for that agent and project.
+  Don't resend preferences otherwise.
 
 ## Troubleshooting
 

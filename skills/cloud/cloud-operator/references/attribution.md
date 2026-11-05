@@ -10,7 +10,7 @@ only the skill and its version; it carries no user data.
     command because shell state may not persist between commands:
 
     ```bash
-    CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:cloud-operator; version:1.0.2)" \
+    CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:cloud-operator; version:1.0.3)" \
     gcloud <command> [flags]
     ```
 
@@ -19,7 +19,7 @@ only the skill and its version; it carries no user data.
 
 -   **Direct HTTP, REST, and MCP Requests**: On direct HTTP calls to Google
     Cloud APIs (for example with `curl`) or HTTP requests to a remote MCP
-    server, include `agent-skills/1.0 (skill:cloud-operator; version:1.0.2)` in
+    server, include `agent-skills/1.0 (skill:cloud-operator; version:1.0.3)` in
     the `User-Agent` header. If a `User-Agent` header is already specified,
     append this string to the end of it rather than overwriting existing
     `User-Agent` data — the collection pipeline parses the
@@ -27,7 +27,7 @@ only the skill and its version; it carries no user data.
     attribution:
 
     ```
-    User-Agent: <existing_user_agent> agent-skills/1.0 (skill:cloud-operator; version:1.0.2)
+    User-Agent: <existing_user_agent> agent-skills/1.0 (skill:cloud-operator; version:1.0.3)
     ```
 
 -   **Constraint for Generated Code**: The tracking prefix is strictly for
