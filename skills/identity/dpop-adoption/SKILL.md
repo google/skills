@@ -1,7 +1,7 @@
 ---
 name: dpop-adoption
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   category: Identity
 description: >-
   Implement and debug OAuth 2.0 DPoP (RFC 9449) refresh token sender-constraining
@@ -41,9 +41,14 @@ following strict security invariants:
     name: 'ECDSA', namedCurve: 'P-256' }`.
 -   **CRITICAL SECURITY GUARDRAIL:** The private key MUST be configured as
     **non-extractable** (`extractable: false`). This guarantees the private key
-    can never leave the hardware cryptographic boundary (Secure Enclave, Android
-    KeyStore, or JS sandbox memory), thwarting XSS and dependency token theft
-    attacks.
+    can never leave the platform's cryptographic boundary (Secure Enclave,
+    Android KeyStore, or JS sandbox memory), thwarting XSS and dependency token
+    theft attacks.
+-   **Runtime Persistence Scope:** In-memory WebCrypto (`extractable: false`)
+    key generation applies to browser/IndexedDB contexts and single-process
+    runtime harnesses; multi-instance or persistent server-side Node.js
+    deployments should bind DPoP private keys via KMS/HSM/TPM so bound refresh
+    tokens survive process restarts.
 -   The public key MUST remain exportable (`extractable: true`) to allow
     emitting JSON Web Keys (JWKs).
 
