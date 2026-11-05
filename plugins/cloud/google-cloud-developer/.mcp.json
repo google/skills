@@ -5,7 +5,8 @@
       "type": "streamable-http",
       "url": "https://developerknowledge.googleapis.com/mcp",
       "headers": {
-          "X-Goog-Api-Key": "${DEVELOPERKNOWLEDGE_API_KEY}"
+          "X-Goog-Api-Key": "${DEVELOPERKNOWLEDGE_API_KEY}",
+          "X-Goog-Api-Client": "google-cloud-developer/1.1.17 agent-skills/1.0 (plugin:google-cloud-developer)"
       }
     }
   }

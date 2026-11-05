@@ -1,7 +1,7 @@
 ---
 name: retrieving-developer-knowledge
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: CloudInfrastructureAndServices
 description: >-
   Searches, retrieves, and synthesizes official Google developer documentation across Google Cloud,
@@ -15,6 +15,11 @@ description: >-
 # Google Developer Knowledge
 
 The Developer Knowledge skill provides access to official Google developer documentation across Google Cloud, AI/ML (ai.google.dev, ADK, TensorFlow), Android, Chrome, Web, Flutter, Go, Firebase, and other Google developer platforms via the Developer Knowledge MCP server or REST API fallback.
+
+## Usage Attribution
+
+Before executing any `gcloud`, REST API, or MCP command with this skill, follow
+the instructions in [Usage Attribution](references/attribution.md).
 
 ## Workflow
 
@@ -102,6 +107,7 @@ use that form:
 
 ## References
 
+- [Usage Attribution](references/attribution.md)
 - [MCP Usage & Tool Details](references/mcp-usage.md)
 - [REST API Fallback Guide](references/api-fallback.md)
 - [Supported Domains & Scoping](references/supported-domains.md)

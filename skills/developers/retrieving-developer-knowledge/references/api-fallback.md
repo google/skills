@@ -29,6 +29,9 @@ Before issuing REST requests, resolve authentication credentials using one of th
 
 ## Endpoints & Operations
 
+Include the `User-Agent` attribution header specified in
+[Usage Attribution](attribution.md) on every direct REST request below.
+
 ### 1. `answerQuery` (Broad Conceptual Q&A & Multi-Step Guides)
 
 Use for conceptual guides, architectural comparisons, product overviews, and how-to workflows.

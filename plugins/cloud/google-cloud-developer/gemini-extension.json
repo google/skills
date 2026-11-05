@@ -1,11 +1,14 @@
 {
   "name": "google-cloud-developer",
-  "version": "1.1.16",
+  "version": "1.1.17",
   "description": "Google Cloud guidance for coding agents: first-project onboarding, authentication and credential selection, and safety-critical validation for gcloud CLI commands. Includes the Google Developer Knowledge MCP server for grounded, up-to-date Google Cloud documentation.",
   "mcpServers": {
     "developer-knowledge": {
       "httpUrl": "https://developerknowledge.googleapis.com/mcp",
-      "authProviderType": "google_credentials"
+      "authProviderType": "google_credentials",
+      "headers": {
+        "X-Goog-Api-Client": "google-cloud-developer/1.1.17 agent-skills/1.0 (plugin:google-cloud-developer)"
+      }
     }
   }
 }
