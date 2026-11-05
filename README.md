@@ -208,6 +208,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Security Command Center Query Skill on Google Cloud**](./skills/cloud/google-cloud-scc-query)
   - [**Sign In With Google (SiwG) Integration & Security Architecture**](./skills/identity/sign-in-with-google-web)
 - **Web and app hosting**
+  - [**API Gateway Troubleshooting**](./skills/cloud/api-gateway-troubleshooting)
   - [**Cloud Run Alert Configuration**](./skills/cloud/cloud-run-alert-configuration)
   - [**Cloud Run Basics**](./skills/cloud/cloud-run-basics)
   - [**Firebase Basics**](./skills/cloud/firebase-basics)
