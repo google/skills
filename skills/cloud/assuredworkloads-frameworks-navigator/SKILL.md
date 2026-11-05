@@ -2,7 +2,7 @@
 name: assuredworkloads-frameworks-navigator
 metadata:
   category: SecurityAndCompliance
-  version: "1.0.1"
+  version: "1.0.2"
 description: >-
   Acts as a Data Boundary Compliance Analyst that maps user compliance queries
   against Data Boundary Frameworks and cloud controls, validates matched
@@ -101,11 +101,9 @@ Before hitting the internal API, you must dynamically resolve the target Google 
 3. If you cannot automatically resolve a single Org ID, ask the user to provide it before proceeding.
 
 ### Step 0b: Determine Location
-Use the location `global` unless the customer's request or the conversation so far names a place. Do not ask the customer about the location up front.
-1. Read `assets/locations.json`. It lists every supported location ID with a plain-words description.
-2. Pick the entry whose `id` or `description` matches the customer's words. An exact `id` wins. If several entries match, use any one of them and do not ask. A regulation name on its own (for example "DORA") does not name a place.
-3. If no entry matches, use `global` and say so in one sentence.
-4. Pass the chosen ID to the loader with `--location` in Step 1.
+
+1. Always default the location to `global` for the initial data load in Step 1.
+2. If you encounter an error related to location access, or if the required framework is not found under `global`, read `assets/locations.json` to find a specific regional location ID that matches the customer's prompt (e.g., European -> `eu`), and try again with that region. Do not ask the customer about the location up front.
 
 ### Step 1: Load DB Resources & Match
 
@@ -120,9 +118,15 @@ python3 scripts/db_resources_loader.py \
 
 If the customer says a framework or control is missing, or custom resources were created in this session, run the same command again with `--refresh_cache` to fetch a fresh list.
 
-If the script exits with an error (for example the API is not enabled, the project is invalid or has no billing account, or permission was denied), tell the user in plain language what is missing and which prerequisite to redo, then stop. The one exception is a "not found or access is unauthorized" error for a location other than `global`: the API probably rejected that location, so tell the user which location failed and offer to continue with `global`. Ask the user about the location only after such a failure. Do not fall back to web search or to guessing frameworks from memory.
+If the script exits with a `PERMISSION_DENIED` error (or "not found or access is unauthorized"):
+- First, if you used `global` and encountered an error related to location access, try fetching again using a specific region if the prompt implies one (per Step 0b).
+- If it still fails, and the Organization ID was automatically resolved from the quota project or inferred, halt all tool calls immediately and ask the user to explicitly provide the correct Organization ID.
+- If the Organization ID was already provided explicitly by the user and you still get a `PERMISSION_DENIED` error, halt and ask the user to verify if they have the correct IAM permissions (e.g., `roles/assuredworkloads.reader` or `roles/assuredworkloads.admin`) to call the service in scope.
+
+For other errors (e.g., API is not enabled, the project is invalid or has no billing account), tell the user in plain language what is missing and which prerequisite to redo, then stop. Do not fall back to web search or to guessing frameworks from memory.
 
 2. Evaluate the user query against `/tmp/loaded_db_resources.json`:
+   - Use the `scripts/db_search.py` utility to search the catalog for framework and cloud control IDs (e.g., `python3 scripts/db_search.py --resources_json /tmp/loaded_db_resources.json --query "EU"`).
    - Write `/tmp/intent_spec.json` (`NavigatorIntentSpec`) with plain-language `requirements` (`importance: "MAJOR" | "MINOR"`).
    - Write `/tmp/match_result.json` (`CatalogMatchResult`) mapping satisfying architectures. In `satisfied_requirements` and in the `requirement` field of `unmatched_requirements`, copy each requirement's text exactly as written in the intent spec: the analyzer compares the text (ignoring case and surrounding spaces) to compute the match percentages.
 
@@ -164,7 +168,9 @@ Respond directly to the user's prompt as a Compliance Analyst using `/tmp/naviga
   - Say **"folder or project"** instead of "target resource".
   - Say **"framework deployment"** instead of "instantiation".
   - Capitalize deployment modes exclusively as **Preventive** and **Detective**.
-- **Recommendation Pitch & Deployment Modes**: End every response by suggesting next steps for framework deployment in the [Assured Workloads Frameworks console](https://console.cloud.google.com/compliance/configure/frameworks). 
+- **Recommendation Pitch & Deployment Modes**: End every response by suggesting next steps for deployment, providing the relevant console link(s) depending on the context:
+  - For Frameworks: [https://console.cloud.google.com/compliance/configure/frameworks](https://console.cloud.google.com/compliance/configure/frameworks)
+  - For Cloud Controls: [https://console.cloud.google.com/compliance/configure/cloud-controls](https://console.cloud.google.com/compliance/configure/cloud-controls)
   - **Primary Framework Deployment Strategy:** Pitch the deployment of the top-matching primary framework. You must provide the following deployment mode guidance: for **existing folders or projects**, advise them to start in **`Detective`** mode to assess and remediate violations, and then move to **`Preventive`** mode. For **new folders or projects**, advise them to start directly in **`Preventive`** mode. (Do not pitch secondary frameworks).
 
 ---

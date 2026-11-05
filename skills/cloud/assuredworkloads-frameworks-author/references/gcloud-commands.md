@@ -14,7 +14,7 @@ Use the following command to provision a custom cloud control using a Common Exp
 ```bash
 gcloud compliance-manager cloud-controls create CONTROL_ID \
   --organization=ORGANIZATION_ID \
-  --location=global \
+  --location=LOCATION_ID \
   --display-name="DISPLAY_NAME" \
   --description="DESCRIPTION" \
   --severity=MEDIUM \
@@ -56,11 +56,11 @@ Use the following command to bundle multiple controls into a single manageable f
 ```bash
 gcloud compliance-manager frameworks create FRAMEWORK_ID \
   --organization=ORGANIZATION_ID \
-  --location=global \
+  --location=LOCATION_ID \
   --display-name="DISPLAY_NAME" \
   --description="DESCRIPTION" \
-  --cloud-control-details="name=organizations/ORGANIZATION_ID/locations/global/cloudControls/CONTROL_ID_1"
+  --cloud-control-details="name=organizations/ORGANIZATION_ID/locations/LOCATION_ID/cloudControls/CONTROL_ID_1"
 ```
 
 *  `FRAMEWORK_ID`: The unique identifier for the customized framework.
-*  `--cloud-control-details`: A fully qualified cloud control resource URI assigned to the name field (e.g., `name=organizations/123/locations/global/cloudControls/my-control`). Do not use short IDs.
+*  `--cloud-control-details`: A fully qualified cloud control resource URI assigned to the name field (e.g., `name=organizations/123/locations/LOCATION_ID/cloudControls/my-control`). Do not use short IDs.

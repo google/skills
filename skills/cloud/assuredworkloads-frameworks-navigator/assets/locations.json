@@ -1,7 +1,7 @@
 {
   "default_location": "global",
   "locations": [
-    {"id": "global", "description": "Global; the default when the customer names no place"},
+    {"id": "global", "description": "Global (non-regional)"},
     {"id": "us", "description": "United States (multi-region)"},
     {"id": "us-central1", "description": "Iowa, United States"},
     {"id": "us-east1", "description": "South Carolina, United States"},
@@ -18,7 +18,6 @@
     {"id": "southamerica-east1", "description": "São Paulo, Brazil"},
     {"id": "southamerica-west1", "description": "Santiago, Chile"},
     {"id": "eu", "description": "European Union (multi-region)"},
-    {"id": "europe", "description": "Europe (multi-region)"},
     {"id": "europe-central2", "description": "Warsaw, Poland"},
     {"id": "europe-north1", "description": "Hamina, Finland"},
     {"id": "europe-north2", "description": "Stockholm, Sweden"},

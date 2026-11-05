@@ -823,13 +823,11 @@ class DBOutputMatchAnalyzerTest(unittest.TestCase):
   def test_a_match_percentage_in_the_input_is_ignored(self):
     resources = _make_sample_resources()
     match_result = db_output_match_analyzer.CatalogMatchResult.from_dict({
-        "selected_frameworks": [
-            {
-                "fw_id": "builtin-il4",
-                "satisfied_requirements": ["Requirement one"],
-                "match_percentage": 99.0,
-            }
-        ]
+        "selected_frameworks": [{
+            "fw_id": "builtin-il4",
+            "satisfied_requirements": ["Requirement one"],
+            "match_percentage": 99.0,
+        }]
     })
 
     report = db_output_match_analyzer.analyze_output_matches(

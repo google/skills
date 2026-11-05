@@ -720,7 +720,7 @@ class MainTest(unittest.TestCase):
         returncode=1,
         stderr=(
             "ERROR: (gcloud.compliance-manager.frameworks.list)"
-            " PERMISSION_DENIED: Location europe is not found or access is"
+            " PERMISSION_DENIED: Location eu is not found or access is"
             " unauthorized.\n"
         ),
     )
@@ -735,12 +735,12 @@ class MainTest(unittest.TestCase):
           "--cache_dir",
           tmp_dir,
           "--location",
-          "europe",
+          "eu",
       ])
 
       self.assertEqual(exit_code, 1)
       self.assertEqual(stdout, "")
-      self.assertIn("Location europe is not found", stderr)
+      self.assertIn("Location eu is not found", stderr)
       self.assertNotIn("Traceback", stderr)
       # Neither an output file nor a cache file is left behind.
       self.assertEqual(os.listdir(tmp_dir), [])
