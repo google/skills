@@ -8,7 +8,7 @@ description: >-
   SKAdNetwork IDs, mediation adapter SDK version compatibility, or ad
   preloading.
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   category: GoogleAds
 ---
 
