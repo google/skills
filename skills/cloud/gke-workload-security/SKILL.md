@@ -12,13 +12,13 @@ description: >-
   control plane security, RBAC hardening, Binary Authorization, Shielded Nodes,
   or enabling platform-level GKE add-ons (use gke-platform-security instead).
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: Security
 ---
 
 # GKE Workload Security
 
-> **Routing Note:** For Workload Identity KSA/GSA bindings, open `gke-workload-identity/SKILL.md`. For cluster-level security flags (`--database-encryption-key`, `--security-posture`, RBAC, Shielded Nodes, Binary Authorization), open `gke-platform-security/SKILL.md`.
+> **Routing Note:** For Workload Identity IAM and KSA/GSA bindings, use the `gke-workload-identity` skill. For cluster-level security flags (`--database-encryption-key`, `--security-posture`, RBAC, Shielded Nodes, Binary Authorization), use the `gke-platform-security` skill.
 
 This skill provides workflows and best practices for securing GKE workloads. It
 covers security auditing, Identity and Access Management (Workload Identity),
@@ -62,8 +62,10 @@ scripts/audit_cluster.sh <cluster-name> <region> <project-id>
 ### 2. Configure Workload Identity
 
 Workload Identity allows Kubernetes Service Accounts (KSAs) to impersonate
-Google Service Accounts (GSAs). This is the recommended method for workloads to
-access Google Cloud APIs.
+Google Service Accounts (GSAs). Use this method when workloads require a
+dedicated GSA to access Google Cloud APIs; for most workloads, direct IAM
+principal binding (covered in the `gke-workload-identity` skill) is the
+recommended method.
 
 **Steps:**
 
