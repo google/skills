@@ -26,7 +26,7 @@ FROM
 Argument                  | Requirement  | Type            | Description
 :------------------------ | :----------- | :-------------- | :----------
 **`input_data`**          | **Required** |                 | The source table or subquery containing the data to analyze.
-**`metric_col`**          | **Required** | `STRING`        | Metric column name. Must be of type: INT64, NUMERIC, BIGNUMERIC, or FLOAT64.
+**`metric_col`**          | **Required** | `STRING`        | Metric column name. Must be of type: INT64, NUMERIC, BIGNUMERIC, or FLOAT64. The values in the metric column that you use in the `metric_col` option must be non-negative, unless you specify 0 for the `min_apriori_support` value.
 **`interest_label_col`**  | **Required** | `STRING`        | Boolean column name: `TRUE` for interest group, `FALSE` for reference group.
 **`dimension_cols`**      | **Required** | `ARRAY<STRING>` | 1-12 dimension columns (INT64, BOOL, STRING); cannot be `metric_col` or `interest_label_col`.
 **`min_apriori_support`** | Optional     | `FLOAT64`       | Minimum apriori support threshold [0, 1] for output segments. Default: 0.1. Cannot be used with `top_k`.
@@ -94,4 +94,3 @@ FROM AI.KEY_DRIVERS(
   top_k => 5
 );
 ```
-

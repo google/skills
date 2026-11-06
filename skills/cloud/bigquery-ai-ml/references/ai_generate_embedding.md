@@ -4,6 +4,7 @@ visual content. These embeddings can be used for semantic search, clustering,
 and recommendation systems.
 
 ## Syntax
+
 ```sql
 SELECT
   *
@@ -18,12 +19,13 @@ FROM
 ```
 
 ## Input Arguments
-| Argument | Requirement | Type | Description |
-| :--- | :--- | :--- | :--- |
-| **`model`** | **Required** | | The model resource (e.g., `project.dataset.model`). |
-| **`input_data`** | **Required*** | | The source table or `SELECT` statement containing the data to embed. |
-| **`task_type`** | Optional | String | The intended downstream application (e.g., `RETRIEVAL_QUERY`, `RETRIEVAL_DOCUMENT`). |
-| **`output_dimensionality`** | Optional | Int64 | The number of dimensions to use when generating embeddings. |
+
+Argument                    | Requirement   | Type   | Description
+:-------------------------- | :------------ | :----- | :----------
+**`model`**                 | **Required**  |        | The model resource (e.g., `project.dataset.model`).
+**`input_data`**            | **Required*** |        | The source table or `SELECT` statement containing the data to embed. The text in the column named `content` is sent to the model. If your table doesn't have a `content` column, use a `SELECT` statement to alias an existing table column. An error occurs if no `content` column exists.
+**`task_type`**             | Optional      | String | The intended downstream application (e.g., `RETRIEVAL_QUERY`, `RETRIEVAL_DOCUMENT`).
+**`output_dimensionality`** | Optional      | Int64  | The number of dimensions to use when generating embeddings.
 
 \* *`input_data` is optional for matrix factorization models.*
 
@@ -36,6 +38,7 @@ FROM
 | **`status`** | STRING | Execution status; contains error messages on failure. |
 
 ## Example: Generating Text Embeddings
+
 ```sql
 -- Generate embeddings for a literal string
 SELECT *

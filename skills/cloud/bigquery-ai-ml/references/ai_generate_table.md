@@ -3,6 +3,7 @@ Uses Gemini models to extract information into a predefined SQL schema. It is a
 "Table-Valued Function," meaning it is called in the `FROM` clause.
 
 ## Syntax
+
 ```sql
 SELECT
   *
@@ -22,17 +23,18 @@ FROM
 ```
 
 ## Input Arguments
-| Argument | Requirement | Type | Description |
-| :--- | :--- | :--- | :--- |
-| **`model`** | **Required** | | The remote model resource (e.g., `project.dataset.model`). |
-| **`input_data`** | **Required** | | The source table or `SELECT` statement. Must contain a column named or aliased as `prompt`. |
-| **`output_schema`** | **Required** | String | A `STRUCT` containing SQL-style column definitions (e.g., `"name STRING, qty INT64"`). |
-| **`max_output_tokens`** | Optional | Int64 | [1, 8192]. Limits response length. |
-| **`temperature`** | Optional | Float64 | [0.0, 2.0]. Degree of randomness (0.0 is recommended for deterministic responses). |
-| **`top_p`** | Optional | Float64 | [0.0, 1.0]. Changes how the model selects tokens for output. |
-| **`stop_sequences`** | Optional | Array<String> | Strings that halt model generation if matched. |
-| **`safety_settings`** | Optional | Array<Struct> | Thresholds to filter hate speech, harassment, etc. |
-| **`request_type`** | Optional | String | `SHARED`, `DEDICATED`, or `UNSPECIFIED` (defaults to `UNSPECIFIED`). |
+
+Argument                | Requirement  | Type          | Description
+:---------------------- | :----------- | :------------ | :----------
+**`model`**             | **Required** |               | The remote model resource (e.g., `project.dataset.model`).
+**`input_data`**        | **Required** |               | The source table or `SELECT` statement. Must contain a column named or aliased as `prompt`.
+**`output_schema`**     | **Required** | String        | A `STRUCT` containing SQL-style column definitions (e.g., `"name STRING, qty INT64"`). Supported data types include `STRING`, `INT64`, `FLOAT64`, `BOOL`, `ARRAY`, and `STRUCT` (do not use `DATE` or `TIMESTAMP`; extract as `STRING` and cast in SQL).
+**`max_output_tokens`** | Optional     | Int64         | [1, 8192]. Limits response length.
+**`temperature`**       | Optional     | Float64       | [0.0, 2.0]. Degree of randomness (0.0 is recommended for deterministic responses).
+**`top_p`**             | Optional     | Float64       | [0.0, 1.0]. Changes how the model selects tokens for output.
+**`stop_sequences`**    | Optional     | Array<String> | Strings that halt model generation if matched.
+**`safety_settings`**   | Optional     | Array<Struct> | Thresholds to filter hate speech, harassment, etc.
+**`request_type`**      | Optional     | String        | `SHARED`, `DEDICATED`, or `UNSPECIFIED` (defaults to `UNSPECIFIED`).
 
 ### Prompt Construction (STRUCT Fields)
 When using a `QUERY_STATEMENT`, you can build multimodal prompts by combining

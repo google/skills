@@ -54,7 +54,7 @@ Column Name    | Type    | Description
 
 ```sql
 # Create a table with a product column, a description column, and an autonomous
-# embedding generation column over the descrption column.
+# embedding generation column over the description column.
 CREATE TABLE mydataset.products (
   name STRING,
   description STRING,
