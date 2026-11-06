@@ -74,6 +74,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Genkit Python**](./skills/cloud/developing-genkit-python)
   - [**LiveAPI Service Skill**](./skills/cloud/gemini-live-api)
   - [**Migrating from Gemini API in AI Studio to Agent Platform**](./skills/cloud/agent-platform-migrate-from-ai-studio)
+  - [**Pathways on Cloud Workload Debugging Skill**](./skills/cloud/pathways-workload)
   - [**Skill Registry**](./skills/cloud/agent-platform-skill-registry)
   - [**Troubleshoot GKE TPU multi-slice hangs with the MXLA Hang Analyzer**](./skills/cloud/gke-ai-troubleshooting-tpu-mxla-hang)
   - [**Troubleshoot GKE TPU performance degradation with ML Diagnostics Workload Monitoring**](./skills/cloud/gke-ai-troubleshooting-tpu-performance-degradation)
