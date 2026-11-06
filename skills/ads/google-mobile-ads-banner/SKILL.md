@@ -6,7 +6,7 @@ description: >-
   when the task involves setting up banner ads in a mobile application. Don't
   use for other ad formats like interstitial or rewarded ads.
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
   category: GoogleAds
 ---
 # Google Mobile Ads SDK - Banner Ads

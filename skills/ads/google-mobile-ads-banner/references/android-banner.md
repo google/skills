@@ -52,8 +52,8 @@ CAUSE THE APPLICATION TO CRASH.
 ## Banner Ad workflow
 
 1.  **Define the ad view**
-    -   [ ] Use `AdView` for defining GMA Next-Gen SDK banners instead of the
-        deprecated `BannerAd`.
+    -   [ ] Use `AdView` for defining GMA Next-Gen SDK banners instead of
+        `BannerAd`.
 
 2.  **Set the ad size**:
     -   [ ] Set the `width` you use for `AdSize` to `360` for testing purposes.
