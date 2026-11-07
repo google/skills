@@ -1,7 +1,7 @@
 ---
 name: gemini-interactions-api
 metadata:
-  version: "2.0.1"
+  version: "2.0.2"
   category: AiAndMachineLearning
 description: Guides the usage of Gemini Interactions API on Gemini Enterprise Agent Platform. Use when the user wants to use the stateful, server-managed Interactions API for multi-turn conversations, background execution, streaming, structured output, and function calling on the Agent Platform.
 ---
@@ -37,9 +37,9 @@ The Interactions API is the modern, recommended way to execute Generative AI age
 > `gemini-3.8-flash` instead and note the substitution. * **Model & Agent
 > Targeting**: Target foundation models directly using
 > `model="gemini-3.8-flash"`, or target autonomous managed/custom agents
-> (`antigravity-preview-05-2026`, `deep-research-preview-04-2026`, or custom
+> (`antigravity-preview-09-2026`, `deep-research-preview-04-2026`, or custom
 > agents provisioned via `client.agents.create()`) using `agent="<AGENT_ID>"`.
-> Managed agents (`antigravity-preview-05-2026` and custom agents) require
+> Managed agents (`antigravity-preview-09-2026` and custom agents) require
 > `environment="remote"` to provision a sandbox. * **Turn-Scoped Parameters**:
 > Parameters like `tools`, `system_instruction`, and `generation_config` are
 > turn-scoped. They **MUST** be passed with each interaction request.
@@ -434,7 +434,10 @@ if (fcStep && fcStep.name === "getStockPrice") {
 
 Beyond foundation models, the Interactions API provides access to specialized, autonomous agents via the `agent` parameter:
 
-*   **`antigravity-preview-05-2026`**: Antigravity Agent — general-purpose managed agent with code execution, file management, and web browsing in a secure sandboxed Linux environment (pass `environment="remote"` to provision a sandbox).
+*   **`antigravity-preview-09-2026`**: Antigravity Agent — general-purpose
+    managed agent with code execution, file management, and web browsing in a
+    secure sandboxed Linux environment (pass `environment="remote"` to
+    provision a sandbox).
 *   **`deep-research-preview-04-2026`**: Deep Research Agent — executes multi-step web research tasks, synthesizing information from multiple sources into comprehensive reports.
 *   **Custom agents**: Configured and managed via `client.agents.create()`, `list()`, `get()`, and `delete()` (pass `environment="remote"` when invoking).
 
