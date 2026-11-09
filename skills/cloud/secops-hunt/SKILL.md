@@ -3,7 +3,7 @@ name: secops-hunt
 metadata:
   category: Security
   author: Google LLC
-  version: "1.2.0"
+  version: "1.2.1"
   status: published
 description: >-
   Expert guidance for proactive threat hunting in Google SecOps. Use when
@@ -127,28 +127,39 @@ Retroactive analysis determines whether newly disclosed Indicators of Compromise
      - Local: `get_ioc_matches`
 3. **Historical UDM Lookback (`udm_search`)**:
    - Execute retroactive UDM searches using `udm_search` (or `search_udm`)
-     across scoped 30-90 day historical lookback windows:
+     across scoped 30-90 day historical lookback windows.
+   - **UDM Grouped Search Aliases vs. Explicit YARA-L Field Paths**: In
+     interactive UDM Search (`udm_search`), prefer grouped search aliases
+     (`ip`, `hash`, `domain`, `hostname`, `file_path`, `user`, `email`), which
+     automatically match across all UDM noun roles (`principal`, `target`,
+     `src`, `intermediary`, `about`, `observer`) and hash types (`sha256`,
+     `sha1`, `md5`) without verbose `OR` chains. Grouped aliases are valid only
+     in UDM Search (`network.ip` is also not a valid UDM schema field); YARA-L
+     2.0 detection rules require explicit UDM field bindings (shown below each
+     snippet).
 
    **IP Indicators**:
    ```udm
-   principal.ip = "IOC_VALUE"
-   OR target.ip = "IOC_VALUE"
-   OR network.ip = "IOC_VALUE"
+   ip = "IOC_VALUE"
    ```
+   *(Explicit UDM / YARA-L fields: `principal.ip`, `target.ip`, `src.ip`,
+   `intermediary.ip`)*
 
    **Domain / DNS Indicators**:
    ```udm
-   principal.hostname = "IOC_VALUE"
-   OR target.hostname = "IOC_VALUE"
-   OR network.dns.questions.name = "IOC_VALUE"
+   domain = "IOC_VALUE"
+   OR hostname = "IOC_VALUE"
    ```
+   *(Explicit UDM / YARA-L fields: `principal.hostname`, `target.hostname`,
+   `network.dns.questions.name`)*
 
    **File Hash Indicators**:
    ```udm
-   target.file.sha256 = "IOC_VALUE"
-   OR target.file.md5 = "IOC_VALUE"
-   OR target.file.sha1 = "IOC_VALUE"
+   hash = "IOC_VALUE"
    ```
+   *(Explicit UDM / YARA-L fields: `target.file.sha256`,
+   `target.process.file.sha256`, `principal.process.file.sha256`, plus `.md5`
+   and `.sha1` equivalents)*
 
    **URL Indicators**:
    ```udm
