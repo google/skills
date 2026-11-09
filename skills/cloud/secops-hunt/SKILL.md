@@ -3,7 +3,7 @@ name: secops-hunt
 metadata:
   category: Security
   author: Google LLC
-  version: "1.1.1"
+  version: "1.2.0"
   status: published
 description: >-
   Expert guidance for proactive threat hunting in Google SecOps. Use when
@@ -78,6 +78,15 @@ Proactive threat hunting tests specific hypotheses based on threat actor profile
 1. **Formulate Hypothesis**:
    - State attacker technique (e.g., *MITRE ATT&CK T1003.001 - OS Credential Dumping via LSASS memory*).
    - Identify expected UDM event types (e.g., `PROCESS_LAUNCH`, `PROCESS_OPEN`).
+   - **Mandatory Reference Module Lookup**: When hunting specific threat actors,
+     CISA/Mandiant/FBI advisories (such as Volt Typhoon, `UNC6201` vCenter
+     `Snapshot Mounting`, or CISA `AA26-237A` hybrid AD-to-cloud pivots),
+     ransomware, edge appliances, or OT/AI threats, always read the matching
+     module in [Threat Hunting & Advisory UDM Reference Modules](#threat-hunting-advisory-udm-reference-modules)
+     (`references/01` through `05`) first for exact UDM field selectors,
+     correlation windows (such as 30-minute Event ID `4722` to cloud
+     `USER_LOGIN` correlation), scoped lookback windows, and baseline
+     exclusions.
 2. **Construct UDM Queries**:
    - Translate behavioral indicators into concrete UDM expressions:
      ```udm
@@ -116,8 +125,9 @@ Retroactive analysis determines whether newly disclosed Indicators of Compromise
    - Query SecOps automated threat intelligence matches:
      - Remote: `get_ioc_match`
      - Local: `get_ioc_matches`
-3. **Historical UDM Lookback**:
-   - Construct retroactive UDM searches across 30-90 day historical windows:
+3. **Historical UDM Lookback (`udm_search`)**:
+   - Execute retroactive UDM searches using `udm_search` (or `search_udm`)
+     across scoped 30-90 day historical lookback windows:
 
    **IP Indicators**:
    ```udm
@@ -145,10 +155,13 @@ Retroactive analysis determines whether newly disclosed Indicators of Compromise
    target.url = "IOC_VALUE"
    ```
 
-4. **Timeline Reconstruction**:
+4. **Timeline Reconstruction & Asset Prevalence**:
    - For confirmed hits, identify:
      - **Patient Zero**: Earliest timestamp of occurrence.
-     - **Scope of Exposure**: All affected assets (`principal.hostname`, `target.hostname`) and users (`principal.user.userid`).
+     - **Scope of Exposure & Asset Prevalence**: Evaluate indicator prevalence
+       across assets (`principal.hostname`, `target.hostname`) and users
+       (`principal.user.userid`) using Section 3 (Prevalence Searching) to
+       distinguish isolated low-prevalence hits from broad campaign exposure.
      - **Post-Exploitation Activity**: Child processes spawned, lateral movement connections, or persistence mechanisms created within $\pm 2$ hours of initial contact.
 
 ---
@@ -188,12 +201,15 @@ Outlier detection identifies statistical and behavioral deviations from establis
 
 ### Key Outlier Hunting Patterns
 
+> **Note:** Unescape Markdown table-escaped pipes (`\|` -> `|`) when
+> constructing UDM Search or YARA-L 2.0 queries.
+
 | Outlier Type | Behavioral Indicator | UDM Detection Pattern |
 | :--- | :--- | :--- |
 | **Volume Outlier** | Massive outbound data transfer or beaconing spike | `metadata.event_type = "NETWORK_CONNECTION" AND network.sent_bytes > 104857600` |
 | **Temporal Outlier** | Administrative access during non-business hours | `metadata.event_type = "USER_LOGIN" AND security_result.action = "ALLOW"` (analyze timestamp against normal schedule) |
-| **Process Outlier** | Rare LOLBin invocation or unexpected parentage | `metadata.event_type = "PROCESS_LAUNCH" AND principal.process.file.full_path = /w3wp\.exe/nocase AND target.process.file.full_path = /(cmd|powershell)\.exe/nocase` |
-| **Entity Outlier** | First-time cloud administrative role assumption | `metadata.event_type = "USER_RESOURCE_ACCESS" AND principal.user.role_name = /admin/nocase` |
+| **Process Outlier** | Rare LOLBin invocation or unexpected parentage | `metadata.event_type = "PROCESS_LAUNCH" AND principal.process.file.full_path = /w3wp\.exe/ nocase AND target.process.file.full_path = /(cmd\|powershell)\.exe/ nocase` |
+| **Entity Outlier** | First-time cloud administrative role assumption | `metadata.event_type = "USER_RESOURCE_ACCESS" AND principal.user.role_name = /admin/ nocase` |
 
 ### Outlier Investigation Steps
 
@@ -234,3 +250,19 @@ When concluding a threat hunt:
   - Post findings to SOAR:
     - Remote: `create_case_comment`
     - Local: `post_case_comment`
+
+---
+
+<!-- disableFinding(LINE_OVER_80) -->
+
+## Threat Hunting & Advisory UDM Reference Modules
+
+Load the relevant threat-intelligence reference module below when hunting specific adversary tradecraft for High-Density UDM Hunting Selectors, MITRE ATT&CK / ATLAS mappings, and false-positive baseline exclusions (unescape Markdown table-escaped pipes `\|` -> `|` when constructing UDM Search or YARA-L 2.0 queries):
+
+| Threat Domain | Reference Module | Primary Hunt Coverage |
+| :--- | :--- | :--- |
+| **Nation-State APT Espionage** | [01_nation_state_apt_espionage.md](references/01_nation_state_apt_espionage.md) | ORB proxy meshes, `netsh portproxy` / `ntdsutil` LOTL, router subshells/GRE/TFTP, `BRICKSTORM` & `VIRTUALPITA` ESXi/vCenter persistence, DPRK IT laptop-farm IP-KVMs |
+| **Ransomware & eCrime Operations** | [02_ransomware_and_ecrime_operations.md](references/02_ransomware_and_ecrime_operations.md) | 22-second IAB hand-offs (`FAKEUPDATES` -> `VIPERTUNNEL`), `REDBIKE`/Akira Veeam `9392` & portable `QEMU`, `AGENDA`/Qilin `SYSTEMBC.LINUX`, Trusted Service Infrastructure (TSI) recovery denial |
+| **Edge Appliances & Zero-Days** | [03_edge_appliances_and_zero_day_exploitation.md](references/03_edge_appliances_and_zero_day_exploitation.md) | Non-EDR VPN/firewall egress hunts, vCenter `Snapshot Mounting` (`vmtoolsd.exe` offline `ntds.dit` theft), SAP NetWeaver, Oracle EBS (`GOLDVEIN.JAVA`), SharePoint `ToolShell` |
+| **Red Team Assessments, Cloud NHIs & LOTL** | [04_red_team_assessments_lotl_and_soc_ir.md](references/04_red_team_assessments_lotl_and_soc_ir.md) | CISA `AA26-237A` hybrid AD-to-cloud pivots, MAQ/ESC1, cascading SaaS/OAuth NHI compromises (`GATO-X`, `TruffleHog`, `DeviceCode`), ClickFix lures, repository secret mining |
+| **OT / ICS & AI Workload Security** | [05_ot_ics_and_ai_workload_security.md](references/05_ot_ics_and_ai_workload_security.md) | OT Zero Trust controls, `PIPEDREAM` (`CODESYS`/`FINS`/`OPC UA`), `BAUXITE` MQTT/PCOM, `FrostyGoop` Modbus `502` & `AcidPour`, model distillation (`AA26-251A`), AI CLI secret stealers (`QUIETVAULT`, `PROMPTFLUX`) |
