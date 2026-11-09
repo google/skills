@@ -5,7 +5,7 @@ description: >-
   IAM permissions for views (Logs View Accessor, IAM conditions), logs-based metrics, log exclusions, and sampling.
   Don't use for cross-project logging or multi-project setups.
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: CloudObservabilityAndMonitoring
 ---
 
@@ -106,8 +106,8 @@ gcloud logging buckets create {bucket_id} \
 ```
 
 *   `{bucket_id}`: for example, `my-custom-bucket`
-*   `{region}`: for example, `us-central1`. You must use a regional log bucket
-    to also use Observability Analytics.
+*   `{region}`: for example, `global` or `us-central1`. Observability Analytics
+    is supported in both global and regional log buckets.
 *   `{retention_days}`: for example, `365`
 
 A log bucket incurs no storage or ingestion charges until logs are routed to it

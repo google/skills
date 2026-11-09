@@ -7,7 +7,7 @@ set -euo pipefail
 # Allow overriding gcloud for testing
 : "${GCLOUD:=gcloud}"
 
-export CLOUDSDK_METRICS_ENVIRONMENT="google-skills google-skills/1.0 (skill:cloud-monitoring-notification-channels-configuration; script:verify_pubsub_topic)"
+export CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:cloud-monitoring-notification-channels-configuration; script:verify_pubsub_topic)"
 
 # Function to show help
 show_help() {

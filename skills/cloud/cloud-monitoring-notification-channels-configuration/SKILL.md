@@ -1,7 +1,7 @@
 ---
 name: cloud-monitoring-notification-channels-configuration
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: CloudObservabilityAndMonitoring
 description: >-
   Generates Terraform HCL configurations for Cloud Monitoring notification
@@ -157,7 +157,7 @@ and append `agent-skills/1.0 (skill:cloud-monitoring-notification-channels-confi
             may not persist between commands:
 
             ```bash
-            CLOUDSDK_METRICS_ENVIRONMENT="google-skills google-skills/1.0 (skill:cloud-monitoring-notification-channels-configuration)" \
+            CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:cloud-monitoring-notification-channels-configuration)" \
                 gcloud <command> [flags]
             ```
 
@@ -166,7 +166,7 @@ and append `agent-skills/1.0 (skill:cloud-monitoring-notification-channels-confi
             syntax exactly like this:
 
             ```bash
-            curl -H "User-Agent: google-skills/1.0 (skill:cloud-monitoring-notification-channels-configuration)" ...
+            curl -H "User-Agent: agent-skills/1.0 (skill:cloud-monitoring-notification-channels-configuration)" ...
             ```
 
         *   **Terraform:** Prefix every Terraform `plan` and `apply` invocation
@@ -174,7 +174,7 @@ and append `agent-skills/1.0 (skill:cloud-monitoring-notification-channels-confi
             command; shell state may not persist between commands. For example:
 
             ```bash
-            GOOGLE_TERRAFORM_USERAGENT_EXTENSION="google-skills/1.0 (skill:cloud-monitoring-notification-channels-configuration)" \
+            GOOGLE_TERRAFORM_USERAGENT_EXTENSION="agent-skills/1.0 (skill:cloud-monitoring-notification-channels-configuration)" \
                 terraform plan [flags]
             ```
 
@@ -185,7 +185,7 @@ and append `agent-skills/1.0 (skill:cloud-monitoring-notification-channels-confi
         example:
 
         ```bash
-        CLOUDSDK_METRICS_ENVIRONMENT="google-skills google-skills/1.0 (skill:cloud-monitoring-notification-channels-configuration; script:verify_pubsub_topic)" \
+        CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:cloud-monitoring-notification-channels-configuration; script:verify_pubsub_topic)" \
             gcloud <command> [flags]
         ```
 
