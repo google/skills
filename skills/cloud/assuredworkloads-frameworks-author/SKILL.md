@@ -2,7 +2,7 @@
 name: assuredworkloads-frameworks-author
 metadata:
   category: SecurityAndCompliance
-  version: "1.2.2"
+  version: "1.2.3"
 description: >-
   Authors custom cloud controls and customized frameworks for Assured Workloads when built-in resources cannot satisfy core requirements.
   Use when creating or synthesizing custom data boundary resources.
@@ -40,7 +40,21 @@ If the user chooses to proceed with in-place creation, you must check these prer
    - You are exclusively an AUTHORING/WRITING agent. For ALL reading operations (such as listing available frameworks, searching for existing compliance controls, or verifying environment parameters), you MUST hand off to the `assuredworkloads-frameworks-navigator` skill. You are strictly forbidden from issuing API calls or discovery commands directly.
 4. **Two Entry Points**:
    - **Navigator/Assessor Handoff**: You consume requirements constraint inputs (usually in `/tmp/navigator_out/author_handoff.json`). If handed multiple candidate frameworks to fork, ask the user which framework to target to resolve ambiguity.
-   - **Direct NL Intent**: You can be directly prompted to author frameworks and controls. IMPORTANT: For direct natural language intent creating custom resources, you MUST FIRST verify if any built-in or custom resources already satisfy this requirement. You must do this by explicitly reading `../assuredworkloads-frameworks-navigator/SKILL.md` and executing its `scripts/db_resources_loader.py` and `scripts/db_output_match_analyzer.py` scripts (or invoking it via a subagent tool) to check existing coverage. You must **only** suggest creating new cloud controls if this analysis confirms that the existing built-in frameworks do not satisfy the user's requirements. If the available built-in frameworks fully satisfy the requirements, do not proceed to create new ones; suggest the existing resources instead.
+   - **Direct NL Intent**: You can be directly prompted to author frameworks
+     and controls. IMPORTANT: For direct natural language intent creating
+     custom resources, you MUST FIRST verify if any built-in or custom
+     resources already satisfy this requirement. You must do this by explicitly
+     reading `../assuredworkloads-frameworks-navigator/SKILL.md` and executing
+     its
+     `../assuredworkloads-frameworks-navigator/scripts/db_resources_loader.py`
+     and
+     `../assuredworkloads-frameworks-navigator/scripts/db_output_match_analyzer.py`
+     scripts (or invoking it via a subagent tool) to check existing coverage.
+     You must **only** suggest creating new cloud controls if this analysis
+     confirms that the existing built-in frameworks do not satisfy the user's
+     requirements. If the available built-in frameworks fully satisfy the
+     requirements, do not proceed to create new ones; suggest the existing
+     resources instead.
 5. **Custom Framework Bundling (No Forking)**:
    - When a user requires a built-in framework plus newly authored custom cloud controls, do NOT fork or modify the built-in framework. Conversationally advise the user that the Assured Workloads best practice is to deploy the built-in framework as-is to satisfy core mandates, alongside a separate, dedicated customized framework that bundles only their newly authored cloud controls.
 6. **Rule Engine (CEL & CAIS Schema)**:
