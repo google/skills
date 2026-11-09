@@ -9,6 +9,14 @@ the turn** — multiple sequential model calls, custom logic between them, manua
 message/state management, or custom progress streaming — use
 `genkitx.DefineCustomAgent`. You provide the function that runs the turn loop.
 
+- [When to use it](#when-to-use-it): Lines 20-30
+- [Signature](#signature): Lines 32-71
+- [Example: multi-step research agent](#example-multi-step-research-agent): Lines 73-162
+- [Custom status streaming](#custom-status-streaming): Lines 164-194
+- [Notes](#notes): Lines 196-209
+
+---
+
 ## When to use it
 
 Reach for `DefineCustomAgent` when a turn needs to:
@@ -37,20 +45,25 @@ type AgentFunc[State any] = func(ctx context.Context, resp aix.Responder, sess *
 
 Your `fn` receives:
 
-- `resp aix.Responder` — the output channel to the client. `resp.SendModelChunk(chunk)`
+- `resp aix.Responder` — the output channel to the client.
+  `resp.SendModelChunk(chunk)`
   streams generation tokens; `resp.SendArtifact(a)` streams (and records) an
   artifact. Sends are fire-and-forget.
 - `sess *aix.SessionRunner[State]` — the session plus turn-loop control. Call
-  `sess.Run(ctx, perTurn)` to enter the loop; it blocks per turn until the client
+  `sess.Run(ctx, perTurn)` to enter the loop; it blocks per turn until the
+  client
   sends the next input.
 
 Key `sess` methods:
 
 - `sess.Run(ctx, func(ctx, input *aix.AgentInput) (*aix.TurnResult, error))` —
-  runs the turn loop. The incoming `input.Message` is added to the session before
-  your callback runs, so `sess.Messages()` includes it. Return a `*aix.TurnResult`
+  runs the turn loop. The incoming `input.Message` is added to the session
+  before
+  your callback runs, so `sess.Messages()` includes it. Return a
+  `*aix.TurnResult`
   to report the finish reason (or `nil` to report none).
-- `sess.Messages()` / `sess.AddMessages(...)` / `sess.SetMessages(...)` — read and
+- `sess.Messages()` / `sess.AddMessages(...)` / `sess.SetMessages(...)` — read
+  and
   write conversation history.
 - `sess.UpdateCustom(fn)` — mutate typed custom state; auto-streams a
   `CustomPatch` chunk (see [state](agents-state.md)).
@@ -184,10 +197,12 @@ out, _ := conn.Output()
 
 - **Per-turn metadata.** Inside the `sess.Run` callback,
   `aix.TurnContextFromContext(ctx)` returns the turn's `SnapshotID`,
-  `ParentSnapshotID`, and `TurnIndex` — reserved before the turn runs, so you can
+  `ParentSnapshotID`, and `TurnIndex` — reserved before the turn runs, so you
+  can
   name external resources (e.g. a git worktree) after the snapshot up front.
 - **Validate untrusted resume.** If you accept `input.Resume` from untrusted
-  callers, call `aix.ValidateResumeAgainstHistory(input.Resume, sess.Messages())`
+  callers, call
+  `aix.ValidateResumeAgainstHistory(input.Resume, sess.Messages())`
   before forwarding it to the model (the prompt-backed loop does this for you).
 - **Recovering from a failed turn.** If your callback returns an error, `Run`
   records the failure and stops; you may call `Run` again to keep processing, or

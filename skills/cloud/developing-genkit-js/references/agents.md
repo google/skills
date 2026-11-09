@@ -1,7 +1,8 @@
 # Agents (Beta)
 
 > **Beta / preview API.** Agents are not yet stable. Server APIs come from
-> `genkit/beta`; the browser client comes from `genkit/beta/client`. Import paths
+> `genkit/beta`; the browser client comes from `genkit/beta/client`. Import
+> paths
 > and signatures may change. Always use `genkit/beta`, not `genkit`, for agents.
 >
 > **Requires `genkit` >= 1.39.0.**
@@ -18,21 +19,39 @@ agent adds:
 
 Progressive disclosure — read the file for the level you need:
 
-- This file: defining an agent, serving it, and **client-managed state** (no store).
-- [Sessions & persistence](agents-sessions.md): `SessionStore`, `InMemorySessionStore`, `FileSessionStore`, `FirestoreSessionStore`.
-- [Human-in-the-loop / interrupts](agents-human-in-the-loop.md): pausing for approval/input and resuming.
+- This file: defining an agent, serving it, and **client-managed state** (no
+  store).
+- [Sessions & persistence](agents-sessions.md): `SessionStore`,
+  `InMemorySessionStore`, `FileSessionStore`, `FirestoreSessionStore`.
+- [Human-in-the-loop / interrupts](agents-human-in-the-loop.md): pausing for
+  approval/input and resuming.
 - [Branching](agents-branching.md): forking a conversation from a snapshot.
-- [Background agents](agents-background.md): detaching long-running turns and polling.
-- [Working with state](agents-state.md): typed custom session state and client auto-sync.
+- [Background agents](agents-background.md): detaching long-running turns and
+  polling.
+- [Working with state](agents-state.md): typed custom session state and client
+  auto-sync.
 - [Artifacts](agents-artifacts.md): producing/reading named deliverables.
 - [Multi-agent orchestration](agents-multi-agent.md): delegating to sub-agents.
-- [Advanced custom agents](agents-custom.md): `defineCustomAgent` for full turn control.
-- [Deploying agents](agents-deployment.md): serving multiple agents over HTTP, CORS, web UI, other frameworks.
+- [Advanced custom agents](agents-custom.md): `defineCustomAgent` for full turn
+  control.
+- [Deploying agents](agents-deployment.md): serving multiple agents over HTTP,
+  CORS, web UI, other frameworks.
+
+- [Setup](#setup): Lines 51-62
+- [Define an agent](#define-an-agent): Lines 64-102
+- [Agents and middleware go hand in hand](#agents-and-middleware-go-hand-in-hand): Lines 104-144
+- [Chat with an agent (server-side)](#chat-with-an-agent-server-side): Lines 146-168
+- [Verify an agent from the CLI (flow:run)](#verify-an-agent-from-the-cli-flowrun): Lines 170-187
+- [Serve an agent over HTTP](#serve-an-agent-over-http): Lines 189-222
+- [Consume an agent from a client (remoteAgent)](#consume-an-agent-from-a-client-remoteagent): Lines 224-252
+- [Client-managed state (no server store)](#client-managed-state-no-server-store): Lines 254-301
+
+---
 
 ## Setup
 
 ```ts
-// genkit.ts — note the `genkit/beta` import (required for agents)
+// genkit.ts - note the `genkit/beta` import (required for agents)
 import { genkit } from 'genkit/beta';
 import { googleAI } from '@genkit-ai/google-genai';
 
@@ -76,14 +95,16 @@ Common `defineAgent` options:
 - `system` / `prompt` / dotprompt fields: same as `definePrompt`.
 - `tools`: tools and interrupts available to the agent.
 - `model`: override the default model.
-- `store`: a `SessionStore` for server-side persistence. See [sessions](agents-sessions.md).
+- `store`: a `SessionStore` for server-side persistence. See
+  [sessions](agents-sessions.md).
 - `stateSchema`: a `z.ZodType<State>` describing custom session state. When set,
   `State` is inferred and validated at load time.
 - `input` / `inputSchema`: input variables for the prompt template.
 
 ## Agents and middleware go hand in hand
 
-Agents and [middleware](middleware.md) are built for each other: the `use: [...]`
+Agents and [middleware](middleware.md) are built for each other: the
+`use: [...]`
 array is where you layer in sophisticated behavior without writing it yourself.
 Most agent capabilities — sub-agent delegation, artifacts, filesystem access,
 skill loading, tool approval, retries — are just middleware you drop in.
@@ -135,7 +156,7 @@ const res = await chat.send('Weather in Tokyo?');
 console.log(res.text);
 console.log(res.snapshotId); // immutable checkpoint id for this turn
 
-// Follow-up turn — history is carried automatically:
+// Follow-up turn - history is carried automatically:
 const res2 = await chat.send('What about Paris?');
 
 // Streaming turn:
@@ -149,7 +170,8 @@ const final = await turn.response;
 ## Verify an agent from the CLI (`flow:run`)
 
 `genkit flow:run` only runs **flows**, not agents, so you can't `flow:run` an
-agent directly. To exercise an agent from the CLI (e.g. a quick, self-terminating
+agent directly. To exercise an agent from the CLI (e.g. a quick,
+self-terminating
 check), wrap one turn in a throwaway flow and run that:
 
 ```ts
@@ -194,7 +216,8 @@ app.post(
 app.listen(8080);
 ```
 
-For serving multiple agents, CORS/streaming headers for browser clients, a static
+For serving multiple agents, CORS/streaming headers for browser clients, a
+static
 web UI, and other host frameworks (Next.js, Firebase), see
 [Deploying agents](agents-deployment.md).
 
@@ -217,7 +240,7 @@ for await (const chunk of turn.stream) {
 const res = await turn.response;
 console.log(res.snapshotId, chat.snapshotId, chat.state);
 
-// Multi-turn — the client carries state forward automatically:
+// Multi-turn - the client carries state forward automatically:
 await chat.send('What about Paris?');
 
 // Errors surface as AgentError with an HTTP-ish status:

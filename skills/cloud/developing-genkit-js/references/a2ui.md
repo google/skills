@@ -13,6 +13,16 @@ An A2UI-enabled agent streams more than prose. It streams interactive UI
 as the model responds. The entire server-side integration is a single model
 middleware: add `a2ui()` to an agent's `use` array and nothing else changes.
 
+- [Install](#install): Lines 26-41
+- [Server: add the a2ui() middleware](#server-add-the-a2ui-middleware): Lines 43-106
+- [Client: render surfaces](#client-render-surfaces): Lines 108-162
+- [Handling user actions](#handling-user-actions): Lines 164-224
+- [Custom catalogs](#custom-catalogs): Lines 226-276
+- [Security and the trust boundary](#security-and-the-trust-boundary): Lines 278-298
+- [How it works](#how-it-works): Lines 300-321
+
+---
+
 ## Install
 
 ```bash
@@ -22,7 +32,8 @@ npm i @genkit-ai/a2ui
 To render surfaces in the browser you also need a renderer. A2UI ships renderers
 for [`@a2ui/lit`](https://www.npmjs.com/package/@a2ui/lit),
 [`@a2ui/react`](https://www.npmjs.com/package/@a2ui/react), and
-[`@a2ui/angular`](https://www.npmjs.com/package/@a2ui/angular). The examples here
+[`@a2ui/angular`](https://www.npmjs.com/package/@a2ui/angular). The examples
+here
 use Lit:
 
 ```bash
@@ -98,7 +109,8 @@ for what `'strict'` does and does not check.
 
 `@genkit-ai/a2ui/client` is browser-safe (no Node dependencies). Consume the
 agent with `remoteAgent`, pull A2UI envelopes off each chunk with
-`a2uiEnvelopesFromParts`, and feed whole envelopes to a renderer. A2UI travels as
+`a2uiEnvelopesFromParts`, and feed whole envelopes to a renderer. A2UI travels
+as
 `data` parts on the raw model chunk, so read them from
 `chunk.raw.modelChunk?.content`.
 
@@ -169,14 +181,16 @@ The action's `name` is sent as the user message; the full action (including its
 
 ### Forms
 
-Input components (`TextField`, `CheckBox`, `Slider`) do **not** send their values
+Input components (`TextField`, `CheckBox`, `Slider`) do **not** send their
+values
 automatically. To capture what the user entered, the model must:
 
 1. Bind each input's `value` to a data-model path (`{ "path": "/email" }`).
 2. Echo those same paths in the submit `Button`'s `action.event.context`.
 
 The catalog capabilities injected into the system prompt already instruct the
-model to do this. Without both steps, the action arrives with an empty `context`.
+model to do this. Without both steps, the action arrives with an empty
+`context`.
 
 ### Renderer requirements (Lit basic catalog)
 
@@ -208,7 +222,6 @@ new ContextProvider(document.body as any, {
   initialValue: renderMarkdown,
 });
 ```
-
 
 ## Custom catalogs
 
@@ -265,7 +278,8 @@ type `a2ui-catalog`.
 ## Security and the trust boundary
 
 Generative UI moves model output into the DOM, so treat every surface an agent
-emits as **untrusted input**. The `validate` option (including `'strict'`) checks
+emits as **untrusted input**. The `validate` option (including `'strict'`)
+checks
 envelope structure and component *type names* against the catalog only. It does
 **not** validate component props or data-model values: model-controlled values
 such as `Image.url` and `Text` (inline Markdown that a renderer may turn into
@@ -286,7 +300,8 @@ parts.
 ## How it works
 
 A2UI rides on its own part channel: a Genkit `data` part with mime type
-`application/a2ui+json` whose `data` is `{ envelopes: [...] }`. On each model call
+`application/a2ui+json` whose `data` is `{ envelopes: [...] }`. On each model
+call
 inside the agent's tool loop, `a2ui()`:
 
 1. Injects the catalog's capabilities into the system prompt (unless
@@ -297,7 +312,8 @@ inside the agent's tool loop, `a2ui()`:
 5. Rewrites them into canonical a2ui data parts.
 
 Inbound a2ui parts (a surface action sent back as the next turn, or replayed
-history) are summarized into plain text before the underlying model sees them, so
+history) are summarized into plain text before the underlying model sees them,
+so
 a model that does not understand the a2ui mime type can still reason about prior
 surfaces and user actions.
 

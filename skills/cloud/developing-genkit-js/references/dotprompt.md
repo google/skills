@@ -1,5 +1,18 @@
 # Dotprompt (.prompt files) — Genkit JS
 
+- [What it is](#what-it-is): Lines 16-20
+- [Where files live](#where-files-live): Lines 22-35
+- [File format](#file-format): Lines 37-61
+- [Loading and calling a prompt](#loading-and-calling-a-prompt): Lines 63-100
+- [Registering named schemas](#registering-named-schemas): Lines 102-118
+- [Variants](#variants): Lines 120-127
+- [Partials](#partials): Lines 129-153
+- [Helpers](#helpers): Lines 155-165
+- [Tools, tool-loop control, and middleware](#tools-tool-loop-control-and-middleware): Lines 167-213
+- [Relationship to agents](#relationship-to-agents): Lines 215-219
+
+---
+
 ## What it is
 
 `.prompt` files combine YAML frontmatter (model, config, schemas, tools,

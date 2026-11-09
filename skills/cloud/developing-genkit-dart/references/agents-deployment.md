@@ -19,6 +19,14 @@ match the `remoteAgent` client defaults (`${url}/getSnapshot`, `${url}/abort`),
 so a client only needs the base `url`. `hideGetSnapshot: true` /
 `hideAbort: true` remove supported routes; they can't force unsupported ones.
 
+- [Serving several agents (shelf)](#serving-several-agents-shelf): Lines 30-78
+- [Auth](#auth): Lines 80-84
+- [CORS for browser clients](#cors-for-browser-clients): Lines 86-90
+- [Registering agents/flows](#registering-agentsflows): Lines 92-98
+- [Notes](#notes): Lines 100-111
+
+---
+
 ## Serving several agents (shelf)
 
 ```dart
@@ -91,7 +99,8 @@ touched explicitly before use.
 
 ## Notes
 
-- The wire body matches the Genkit client: `{ "data": <input>, "init": <init> }`.
+- The wire body matches the Genkit client:
+  `{ "data": <input>, "init": <init> }`.
 - For persistence across restarts, use `FileSessionStore`
   (`package:genkit/experimental_io.dart`) or `FirestoreSessionStore`
   (`package:genkit_google_cloud`) instead of `InMemorySessionStore`. See

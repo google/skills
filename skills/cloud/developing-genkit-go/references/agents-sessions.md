@@ -6,9 +6,20 @@
 When an agent has a `SessionStore` (via `aix.WithSessionStore`), the **server**
 owns the session history. Each turn produces an immutable **snapshot**; the
 snapshot chain carries conversation state forward. A store also enables
-[branching](agents-branching.md) and [background execution](agents-background.md).
+[branching](agents-branching.md) and
+[background execution](agents-background.md).
 (Interrupts work with or without a store — see
 [human-in-the-loop](agents-human-in-the-loop.md).)
+
+- [Pick a store](#pick-a-store): Lines 24-104
+- [Turns persist automatically](#turns-persist-automatically): Lines 106-116
+- [Resume a conversation](#resume-a-conversation): Lines 118-140
+- [Read a snapshot without running a turn](#read-a-snapshot-without-running-a-turn): Lines 142-160
+- [Typed session state](#typed-session-state): Lines 162-190
+- [Interrupts (human-in-the-loop)](#interrupts-human-in-the-loop): Lines 192-198
+- [Implementing a custom SessionStore](#implementing-a-custom-sessionstore): Lines 200-247
+
+---
 
 ## Pick a store
 
@@ -130,7 +141,8 @@ exclusive with `WithSessionID` / `WithSnapshotID`.
 
 ## Read a snapshot without running a turn
 
-`Agent.GetSnapshot` / `Agent.GetLatestSnapshot` fetch a stored snapshot (applying
+`Agent.GetSnapshot` / `Agent.GetLatestSnapshot` fetch a stored snapshot
+(applying
 any configured `aix.WithStateTransform`). Handy for restoring a UI after a
 reload. They return `FAILED_PRECONDITION` on a client-managed agent (no store).
 
@@ -179,7 +191,8 @@ out, _ := profileAgent.Run(ctx,
 
 ## Interrupts (human-in-the-loop)
 
-Interrupts pause a turn so a human can approve or provide input, then resume from
+Interrupts pause a turn so a human can approve or provide input, then resume
+from
 the exact pause point. They work with a store or with client-managed state
 (persistence is orthogonal). See
 [Human-in-the-loop / interrupts](agents-human-in-the-loop.md).
@@ -214,7 +227,8 @@ type SnapshotSubscriber interface {
 
 Contract notes: preserve `SessionID` across rewrites (a row's session never
 changes); default an empty `Status` to `SnapshotStatusCompleted`; keep
-`CreatedAt`/`UpdatedAt` caller-managed (persist them verbatim, never stamp them);
+`CreatedAt`/`UpdatedAt` caller-managed (persist them verbatim, never stamp
+them);
 `GetLatestSnapshot` returns the greatest-`CreatedAt` row, ties broken by
 `SnapshotID`. See the `localstore` implementations for a reference.
 

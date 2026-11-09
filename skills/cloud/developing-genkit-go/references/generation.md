@@ -1,5 +1,15 @@
 # Generation
 
+- [GenerateText](#generatetext): Lines 13-22
+- [Generate](#generate): Lines 24-37
+- [GenerateData (Structured Output)](#generatedata-structured-output): Lines 39-54
+- [Streaming](#streaming): Lines 56-115
+- [Common Options](#common-options): Lines 117-133
+- [Output Formats](#output-formats): Lines 135-187
+- [Embeddings](#embeddings): Lines 189-224
+
+---
+
 ## GenerateText
 
 Simplest form. Returns a string.
@@ -89,7 +99,8 @@ for result, err := range stream {
 
 ### Callback-Based Streaming
 
-Use `ai.WithStreaming` with `Generate` for callback-style streaming. The callback receives `*ai.ModelResponseChunk`:
+Use `ai.WithStreaming` with `Generate` for callback-style streaming. The
+callback receives `*ai.ModelResponseChunk`:
 
 ```go
 resp, err := genkit.Generate(ctx, g,

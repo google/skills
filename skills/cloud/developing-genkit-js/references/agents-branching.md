@@ -3,7 +3,8 @@
 > **Beta / preview API.** Requires a [session store](agents-sessions.md) so
 > snapshots are persistent. Read [agents.md](agents.md) first.
 
-A `snapshotId` is an **immutable checkpoint**, like a git commit. You can fork as
+A `snapshotId` is an **immutable checkpoint**, like a git commit. You can fork
+as
 many independent timelines as you want from the same snapshot — each turn from a
 snapshot creates a new, independent snapshot; the original is unchanged.
 
@@ -27,12 +28,12 @@ const root = assistant.chat();
 const res1 = await root.send('Hello!');
 const checkpoint = res1.snapshotId; // branch point
 
-// Branch A — forks from `checkpoint`.
+// Branch A - forks from `checkpoint`.
 const branchA = assistant.chat({ snapshotId: checkpoint });
 await branchA.send('My name is Bob.');
 const resA = await branchA.send('What is my name?'); // -> Bob
 
-// Branch B — forks from the SAME `checkpoint`, fully independent.
+// Branch B - forks from the SAME `checkpoint`, fully independent.
 const branchB = assistant.chat({ snapshotId: checkpoint });
 await branchB.send('My name is John.');
 const resB = await branchB.send('What is my name?'); // -> John
@@ -59,7 +60,7 @@ async function twoVariants(text: string) {
     makeChat().send(text),
     makeChat().send(text),
   ]);
-  // a.snapshotId !== b.snapshotId — both branch from the same point.
+  // a.snapshotId !== b.snapshotId - both branch from the same point.
   return { a, b };
 }
 
@@ -71,7 +72,8 @@ function pick(chosenSnapshotId: string) {
 
 ## Restoring history from a snapshot
 
-Use `agent.getSnapshot(snapshotId)` to read a snapshot's state without starting a
+Use `agent.getSnapshot(snapshotId)` to read a snapshot's state without starting
+a
 turn — handy for restoring a UI after a reload (e.g. snapshotId stored in the
 URL). The server must expose the agent's `getSnapshotDataAction` (see
 [agents.md](agents.md#serve-an-agent-over-http)).

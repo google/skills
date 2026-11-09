@@ -1,6 +1,7 @@
 # Genkit Firebase AI Plugin (`genkit_firebase_ai`)
 
-The Firebase AI plugin for Genkit Dart, used for interacting with Gemini APIs through Firebase AI Logic.
+The Firebase AI plugin for Genkit Dart, used for interacting with Gemini APIs
+through Firebase AI Logic.
 
 ## Usage
 

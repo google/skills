@@ -2,7 +2,8 @@
 
 > **Beta / preview API.** Read [agents.md](agents.md) first.
 
-An **interrupt** pauses an agent mid-turn and hands control back to your code (or
+An **interrupt** pauses an agent mid-turn and hands control back to your code
+(or
 a human) — e.g. to approve a sensitive action, collect missing input, or confirm
 a plan. Internally it's a **tool call used as control flow**: the interrupt tool
 never executes on the server; it exists only to pause the turn. You then
@@ -17,6 +18,13 @@ snapshot does it; without one the client round-trips the state blob (the
 
 Flow: `chat.send(...)` → response has `res.interrupts` → collect human input →
 `chat.resume({ respond: [...] })`.
+
+- [Define an interrupt](#define-an-interrupt): Lines 29-73
+- [Detect and resume (server-side)](#detect-and-resume-server-side): Lines 75-126
+- [Client-side (browser) interrupts](#client-side-browser-interrupts): Lines 128-168
+- [Notes and gotchas](#notes-and-gotchas): Lines 170-188
+
+---
 
 ## Define an interrupt
 
@@ -69,10 +77,13 @@ export const bankingAgent = ai.defineAgent({
 `res.interrupts` is non-empty when the agent paused. Each entry exposes:
 
 - `.name` — the interrupt's name.
-- `.input` — the data the model passed in (typed by the interrupt's `inputSchema`).
-- `.respond(output)` — **builder** returning a `toolResponse` part to resume with
+- `.input` — the data the model passed in (typed by the interrupt's
+  `inputSchema`).
+- `.respond(output)` — **builder** returning a `toolResponse` part to resume
+  with
   (provides the tool's output without executing it). Does **not** send.
-- `.restart()` — **builder** re-issuing the original tool request (use to retry /
+- `.restart()` — **builder** re-issuing the original tool request (use to retry
+  /
   let the tool actually run). Does **not** send.
 
 Resume the **same** chat with `chat.resume(...)` (or `chat.resumeStream(...)`),
@@ -84,7 +95,7 @@ let res = await chat.send('Transfer $500 to my savings account.');
 
 const approval = res.interrupts.find((i) => i.name === 'userApproval');
 if (approval) {
-  console.log(approval.input); // { action, details } — show this to the human
+  console.log(approval.input); // { action, details } - show this to the human
 
   // Collect the human decision, then resume with the interrupt's output:
   res = await chat.resume({
@@ -117,7 +128,8 @@ await chat.resume({
 ## Client-side (browser) interrupts
 
 The same pattern works over HTTP with `remoteAgent`. Types come from
-`genkit/beta/client`. The client tracks the snapshot, so resuming the same `chat`
+`genkit/beta/client`. The client tracks the snapshot, so resuming the same
+`chat`
 continues exactly where it paused.
 
 ```ts
@@ -147,7 +159,7 @@ if (pending) {
     /* render chunk.text */
   }
   const final = await turn.response;
-  // If final.interrupts is non-empty, the agent paused again — repeat.
+  // If final.interrupts is non-empty, the agent paused again - repeat.
 }
 ```
 
@@ -155,9 +167,10 @@ if (pending) {
 > (`res.interrupts.length > 0`); show the approval UI from `interrupt.input`
 > instead, then render the model's reply after resuming.
 
-## Notes & gotchas
+## Notes and gotchas
 
-- **No store required.** Interrupts work with either a [session store](agents-sessions.md)
+- **No store required.** Interrupts work with either a
+  [session store](agents-sessions.md)
   or [client-managed state](agents.md#client-managed-state-no-server-store) —
   persistence is orthogonal. Just resume on the same `chat` (or, for raw calls,
   carry the returned state/snapshot back into the resume).

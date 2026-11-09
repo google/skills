@@ -1,6 +1,7 @@
 # Deploying / Serving Agents over HTTP (Experimental)
 
-> **Experimental / preview API.** Uses `genkit.Handler` and the agent's companion
+> **Experimental / preview API.** Uses `genkit.Handler` and the agent's
+> companion
 > actions. Read [agents.md](agents.md) first.
 
 An agent is an `api.BidiAction`, so `genkit.Handler(agent)` serves it as a
@@ -14,6 +15,15 @@ companion actions:
   `nil` unless the store implements `aix.SnapshotSubscriber` (both `localstore`
   stores do).
 
+- [Request/response shape](#requestresponse-shape): Lines 27-44
+- [Serve with the built-in route layout (recommended)](#serve-with-the-built-in-route-layout-recommended): Lines 46-77
+- [A reusable helper for several agents (manual wiring)](#a-reusable-helper-for-several-agents-manual-wiring): Lines 79-125
+- [CORS for browser clients](#cors-for-browser-clients): Lines 127-154
+- [Registering agents](#registering-agents): Lines 156-163
+- [Verifying locally](#verifying-locally): Lines 165-188
+
+---
+
 ## Request/response shape
 
 The handler accepts `{"data": <AgentInput>, "init": <AgentInit>}`:
@@ -25,8 +35,10 @@ The handler accepts `{"data": <AgentInput>, "init": <AgentInit>}`:
   fresh conversation.
 
 Responses come back as `{"result": <AgentOutput>}`. Stream chunks (`modelChunk`,
-`turnEnd`, then the final `result`) by either setting `Accept: text/event-stream`
-or adding `?stream=true` to the URL — the handler honors both. Turn-tier failures
+`turnEnd`, then the final `result`) by either setting
+`Accept: text/event-stream`
+or adding `?stream=true` to the URL — the handler honors both. Turn-tier
+failures
 return **200** with a failed `AgentOutput` (so the caller keeps its last-good
 state); init-tier failures (a rejected session source) are hard HTTP errors
 (400/404).
@@ -34,7 +46,8 @@ state); init-tier failures (a rejected session source) are hard HTTP errors
 ## Serve with the built-in route layout (recommended)
 
 `genkit/exp` ships a default HTTP layout so you don't hand-wire companions.
-`genkitx.AllAgentRoutes(g)` returns a `[]genkitx.Route` covering every registered
+`genkitx.AllAgentRoutes(g)` returns a `[]genkitx.Route` covering every
+registered
 agent; `genkitx.AgentRoutes(agent)` does one agent. Each `Route` exposes
 `Pattern()` (a `"METHOD /path"` string for `http.ServeMux`) and
 `Handler(opts...)` (builds the `genkit.Handler`, passing any `HandlerOption`s).
@@ -132,7 +145,8 @@ func withCORS(h http.Handler) http.Handler {
 }
 ```
 
-`server.Start` takes a `*http.ServeMux`, so wrap the mux with `http.ListenAndServe`
+`server.Start` takes a `*http.ServeMux`, so wrap the mux with
+`http.ListenAndServe`
 (which accepts any `http.Handler`) to apply CORS around every route:
 
 ```go
@@ -144,12 +158,14 @@ log.Fatal(http.ListenAndServe("127.0.0.1:8080", withCORS(mux)))
 Agents register with Genkit when their `genkitx.DefineAgent` (or
 `DefineCustomAgent` / `DefinePromptAgent`) call runs, so make sure the code that
 defines them executes during startup. Keep a reference to the returned
-`*aix.Agent[State]` to reach `RunText`, `GetSnapshot`, `Abort`, and the companion
+`*aix.Agent[State]` to reach `RunText`, `GetSnapshot`, `Abort`, and the
+companion
 actions from your own code.
 
 ## Verifying locally
 
-Run under the Genkit CLI so turns are traced, and drive the endpoint with `curl`:
+Run under the Genkit CLI so turns are traced, and drive the endpoint with
+`curl`:
 
 ```bash
 genkit start -- go run .
@@ -168,4 +184,5 @@ curl -s localhost:8080/api/weatherAgent \
 ```
 
 You can also exercise an agent from the CLI by wrapping one turn in a throwaway
-flow and using `genkit flow:run` (see [agents.md](agents.md#verify-an-agent-from-the-cli-flowrun)).
+flow and using `genkit flow:run` (see
+[agents.md](agents.md#verify-an-agent-from-the-cli-flowrun)).

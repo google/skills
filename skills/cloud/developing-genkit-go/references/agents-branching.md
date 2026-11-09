@@ -3,12 +3,20 @@
 > **Experimental / preview API.** Requires a [session store](agents-sessions.md)
 > so snapshots are persistent. Read [agents.md](agents.md) first.
 
-A `SnapshotID` is an **immutable checkpoint**, like a git commit. You can fork as
+A `SnapshotID` is an **immutable checkpoint**, like a git commit. You can fork
+as
 many independent timelines as you want from the same snapshot — each turn from a
 snapshot creates a new, independent snapshot; the original is unchanged.
 
 To branch, run a turn resuming from an earlier snapshot via
 `aix.WithSnapshotID(id)`.
+
+- [Branch from a checkpoint](#branch-from-a-checkpoint): Lines 21-49
+- ["Pick a variant"](#pick-a-variant): Lines 51-79
+- [Resume by session vs. by snapshot](#resume-by-session-vs-by-snapshot): Lines 81-86
+- [Restore history from a snapshot](#restore-history-from-a-snapshot): Lines 88-111
+
+---
 
 ## Branch from a checkpoint
 
@@ -24,11 +32,11 @@ assistant := genkitx.DefineAgent(g, "assistant",
 root, _ := assistant.RunText(ctx, "Hello!")
 checkpoint := root.SnapshotID // branch point
 
-// Branch A — forks from `checkpoint`.
+// Branch A - forks from `checkpoint`.
 a1, _ := assistant.RunText(ctx, "My name is Bob.", aix.WithSnapshotID(checkpoint))
 a2, _ := assistant.RunText(ctx, "What is my name?", aix.WithSnapshotID(a1.SnapshotID)) // -> Bob
 
-// Branch B — forks from the SAME `checkpoint`, fully independent.
+// Branch B - forks from the SAME `checkpoint`, fully independent.
 b1, _ := assistant.RunText(ctx, "My name is John.", aix.WithSnapshotID(checkpoint))
 b2, _ := assistant.RunText(ctx, "What is my name?", aix.WithSnapshotID(b1.SnapshotID)) // -> John
 
@@ -36,7 +44,8 @@ _ = a2
 _ = b2
 ```
 
-Each turn returns a fresh `SnapshotID`; the two branches never share one past the
+Each turn returns a fresh `SnapshotID`; the two branches never share one past
+the
 common `checkpoint`.
 
 ## "Pick a variant"

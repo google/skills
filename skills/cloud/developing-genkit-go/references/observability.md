@@ -3,6 +3,13 @@
 > Pluggable instrumentation, `otelgenai`, and the reflection API settings
 > require Genkit Go v1.14.0+.
 
+- [How tracing works](#how-tracing-works): Lines 13-27
+- [Export OpenTelemetry GenAI semantic conventions (otelgenai)](#export-opentelemetry-genai-semantic-conventions-otelgenai): Lines 29-72
+- [Custom instrumentation](#custom-instrumentation): Lines 74-94
+- [Reflection API outside dev](#reflection-api-outside-dev): Lines 96-117
+
+---
+
 ## How tracing works
 
 - **In dev** (`genkit start`), Genkit posts spans straight to the Developer UI's
@@ -12,7 +19,8 @@
 - **Elsewhere**, spans go through pluggable instrumentation providers. The
   default, `&tracing.OTelInstrumentation{}`, creates OTel spans with `genkit:*`
   attributes on the `TracerProvider` you register. Genkit installs none itself,
-  so nothing leaves the process until you (or a plugin such as Firebase) register
+  so nothing leaves the process until you (or a plugin such as Firebase)
+  register
   one.
 - Write span metadata with `tracing.SetSpanMetadata`. The old
   `tracing.TracerProvider`, `tracing.Tracer`, and `WriteTelemetry*` helpers are
@@ -54,7 +62,8 @@ g := genkit.Init(ctx, genkit.WithPlugins(&googlegenai.GoogleAI{}))
 Gotchas:
 
 - **It replaces the default encoding.** To export both, list both:
-  `tracing.SetInstrumentation(&tracing.OTelInstrumentation{}, otelgenai.New(nil))`.
+  `tracing.SetInstrumentation(&tracing.OTelInstrumentation{},
+  otelgenai.New(nil))`.
 - **Do not use it alone with the Firebase or Google Cloud telemetry plugins.**
   They build metrics/logs from the `genkit:*` attributes; without
   `OTelInstrumentation` in the list their Genkit metrics stop.

@@ -3,10 +3,12 @@
 > **Experimental / preview API.** Sub-agent delegation uses the `Agents`
 > middleware from `plugins/middleware/exp`. Read [agents.md](agents.md) first.
 
-A common pattern is an **orchestrator** agent that delegates tasks to specialized
+A common pattern is an **orchestrator** agent that delegates tasks to
+specialized
 **sub-agents** (e.g. a `researcher` and a `coder`). The `middlewarex.Agents`
 middleware injects one delegation tool per sub-agent (`delegate_to_<name>`),
-appends a `<sub-agents>` block to the orchestrator's system prompt, and — when the
+appends a `<sub-agents>` block to the orchestrator's system prompt, and — when
+the
 model calls a delegation tool — runs the sub-agent with the task and returns its
 response as the tool result.
 
@@ -18,10 +20,22 @@ import (
 )
 ```
 
+- [1. Define the sub-agents](#1-define-the-sub-agents): Lines 34-58
+- [2. Wire up the orchestrator](#2-wire-up-the-orchestrator): Lines 60-98
+- [middlewarex.Agents fields](#middlewarexagents-fields): Lines 100-119
+- [Background delegation (Async: true)](#background-delegation-async-true): Lines 121-160
+- [Continuing a task (continue_task)](#continuing-a-task-continue_task): Lines 162-179
+- [Delegating to a remote agent](#delegating-to-a-remote-agent): Lines 181-204
+- [Sharing artifacts between agents](#sharing-artifacts-between-agents): Lines 206-220
+- [Combining with retries](#combining-with-retries): Lines 222-245
+
+---
+
 ## 1. Define the sub-agents
 
 Give each sub-agent a description via `aix.WithDescription` — it's
-auto-discovered and shown to the orchestrator so the model knows when to delegate.
+auto-discovered and shown to the orchestrator so the model knows when to
+delegate.
 
 ```go
 researcher := genkitx.DefineAgent(g, "researcher",
@@ -45,7 +59,8 @@ coder := genkitx.DefineAgent(g, "coder",
 
 ## 2. Wire up the orchestrator
 
-Add `&middlewarex.Agents{...}` to the orchestrator's `ai.WithUse`. Reference each
+Add `&middlewarex.Agents{...}` to the orchestrator's `ai.WithUse`. Reference
+each
 sub-agent by `aix.AgentRef` — a bare `{Name: ...}` (description auto-discovered
 from the registry) or `agent.Ref()` (captures the agent's name and description).
 
@@ -92,7 +107,8 @@ fmt.Println(out.Message.Text())
 - `MaxDelegations` (`int`): cap on delegations per generate call. `0` means
   unlimited. Prevents runaway loops.
 - `HistoryLength` (`int`): number of recent user/model messages forwarded to a
-  sub-agent as context. `0` sends only the task description. History is forwarded
+  sub-agent as context. `0` sends only the task description. History is
+  forwarded
   only to **client-managed** sub-agents (no session store); server-managed
   sub-agents receive only the task.
 - `ArtifactStrategy` (`middlewarex.ArtifactStrategy`): `ArtifactStrategyInline`
@@ -148,7 +164,8 @@ orchestrator := genkitx.DefineAgent(g, "orchestrator",
 > Requires Genkit Go v1.14.0+.
 
 A delegation to a store-backed sub-agent returns a `taskId` and a settled
-`status` even when synchronous. The `continue_task({taskId, instructions, background})`
+`status` even when synchronous. The
+`continue_task({taskId, instructions, background})`
 tool picks it up:
 
 - **failed / aborted**: continues from the last saved progress (finished tool
@@ -180,7 +197,8 @@ researcher := genkitx.DefineRemoteAgent(g, "researcher", "https://research.inter
 )
 ```
 
-`researcher.Ref()` then goes in `Agents` as usual. The handle (`*aix.AgentHandle`)
+`researcher.Ref()` then goes in `Agents` as usual. The handle
+(`*aix.AgentHandle`)
 also runs the remote agent directly (`Run`, `RunText`, `RunDetached`, `Task`,
 `WaitForSnapshot`, `Abort`). The remote server needs a session store for
 background tasks and `continue_task`.
@@ -190,13 +208,15 @@ background tasks and `continue_task`.
 Sub-agents can produce [artifacts](agents-artifacts.md). `ArtifactStrategy`
 controls how they reach the orchestrator:
 
-- `middlewarex.ArtifactStrategyInline` (default): artifact content is included in
+- `middlewarex.ArtifactStrategyInline` (default): artifact content is included
+  in
   the delegation tool result (so the model sees it directly) **and** merged into
   the parent session.
 - `middlewarex.ArtifactStrategySession`: artifacts are merged into the parent
   session only; the tool result lists artifact names, not content. Pair it with
   `&middlewarex.Artifacts{}` on the orchestrator so it can `read_artifact` on
-  demand (the pattern above). Merged artifacts are namespaced by an invocation ID
+  demand (the pattern above). Merged artifacts are namespaced by an invocation
+  ID
   (`<agentName>_<n>/<name>`) and tagged with their source agent.
 
 ## Combining with retries
@@ -220,5 +240,6 @@ delegation cannot spend around the cap.
 
 > Note: a sub-agent failure is reported back to the orchestrator as the
 > delegation tool's output, with a task ID to `continue_task` it. A sub-agent
-> [interrupt](agents-human-in-the-loop.md) is reported the same way but cannot be
+> [interrupt](agents-human-in-the-loop.md) is reported the same way but cannot
+> be
 > continued, so delegate self-contained tasks.

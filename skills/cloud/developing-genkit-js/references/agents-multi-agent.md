@@ -10,6 +10,16 @@ appends a `<sub-agents>` block to the orchestrator's system prompt, and — when
 the model calls a delegation tool — runs the sub-agent and returns its response
 as the tool result.
 
+- [1. Define the sub-agents](#1-define-the-sub-agents): Lines 23-51
+- [2. Wire up the orchestrator](#2-wire-up-the-orchestrator): Lines 53-95
+- [agents() options](#agents-options): Lines 97-112
+- [Background delegation (async: true)](#background-delegation-async-true): Lines 114-154
+- [Continuing a task (continue_task)](#continuing-a-task-continue_task): Lines 156-174
+- [Sharing artifacts between agents](#sharing-artifacts-between-agents): Lines 176-187
+- [Other middleware](#other-middleware): Lines 189-214
+
+---
+
 ## 1. Define the sub-agents
 
 Give each sub-agent a `description` — it's auto-discovered and shown to the
@@ -148,7 +158,8 @@ so task descriptions must stand alone.
 > Requires `genkit >= 1.43.0`.
 
 A delegation to a store-backed sub-agent returns `{ response, taskId, status }`
-even when synchronous. The `continue_task({ taskId, instructions?, background? })`
+even when synchronous. The
+`continue_task({ taskId, instructions?, background? })`
 tool picks it up:
 
 - `failed` / `aborted`: retries from the last saved progress (finished tool
@@ -178,7 +189,8 @@ controls how they reach the orchestrator:
 ## Other middleware
 
 `@genkit-ai/middleware` also exports `retry`, `fallback`, `filesystem`,
-`skills`, `toolApproval`, and `contextCompression`. They attach the same way via `use: [...]` on an
+`skills`, `toolApproval`, and `contextCompression`. They attach the same way via
+`use: [...]` on an
 agent (or on `ai.generate`) — see [using middleware](middleware.md). `retry()`
 is commonly paired with delegation:
 

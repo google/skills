@@ -8,10 +8,12 @@
 > - Browser/HTTP client (`remoteAgent`, `AgentChat`, ...):
 >   `package:genkit/experimental_client.dart` (alongside
 >   `package:genkit/client.dart`).
-> - `dart:io` extras (`FileSessionStore`): `package:genkit/experimental_io.dart`.
+> - `dart:io` extras (`FileSessionStore`):
+>   `package:genkit/experimental_io.dart`.
 >
 > The entry points are marked `@experimental`, so importing them produces an
-> `experimental_member_use` analyzer warning on the import line. Opt out once you
+> `experimental_member_use` analyzer warning on the import line. Opt out once
+> you
 > accept the churn by adding to `analysis_options.yaml`:
 >
 > ```yaml
@@ -35,16 +37,35 @@ agent adds:
 
 Progressive disclosure — read the file for the level you need:
 
-- This file: defining an agent, serving it, and **client-managed state** (no store).
-- [Sessions & persistence](agents-sessions.md): `SessionStore`, `InMemorySessionStore`, `FileSessionStore`, `FirestoreSessionStore`.
-- [Human-in-the-loop / interrupts](agents-human-in-the-loop.md): pausing for approval/input and resuming.
+- This file: defining an agent, serving it, and **client-managed state** (no
+  store).
+- [Sessions & persistence](agents-sessions.md): `SessionStore`,
+  `InMemorySessionStore`, `FileSessionStore`, `FirestoreSessionStore`.
+- [Human-in-the-loop / interrupts](agents-human-in-the-loop.md): pausing for
+  approval/input and resuming.
 - [Branching](agents-branching.md): forking a conversation from a snapshot.
-- [Background agents](agents-background.md): detaching long-running turns and polling.
-- [Working with state](agents-state.md): typed custom session state and client auto-sync.
+- [Background agents](agents-background.md): detaching long-running turns and
+  polling.
+- [Working with state](agents-state.md): typed custom session state and client
+  auto-sync.
 - [Artifacts](agents-artifacts.md): producing/reading named deliverables.
 - [Multi-agent orchestration](agents-multi-agent.md): delegating to sub-agents.
-- [Advanced custom agents](agents-custom.md): `defineCustomAgent` for full turn control.
-- [Deploying agents](agents-deployment.md): serving multiple agents over HTTP with `GenkitRouter.addAgent`, shelf, CORS.
+- [Advanced custom agents](agents-custom.md): `defineCustomAgent` for full turn
+  control.
+- [Deploying agents](agents-deployment.md): serving multiple agents over HTTP
+  with `GenkitRouter.addAgent`, shelf, CORS.
+
+- [Setup](#setup): Lines 70-92
+- [Define an agent](#define-an-agent): Lines 94-164
+- [Agents and middleware go hand in hand](#agents-and-middleware-go-hand-in-hand): Lines 166-208
+- [Chat with an agent (server-side)](#chat-with-an-agent-server-side): Lines 210-252
+- [Verify an agent from the CLI (flow:run)](#verify-an-agent-from-the-cli-flowrun): Lines 254-268
+- [Serve an agent over HTTP](#serve-an-agent-over-http): Lines 270-291
+- [Consume an agent from a client (remoteAgent)](#consume-an-agent-from-a-client-remoteagent): Lines 293-328
+- [Using from Flutter](#using-from-flutter): Lines 330-405
+- [Client-managed state (no server store)](#client-managed-state-no-server-store): Lines 407-446
+
+---
 
 ## Setup
 
@@ -54,7 +75,7 @@ middleware (`agents`, `filesystem`, `skills`, `toolApproval`) come from
 `package:genkit_middleware` and need their plugins registered.
 
 ```dart
-// genkit.dart — shared instance + model refs.
+// genkit.dart - shared instance + model refs.
 import 'package:genkit/genkit.dart';
 import 'package:genkit_google_genai/genkit_google_genai.dart';
 
@@ -125,7 +146,8 @@ Common `defineAgent` options:
 - `tools`: tools and interrupt-tools available to the agent.
 - `model`: override the default model (e.g. `model: liteModel`).
 - `use`: middleware layered on the turn (`retry()`, `filesystem(...)`, etc.).
-- `store`: a `SessionStore` for server-side persistence. See [sessions](agents-sessions.md).
+- `store`: a `SessionStore` for server-side persistence. See
+  [sessions](agents-sessions.md).
 - `stateSchema`: a `SchemanticType<State>` describing custom session state.
 - `maxTurns`: cap the tool-calling loop (e.g. `maxTurns: 30`).
 
@@ -133,7 +155,8 @@ Common `defineAgent` options:
 > abstract classes with a generated `.g.dart` part). See
 > [references/schemantic.md](schemantic.md).
 
-> **An agent needs a model.** Set `model:` on the agent, or a default `model:` on
+> **An agent needs a model.** Set `model:` on the agent, or a default `model:`
+> on
 > the shared `Genkit` instance (as the [Setup](#setup) snippet does). Without
 > either, the turn fails with
 > `AgentError(INVALID_ARGUMENT): Model must be provided`. The examples here rely
@@ -181,7 +204,8 @@ final codingAgent = ai.defineAgent(
 
 Register the corresponding plugins (`FilesystemPlugin()`, `SkillsPlugin()`,
 `ToolApprovalPlugin()`) on the `Genkit` instance so the `use: [...]` refs
-resolve at runtime (`retry()` is built in). See [using middleware](genkit_middleware.md).
+resolve at runtime (`retry()` is built in). See
+[using middleware](genkit_middleware.md).
 
 ## Chat with an agent (server-side)
 
@@ -196,7 +220,7 @@ final res = await chat.send(text: 'Weather in Tokyo?');
 print(res.text);
 print(res.snapshotId); // immutable checkpoint id for this turn
 
-// Follow-up turn — history is carried automatically:
+// Follow-up turn - history is carried automatically:
 final res2 = await chat.send(text: 'What about Paris?');
 
 // Streaming turn:
@@ -230,7 +254,8 @@ final res = await chat.send(
 ## Verify an agent from the CLI (`flow:run`)
 
 `genkit flow:run` only runs **flows**, not agents, so you can't `flow:run` an
-agent directly. To exercise an agent from the CLI (e.g. a quick, self-terminating
+agent directly. To exercise an agent from the CLI (e.g. a quick,
+self-terminating
 check), wrap one turn in a throwaway flow and run that:
 
 ```dart
@@ -272,7 +297,8 @@ returns a typed HTTP client; `getSnapshotUrl`/`abortUrl` default to
 `${url}/getSnapshot` and `${url}/abort`.
 
 `remoteAgent` talks to any Genkit agent endpoint over HTTP, so the **backend is
-fully interchangeable** — the agent can be implemented in Dart, JS/TypeScript, or
+fully interchangeable** — the agent can be implemented in Dart, JS/TypeScript,
+or
 Go. The wire protocol is the same; point `url` at whatever server hosts the
 agent.
 
@@ -290,7 +316,7 @@ await for (final chunk in turn.stream) {
 final res = await turn.response;
 print('${res.snapshotId} ${chat.snapshotId} ${chat.state}');
 
-// Multi-turn — the client carries state forward automatically:
+// Multi-turn - the client carries state forward automatically:
 await chat.send(text: 'What about Paris?');
 
 // Errors surface as AgentError with an HTTP-ish status:
@@ -322,7 +348,8 @@ final agent = remoteAgent(
 
 Create the agent once (e.g. in `initState`, or a provider/singleton) and
 `close()` it when done to release the underlying HTTP client. To own the client
-yourself, pass `httpClient:` — then it stays caller-owned and `close()` leaves it
+yourself, pass `httpClient:` — then it stays caller-owned and `close()` leaves
+it
 open.
 
 A minimal streaming chat widget — pump `turn.stream` into the UI with

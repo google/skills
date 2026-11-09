@@ -1,14 +1,25 @@
 # Agent Sessions & Persistence (Beta)
 
 > **Beta / preview API.** Session stores are imported from `genkit/beta`
-> (`InMemorySessionStore`, `FileSessionStore`) and `@genkit-ai/google-cloud/beta`
+> (`InMemorySessionStore`, `FileSessionStore`) and
+> `@genkit-ai/google-cloud/beta`
 > (`FirestoreSessionStore`). See [agents.md](agents.md) for the basics first.
 
 When an agent has a `store`, the **server** owns the session history. Each turn
 produces an immutable **snapshot**; the snapshot chain is what carries
-conversation state forward. A store also enables [branching](agents-branching.md)
-and [background execution](agents-background.md). (Interrupts work with or without
+conversation state forward. A store also enables
+[branching](agents-branching.md)
+and [background execution](agents-background.md). (Interrupts work with or
+without
 a store — see [human-in-the-loop](agents-human-in-the-loop.md).)
+
+- [Pick a store](#pick-a-store): Lines 24-69
+- [Typed session state](#typed-session-state): Lines 71-93
+- [Interrupts (human-in-the-loop)](#interrupts-human-in-the-loop): Lines 95-100
+- [Firestore session store (scalable, Beta)](#firestore-session-store-scalable-beta): Lines 102-136
+- [Implementing a custom SessionStore](#implementing-a-custom-sessionstore): Lines 138-159
+
+---
 
 ## Pick a store
 
@@ -21,7 +32,7 @@ const memStore = new InMemorySessionStore();
 // File-backed: snapshots persisted under <dir>/global/<snapshotId>.json
 const fileStore = new FileSessionStore('./.snapshots');
 
-// File store with chain pruning — keep only the last N snapshots in a chain.
+// File store with chain pruning - keep only the last N snapshots in a chain.
 const pruning = new FileSessionStore('./.snapshots', {
   maxPersistedChainLength: 3,
 });
@@ -91,7 +102,8 @@ the exact pause point. They work with a store or with client-managed state
 ## Firestore session store (scalable, Beta)
 
 For production, `FirestoreSessionStore` (from `@genkit-ai/google-cloud/beta`)
-persists each turn as an incremental JSON Patch diff anchored to periodic sharded
+persists each turn as an incremental JSON Patch diff anchored to periodic
+sharded
 checkpoints — no single document approaches Firestore's 1 MiB limit, and
 reads/writes per turn are bounded by `checkpointInterval` rather than total
 session length (scales to long-lived chat/coding agents).

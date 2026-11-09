@@ -3,6 +3,13 @@
 > Pluggable instrumentation, `@genkit-ai/otel`, and the reflection API settings
 > require `genkit >= 1.43.0`.
 
+- [How tracing works](#how-tracing-works): Lines 13-21
+- [Export OpenTelemetry GenAI semantic conventions (@genkit-ai/otel)](#export-opentelemetry-genai-semantic-conventions-genkit-aiotel): Lines 23-81
+- [Custom instrumentation](#custom-instrumentation): Lines 83-119
+- [Reflection API outside dev](#reflection-api-outside-dev): Lines 121-142
+
+---
+
 ## How tracing works
 
 - **In dev** (`genkit start`), Genkit posts spans straight to the Developer UI's

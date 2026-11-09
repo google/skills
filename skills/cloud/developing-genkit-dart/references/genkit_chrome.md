@@ -1,6 +1,7 @@
 # Genkit Chrome AI Plugin (`genkit_chrome`)
 
-Chrome Built-in AI (Gemini Nano) plugin for Genkit Dart, allowing local offline execution within a Chrome application.
+Chrome Built-in AI (Gemini Nano) plugin for Genkit Dart, allowing local offline
+execution within a Chrome application.
 
 ## Usage
 

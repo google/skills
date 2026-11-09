@@ -3,7 +3,8 @@
 > **Experimental / preview API.** Read [agents.md](agents.md) first. The
 > resumable tool API below requires Genkit Go v1.14.0+.
 
-An **interrupt** pauses an agent mid-turn and hands control back to your code (or
+An **interrupt** pauses an agent mid-turn and hands control back to your code
+(or
 a human), e.g. to approve a sensitive action, collect missing input, or confirm
 a plan. Internally it's a **tool call used as control flow**: the interrupting
 tool does not produce a normal result; it pauses the turn. You then **resume**
@@ -19,6 +20,13 @@ The tool side is identical to plain `Generate` (see [tools.md](tools.md)):
 `genkit.DefineResumableTool`, `tool.Interrupt`, and the claim through the tool's
 `Interrupted` method. Only the delivery differs: an agent takes the resume parts
 in an `aix.ToolResume` via `conn.SendResume` or `AgentInput.Resume`.
+
+- [Define a resumable tool](#define-a-resumable-tool): Lines 31-102
+- [Detect, claim, and resume (streaming connection)](#detect-claim-and-resume-streaming-connection): Lines 104-167
+- [Single-turn resume with Run](#single-turn-resume-with-run): Lines 169-192
+- [Notes and gotchas](#notes-and-gotchas): Lines 194-213
+
+---
 
 ## Define a resumable tool
 
@@ -154,7 +162,8 @@ out, _ := conn.Output()
 | `call.RestartWithInput(in, res)` | `aix.ToolResume{Restart: ...}` | Re-runs it with revised input. |
 | `call.Respond(out)` | `aix.ToolResume{Respond: ...}` | Supplies the tool's output; the tool does not run again. |
 
-Both lists may appear in one payload. The claim already type-checked the part, so
+Both lists may appear in one payload. The claim already type-checked the part,
+so
 the verbs return no error.
 
 ## Single-turn resume with `Run`
@@ -182,20 +191,23 @@ fmt.Println(out.Message.Text())
 For a client-managed agent, pass `aix.WithState(out.State)` instead of
 `WithSessionID`. Over HTTP the same object rides in `data.resume`.
 
-## Notes & gotchas
+## Notes and gotchas
 
-- **No store required.** Interrupts work with a [session store](agents-sessions.md)
+- **No store required.** Interrupts work with a
+  [session store](agents-sessions.md)
   or [client-managed state](agents.md#client-managed-vs-server-managed-state).
 - **Build resume parts from the claim.** The framework validates every entry
   against the most recent model response (name/ref must match). Hand-rolled
   parts, or parts from an earlier turn, are rejected.
 - **Answer every interrupt** in the turn, or the resume fails.
 - **Resumable snapshots.** `completed`, `failed`, and `aborted` snapshots resume
-  (failed/aborted ones hold the conversation up to the last completed tool round).
+  (failed/aborted ones hold the conversation up to the last completed tool
+  round).
   `pending` and `aborting` ones are rejected until they settle.
 - **Re-pausing.** After resuming, the turn may interrupt again; loop until the
   finish reason is no longer `aix.AgentFinishReasonInterrupted`.
 - **`ToolApproval` middleware.** To gate arbitrary tools (rather than writing a
   resumable tool by hand), `plugins/middleware`'s `ToolApproval` holds any tool
-  call outside an allowlist. Claim holds with `middleware.ToolApprovalInterrupted`.
+  call outside an allowlist. Claim holds with
+  `middleware.ToolApprovalInterrupted`.
   See [middleware](middleware.md).

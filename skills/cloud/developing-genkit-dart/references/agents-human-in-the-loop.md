@@ -2,7 +2,8 @@
 
 > Read [agents.md](agents.md) first.
 
-An **interrupt** pauses an agent mid-turn and hands control back to your code (or
+An **interrupt** pauses an agent mid-turn and hands control back to your code
+(or
 a human) — e.g. to approve a sensitive action, collect missing input, or confirm
 a plan. Internally it's a **tool call used as control flow**: the interrupt tool
 never runs to completion on the server; it pauses the turn. You then **resume**
@@ -33,8 +34,17 @@ agent uses a [session store](agents-sessions.md) or
 resume on the same `chat` (or, for raw calls, carry the returned state/snapshot
 back into the resume).
 
-Flow: `chat.send(text: ...)` → response has `res.interrupts` → collect human input
+Flow: `chat.send(text: ...)` → response has `res.interrupts` → collect human
+input
 → `chat.resume(respond: [...])`.
+
+- [Define an interrupt (a tool that interrupts)](#define-an-interrupt-a-tool-that-interrupts): Lines 49-113
+- [Detect and resume (server-side)](#detect-and-resume-server-side): Lines 115-172
+- [Client-side (browser) interrupts](#client-side-browser-interrupts): Lines 174-205
+- [Interrupts with tool-approval middleware](#interrupts-with-tool-approval-middleware): Lines 207-232
+- [Notes and gotchas](#notes-and-gotchas): Lines 234-248
+
+---
 
 ## Define an interrupt (a tool that interrupts)
 
@@ -72,7 +82,7 @@ abstract class $TransferMoneyOutput {
 }
 
 /// Interrupt: always pauses. The caller provides `{ approved, feedback }` on
-/// resume. No `outputSchema` — the output comes from the resume call.
+/// resume. No `outputSchema` - the output comes from the resume call.
 final userApproval = ai.defineTool(
   name: 'userApproval',
   description: 'Ask the user for approval before a sensitive action.',
@@ -111,7 +121,8 @@ exposes:
 - `.input` — the data the model passed in.
 - `.respond(output)` — **builder** returning a resume entry that supplies the
   tool's output (without executing it). Does **not** send.
-- `.restart([payload])` — **builder** re-issuing the original tool request (retry
+- `.restart([payload])` — **builder** re-issuing the original tool request
+  (retry
   / let the tool actually run). Pass an optional `Map` payload; it is nested
   under `metadata.resumed` and read back tool-side via `ctx.resumed`. Does
   **not** send.
@@ -126,7 +137,7 @@ var res = await chat.send(text: 'Transfer \$500 to my savings account.');
 final approval =
     res.interrupts.where((i) => i.name == 'userApproval').firstOrNull;
 if (approval != null) {
-  print(approval.input); // { action, details } — show this to the human
+  print(approval.input); // { action, details } - show this to the human
 
   // Collect the human decision, then resume with the interrupt's output:
   res = await chat.resume(
@@ -189,7 +200,7 @@ if (pending != null) {
     /* render chunk.text */
   }
   final finalRes = await turn.response;
-  // If finalRes.interrupts is non-empty, the agent paused again — repeat.
+  // If finalRes.interrupts is non-empty, the agent paused again - repeat.
 }
 ```
 
@@ -220,7 +231,7 @@ final resumed = ctx.resumed; // the payload passed to `.restart(...)`
 final isApproved = resumed is Map && resumed['tool-approved'] == true;
 ```
 
-## Notes & gotchas
+## Notes and gotchas
 
 - **No store required.** Interrupts work with either a
   [session store](agents-sessions.md) or

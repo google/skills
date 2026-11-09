@@ -1,6 +1,24 @@
 # Genkit Core Framework
 
-Genkit Dart is an AI SDK for Dart that provides a unified interface for text generation, structured output, tool calling, and agentic workflows.
+Genkit Dart is an AI SDK for Dart that provides a unified interface for text
+generation, structured output, tool calling, and agentic workflows.
+
+- [Initialization](#initialization): Lines 23-34
+- [Reliability: retry transient errors](#reliability-retry-transient-errors): Lines 36-56
+- [Generate Text](#generate-text): Lines 58-68
+- [Stream Responses](#stream-responses): Lines 70-80
+- [Embed Text](#embed-text): Lines 82-96
+- [Define Tools](#define-tools): Lines 98-144
+- [Structured Output](#structured-output): Lines 146-168
+- [Errors and finish reasons](#errors-and-finish-reasons): Lines 170-227
+- [Cancellation](#cancellation): Lines 229-257
+- [Telemetry (instrumentation)](#telemetry-instrumentation): Lines 259-280
+- [Define Flows](#define-flows): Lines 282-331
+- [Calling remote Flows from a dart client](#calling-remote-flows-from-a-dart-client): Lines 333-375
+- [Calling remote Flows from a Javascript client](#calling-remote-flows-from-a-javascript-client): Lines 377-431
+- [Data Models](#data-models): Lines 433-573
+
+---
 
 ## Initialization
 
@@ -127,7 +145,8 @@ final response = await ai.generate(
 
 ## Structured Output
 
-You can ensure the generative model returns a typed JSON object by providing an `outputSchema`.
+You can ensure the generative model returns a typed JSON object by providing an
+`outputSchema`.
 
 ```dart
 @Schema()
@@ -210,7 +229,8 @@ if (res.finishReason == FinishReason.failed ||
 ## Cancellation
 
 `generate`, `generateStream`, and action calls accept a `CancellationToken`. The
-caller owns a `CancellationController` and hands its token to the call. These are
+caller owns a `CancellationController` and hands its token to the call. These
+are
 stable core types from `package:genkit/genkit.dart` (and `client.dart`).
 
 ```dart
@@ -240,7 +260,8 @@ if (res.finishReason == FinishReason.aborted) {
 
 Telemetry is a pluggable abstraction, not a hardcoded OpenTelemetry dependency.
 By default Genkit is not instrumented. In the dev environment (under
-`genkit start`) a built-in provider is auto-injected so the Developer UI receives
+`genkit start`) a built-in provider is auto-injected so the Developer UI
+receives
 traces with no setup, so most users never touch this API. For production, stack
 one or more `Instrumentation` providers before creating `Genkit`:
 
@@ -286,7 +307,8 @@ print(joke);
 > does) so its `defineFlow` call runs.
 
 ### Streaming Flows
-Stream data from your flows using `context.sendChunk(...)` and returning the final value:
+Stream data from your flows using `context.sendChunk(...)` and returning the
+final value:
 
 ```dart
 final streamStory = ai.defineFlow(
@@ -309,7 +331,8 @@ final streamStory = ai.defineFlow(
 ```
 
 ## Calling remote Flows from a dart client
-The `genkit` package provides `package:genkit/client.dart` representing remote Genkit actions that can be invoked or streamed using type-safe definitions.
+The `genkit` package provides `package:genkit/client.dart` representing remote
+Genkit actions that can be invoked or streamed using type-safe definitions.
 
 1. Defines a remote action
 ```dart
@@ -329,7 +352,8 @@ print('Flow Response: $response');
 ```
 
 3. Call the Remote Action (Streaming)
-Use the `.stream()` method on the action flow, and access `stream.onResult` to wait on the async return value.
+Use the `.stream()` method on the action flow, and access `stream.onResult` to
+wait on the async return value.
 ```dart
 final streamAction = defineRemoteAction(
   url: 'http://localhost:3400/stream-story',
@@ -408,7 +432,8 @@ streamHelloFlow();
 
 ## Data Models
 
-Genkit uses standard data models for representing prompts (messages & parts) and responses. These classes are implemented using schemantic library.
+Genkit uses standard data models for representing prompts (messages & parts) and
+responses. These classes are implemented using schemantic library.
 
 ```dart
 import 'package:genkit/genkit.dart';

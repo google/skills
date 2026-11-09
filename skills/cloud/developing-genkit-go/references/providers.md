@@ -1,5 +1,14 @@
 # Model Providers
 
+- [Google AI (Gemini)](#google-ai-gemini): Lines 12-38
+- [Vertex AI](#vertex-ai): Lines 40-58
+- [Anthropic (Claude)](#anthropic-claude): Lines 60-90
+- [OpenAI-Compatible (compat_oai)](#openai-compatible-compat_oai): Lines 92-116
+- [Ollama (Local Models)](#ollama-local-models): Lines 118-145
+- [Multiple Providers](#multiple-providers): Lines 147-170
+
+---
+
 ## Google AI (Gemini)
 
 ```go
@@ -10,7 +19,8 @@ g := genkit.Init(ctx, genkit.WithPlugins(&googlegenai.GoogleAI{}))
 
 **Env var:** `GEMINI_API_KEY` or `GOOGLE_API_KEY`
 
-Model names follow the format `googleai/<model-id>`. Look up the latest model IDs at https://ai.google.dev/gemini-api/docs/models.
+Model names follow the format `googleai/<model-id>`. Look up the latest model
+IDs at https://ai.google.dev/gemini-api/docs/models.
 
 ```go
 // By name string
@@ -35,11 +45,13 @@ import "github.com/firebase/genkit/go/plugins/googlegenai"
 g := genkit.Init(ctx, genkit.WithPlugins(&googlegenai.VertexAI{}))
 ```
 
-**Env vars:** `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION` (or `GOOGLE_CLOUD_REGION`)
+**Env vars:** `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION` (or
+`GOOGLE_CLOUD_REGION`)
 
 Uses Application Default Credentials (`gcloud auth application-default login`).
 
-Model names follow the format `vertexai/<model-id>`. Same model IDs as Google AI.
+Model names follow the format `vertexai/<model-id>`. Same model IDs as Google
+AI.
 
 ```go
 ai.WithModelName("vertexai/gemini-flash-latest")
@@ -58,7 +70,8 @@ g := genkit.Init(ctx, genkit.WithPlugins(&ant.Anthropic{}))
 
 **Env var:** `ANTHROPIC_API_KEY`
 
-Model names follow the format `anthropic/<model-id>`. Look up the latest model IDs at https://docs.anthropic.com/en/docs/about-claude/models.
+Model names follow the format `anthropic/<model-id>`. Look up the latest model
+IDs at https://docs.anthropic.com/en/docs/about-claude/models.
 
 ```go
 // By name

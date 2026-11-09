@@ -1,127 +1,194 @@
 # Dev Workflow — Genkit Python
 
-## Agent responsibility
-
-After generating code, always give the developer:
-1. The full pre-run checklist with copy-paste commands using absolute paths
-2. The `genkit start` command to run in their terminal (foreground — it's expected to block)
-3. Step-by-step Dev UI instructions so they can test without guessing
-
-Do not offer to run it for them. Give them the commands and let them run it.
-
----
-
-## Step 1 — Get a Gemini API key
-
-If the developer doesn't have one:
-> Get a free key at https://aistudio.google.com/apikey — click **"Create API key"**, copy it.
+- [Agent Responsibility](#agent-responsibility): Lines 14-30
+- [Step 1: Get a Gemini API Key](#step-1-get-a-gemini-api-key): Lines 34-37
+- [Step 2: Export the API Key](#step-2-export-the-api-key): Lines 41-51
+- [Step 3: Install Dependencies](#step-3-install-dependencies): Lines 55-65
+- [Step 4: Start the Dev UI](#step-4-start-the-dev-ui): Lines 69-114
+- [Step 5: Test in the Dev UI](#step-5-test-in-the-dev-ui): Lines 118-130
+- [CLI Commands](#cli-commands): Lines 134-182
+- [Troubleshooting](#troubleshooting): Lines 186-194
 
 ---
 
-## Step 2 — Set the API key
+## Agent Responsibility
 
-Open a terminal and run:
+After generating or migrating code:
+
+1. Run the project's type checker (`pyright`, `mypy`, or `ty`) in `.venv` so
+   typed configs (`GeminiConfig`), generic contexts (`FlowContext[T]`,
+   `ToolContext[T]`), keyword-only signatures, and `OutputT | None` checks pass
+   before handing off.
+2. Give the developer:
+   - Copy-paste setup commands with absolute paths
+   - The `genkit start` command to run in their foreground terminal (expected to
+     block)
+   - Exact Dev UI steps to exercise the flow or agent and inspect traces
+
+Do not run `genkit start` as an interactive blocking command on the developer's
+behalf unless explicitly asked; use `genkit flow:run` for automated one-shot
+verification.
+
+---
+
+## Step 1: Get a Gemini API Key
+
+If the developer needs a key, create one at
+`https://aistudio.google.com/apikey`.
+
+---
+
+## Step 2: Export the API Key
+
 ```bash
 export GEMINI_API_KEY=your-api-key-here
 ```
 
-To persist across sessions, add it to your shell profile:
+Persist across shell sessions if desired:
+
 ```bash
 echo 'export GEMINI_API_KEY=your-api-key-here' >> ~/.zshrc && source ~/.zshrc
 ```
 
 ---
 
-## Step 3 — Install dependencies
+## Step 3: Install Dependencies
 
-Replace `/path/to/your-project` with the actual full path to the project (e.g. `/Users/yourname/projects/my-genkit-app`):
+Replace `/path/to/your-project` with the project's absolute path:
 
 ```bash
 cd /path/to/your-project
-uv add genkit genkit-google-genai
+uv add 'genkit==0.13.*' 'genkit-google-genai==0.13.*'
 ```
 
-(Requires a project with `pyproject.toml` — run `uv init` in an empty directory first if needed.)
+(Run `uv init` first if `pyproject.toml` does not exist yet — see
+[Setup](setup.md).)
 
 ---
 
-## Step 4 — Start the Dev UI
+## Step 4: Start the Dev UI
 
-Run this in your terminal. **It will block — that's expected.** Leave this terminal open while you use the Dev UI.
+The examples below use this `src/main.py`:
+
+```python
+from pydantic import BaseModel
+
+from genkit import Genkit
+
+ai = Genkit()
+
+
+class OrderInput(BaseModel):
+    text: str
+
+
+@ai.flow()
+async def order_flow(inp: OrderInput) -> str:
+    return f'order: {inp.text}'
+
+
+async def main() -> None:
+    print(await order_flow(OrderInput(text='smoked salmon tartine')))
+
+
+if __name__ == '__main__':
+    ai.run_main(main())
+    # => order: smoked salmon tartine
+    #    Under `genkit start`, the process stays up for the Dev UI until Ctrl+C.
+```
+
+Run in a foreground terminal (blocks until stopped with `Ctrl+C`):
 
 ```bash
 cd /path/to/your-project
 GEMINI_API_KEY=your-api-key-here genkit start -- uv run src/main.py
 ```
 
-You'll see output like:
-```
-Genkit Tools UI: http://localhost:4000
+For FastAPI apps, run uvicorn under `genkit start` instead; the reflection
+server starts on a background thread (see [FastAPI](fastapi.md)):
+
+```bash
+GEMINI_API_KEY=your-api-key-here genkit start -- uv run uvicorn main:app --reload
 ```
 
-The Dev UI is now running at **http://localhost:4000**
-
-To stop it: press `Ctrl+C` in the terminal.
+Wait for the CLI to print `Genkit Developer UI: http://localhost:4000`.
 
 ---
 
-## Step 5 — Test in the Dev UI
+## Step 5: Test in the Dev UI
 
-1. Open **http://localhost:4000** in your browser
-2. Click **"Run"** in the left sidebar
-3. Find your flow by name (e.g. `summarize`, `chat`, `joke_generator`)
-4. In the input box, paste your input as JSON — e.g:
+1. Open **`http://localhost:4000`** in a browser.
+2. Pick the registered flow, prompt, or model from the left sidebar. Flows
+   appear under their Python function name (e.g. `order_flow`).
+3. Paste JSON matching the flow's single input parameter, e.g. for
+   `order_flow(inp: OrderInput)`:
    ```json
-   {"text": "hello world"}
+   {"text": "smoked salmon tartine"}
    ```
-5. Click the **"Run"** button — the output appears on the right
-6. Click **"Traces"** in the left sidebar to inspect every step, model call, token count, and latency
+4. Click **Run** and inspect the validated output on the right.
+5. Open **Traces** in the left sidebar to inspect every span, rendered prompt,
+   tool call, token count, latency, and unwrapped error stack trace.
 
 ---
 
 ## CLI Commands
 
-`genkit start` unintrusively wraps any Python program that uses the Genkit library, running it unchanged while capturing traces from every Genkit action so you can prove tools were actually called and inspect model I/O from the terminal, even for headless checks. It forwards stdio, so interactive CLI tools that rely on stdin/stdout work without issues. Running the app directly (`uv run`) skips trace capture, so you're debugging blind.
+`genkit start` sets `GENKIT_ENV=dev`, runs your command, and stores local traces
+from every Genkit action under `.genkit/` in the project root. The app's stdout
+and stderr pass through. Running `uv run` directly skips the reflection server
+and local trace capture.
 
-**Primary pattern (default):** prefix `genkit start --` to your normal run command. This collects telemetry from any Genkit code your program runs, whether triggered from the dev UI, your own web server/web UI, or a plain script:
+**Persistent dev runtime:**
 ```bash
 genkit start -- uv run src/main.py
-genkit start --noui -- uv run src/main.py   # same, without the Dev UI (still a persistent server)
+genkit start --noui -- uv run src/main.py                 # no Dev UI; runtime still blocks until Ctrl+C
+genkit start --non-interactive -- uv run src/main.py      # CLI prompts take the default choice (CI/agents)
+genkit start --port 4001 -- uv run src/main.py            # Dev UI on another port
 ```
-`genkit start` runs until you stop it with Ctrl+C. That is expected and correct for the common cases: a server your web/mobile app calls, or an interactive CLI you exit yourself. `--noui` only drops the Dev UI; it is **not** a one-shot command and will not exit on its own. Do **not** use `genkit start` as a blocking step in automated/non-interactive contexts; use `flow:run` (below) for that.
 
-**Non-interactive use (agents/CI):** add the global `--non-interactive` flag before `--` so the CLI uses defaults and never blocks on a prompt (e.g. the first-run analytics notice): `genkit start --non-interactive -- uv run src/main.py` (works with `flow:run` too).
-
-**Run a flow (`flow:run`):** invoke a specific flow by name from the CLI. Append your run command after `--` to spin up the runtime just for this run (the command runs as-is to register your flows):
+**One-shot flow execution (`flow:run`):** with `-- <cmd>`, it starts the app,
+runs one `@ai.flow()` by its Python function name, prints `Result:` and
+`Trace ID:`, and exits:
 ```bash
-genkit flow:run myFlow '{"data": "input"}' -- uv run src/main.py
+genkit flow:run order_flow '{"text": "smoked salmon tartine"}' -- uv run src/main.py
+# => Result:
+#    order: smoked salmon tartine
+#    Trace ID: 395f73c3d0d662c28711239a4354bf53
 ```
-This is **self-terminating**: it runs the flow once, prints a `Trace ID`, then exits, so it's the right choice for a quick, non-interactive check (unlike `genkit start`). Note: `flow:run` runs **flows** (`@ai.flow()`), not agents; you can't `flow:run` an agent (`ai.define_agent`) directly. To exercise an agent from the CLI, wrap one turn in a throwaway flow and run that (see [Agents](agents.md)). Traces for this run can be inspected using the trace commands below.
+Without `-- <cmd>`, `flow:run` targets a runtime already started by
+`genkit start` in the same directory, and fails with `No runtimes found` if none
+is running. A `str` input is a JSON string: `'"risotto"'`.
 
-**Debugging with traces:** the fastest way to see prompts, model inputs/outputs, tool calls, latencies, and errors. Inspect from the terminal after any run under `genkit start`:
+`flow:run` runs `@ai.flow()` actions, not agents. Wrap one agent turn in a small
+flow to test it (see [Agents](agents.md#verify-an-agent-from-the-cli-flowrun)).
+
+**Inspecting traces from the terminal:**
 ```bash
-genkit trace:list                        # find recent trace IDs
-genkit trace:get <traceId>               # full trace details (inputs, outputs, tool calls, errors)
-genkit trace:get <traceId> --format json # machine-readable JSON, safe to pipe into jq or other parsers
+genkit trace:list --limit 5     # recent trace IDs with status, input, output
+genkit trace:get <traceId>      # full trace as JSON: every span, attributes, input, output
+```
+`trace:get` prints a `Telemetry API running on ...` line before the JSON on
+stdout, so strip it before piping into `jq`:
+```bash
+genkit trace:get <traceId> | sed 1d | jq -r '.spans[].displayName'
+# => order_flow
 ```
 
-For machine-readable output, pass `--format json` to get clean JSON you can pipe into `jq` or other parsers. The **default** output is human-oriented (banner/log lines, possible truncation on large traces), so don't pipe that form directly; use `--format json`, grep, or the Dev UI trace viewer.
-
-
-**Documentation:**
+**Built-in CLI documentation lookup:**
 ```bash
 genkit docs:search "streaming" python
 genkit docs:list python
 genkit docs:read python/flows.md
 ```
 
+---
 
 ## Troubleshooting
 
 - `genkit: command not found` — `npm install -g genkit-cli`
-- `GEMINI_API_KEY not set` — `export GEMINI_API_KEY=your-key`
-- Port 4000 already in use —
-  `genkit start --port 4001 -- uv run src/main.py`
-- `uv: command not found` —
-  `curl -LsSf https://astral.sh/uv/install.sh | sh`
-- Flow not showing in Dev UI — check `genkit start` output for errors
+- `GEMINI_API_KEY` missing — `export GEMINI_API_KEY=your-key`
+- Port 4000 busy — `genkit start --port 4001 -- uv run src/main.py`
+- `uv: command not found` — `pipx install uv` or `pip install uv`
+- Action missing in Dev UI — ensure standalone scripts enter via
+  `ai.run_main(main())` and check terminal output for startup import or
+  validation errors (see [Common Errors](common-errors.md)).

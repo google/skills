@@ -1,5 +1,12 @@
 # Prompts
 
+- [DefinePrompt](#defineprompt): Lines 10-53
+- [DefineDataPrompt (Typed Input/Output)](#definedataprompt-typed-inputoutput): Lines 55-94
+- [.prompt Files (Dotprompt)](#prompt-files-dotprompt): Lines 96-278
+- [Schemas](#schemas): Lines 280-323
+
+---
+
 ## DefinePrompt
 
 Define a reusable prompt in code with a default model and template.
@@ -250,7 +257,8 @@ Field mapping:
 | `returnToolRequests` | `WithReturnToolRequests` | boolean |
 | `use` | `WithUse` | list of middleware refs |
 
-`use` entries are resolved by name against middleware registered on the `*Genkit`
+`use` entries are resolved by name against middleware registered on the
+`*Genkit`
 instance. Each entry is either a bare string (the middleware name) or a map with
 `name` and optional `config`. Register the built-in middleware plugin so names
 like `genkit-middleware/retry` resolve:
@@ -264,7 +272,8 @@ g := genkit.Init(ctx, genkit.WithPlugins(
 ))
 ```
 
-Available named middleware: `genkit-middleware/retry`, `genkit-middleware/fallback`,
+Available named middleware: `genkit-middleware/retry`,
+`genkit-middleware/fallback`,
 `genkit-middleware/filesystem`, `genkit-middleware/skills`,
 `genkit-middleware/toolApproval`. See [references/middleware.md](middleware.md).
 
@@ -279,7 +288,8 @@ genkit.DefineSchemaFor[JokeRequest](g)
 genkit.DefineSchemaFor[Joke](g)
 ```
 
-The schema name matches the Go type name. Use `jsonschema` struct tags for metadata:
+The schema name matches the Go type name. Use `jsonschema` struct tags for
+metadata:
 
 ```go
 type Recipe struct {

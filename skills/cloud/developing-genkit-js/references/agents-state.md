@@ -7,6 +7,13 @@ own structured data (a task list, a workflow status, counters, etc.). Tools read
 and mutate it during a turn, and it is automatically synced to the
 [`remoteAgent`](agents.md#consume-an-agent-from-a-client-remoteagent) client.
 
+- [Declare the state shape](#declare-the-state-shape): Lines 17-45
+- [Read and mutate state inside tools](#read-and-mutate-state-inside-tools): Lines 47-83
+- [Seed and read state (server-side)](#seed-and-read-state-server-side): Lines 85-102
+- [Auto-sync to the remoteAgent client](#auto-sync-to-the-remoteagent-client): Lines 104-140
+
+---
+
 ## Declare the state shape
 
 Pass a `stateSchema` (Zod) to `defineAgent`. `State` is inferred from it and
@@ -32,12 +39,12 @@ export const taskAgent = ai.defineAgent({
   stateSchema: TaskState,
   system: 'You manage the user\'s task list. Use the tools to modify it.',
   tools: [
-    /* addTask, toggleTask, removeTask — below */
+    /* addTask, toggleTask, removeTask - below */
   ],
 });
 ```
 
-## Read & mutate state inside tools
+## Read and mutate state inside tools
 
 Tools call `ai.currentSession<S>()` to access the live session, then
 `session.getCustom()` / `session.updateCustom(mutator)`. `updateCustom` takes

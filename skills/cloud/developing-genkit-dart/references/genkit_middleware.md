@@ -1,6 +1,7 @@
 # Genkit Middleware (`genkit_middleware`)
 
-A collection of useful middleware for Genkit Dart to enhance your agent's capabilities. Register plugins when initializing Genkit:
+A collection of useful middleware for Genkit Dart to enhance your agent's
+capabilities. Register plugins when initializing Genkit:
 
 ```dart
 import 'package:genkit/genkit.dart';
@@ -17,8 +18,16 @@ void main() {
 }
 ```
 
+- [Filesystem Middleware](#filesystem-middleware): Lines 28-43
+- [Skills Middleware](#skills-middleware): Lines 45-60
+- [Tool Approval Middleware](#tool-approval-middleware): Lines 62-105
+- [Custom Middleware (core package:genkit)](#custom-middleware-core-packagegenkit): Lines 107-168
+
+---
+
 ## Filesystem Middleware
-Allows the agent to list, read, write, and search/replace files within a restricted root directory.
+Allows the agent to list, read, write, and search/replace files within a
+restricted root directory.
 
 ```dart
 final response = await ai.generate(
@@ -30,10 +39,12 @@ final response = await ai.generate(
 ```
 
 **Tools Provided:**
+
 - `list_files`, `read_file`, `write_file`, `search_and_replace`
 
 ## Skills Middleware
-Injects specialized instructions (skills) into the system prompt from `SKILL.md` files located in specified directories.
+Injects specialized instructions (skills) into the system prompt from `SKILL.md`
+files located in specified directories.
 
 ```dart
 final response = await ai.generate(
@@ -45,10 +56,12 @@ final response = await ai.generate(
 ```
 
 **Tools Provided:**
+
 - `use_skill`: Retrieve the full content of a skill by name.
 
 ## Tool Approval Middleware
-Intercepts tool execution for specified tools and requires explicit approval. Returns `FinishReason.interrupted`.
+Intercepts tool execution for specified tools and requires explicit approval.
+Returns `FinishReason.interrupted`.
 
 A tool is allowed through only if it is in the `approved` list or its request's
 `resumed` payload carries `{ 'tool-approved': true }`. To approve on resume,

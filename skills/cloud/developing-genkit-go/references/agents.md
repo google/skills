@@ -16,16 +16,34 @@ prompts + tools. Compared to a bare `genkit.Generate` loop, an agent adds:
 
 Read the file for the level you need:
 
-- This file: defining an agent, running it, serving it, and **client-managed state** (no store).
-- [Sessions & persistence](agents-sessions.md): `SessionStore`, `localstore.NewInMemorySessionStore`, `localstore.NewFileSessionStore`.
-- [Human-in-the-loop / interrupts](agents-human-in-the-loop.md): pausing for approval/input and resuming.
+- This file: defining an agent, running it, serving it, and **client-managed
+  state** (no store).
+- [Sessions & persistence](agents-sessions.md): `SessionStore`,
+  `localstore.NewInMemorySessionStore`, `localstore.NewFileSessionStore`.
+- [Human-in-the-loop / interrupts](agents-human-in-the-loop.md): pausing for
+  approval/input and resuming.
 - [Branching](agents-branching.md): forking a conversation from a snapshot.
-- [Background agents](agents-background.md): detaching long-running turns and polling.
-- [Working with state](agents-state.md): typed custom session state and streamed patches.
+- [Background agents](agents-background.md): detaching long-running turns and
+  polling.
+- [Working with state](agents-state.md): typed custom session state and streamed
+  patches.
 - [Artifacts](agents-artifacts.md): producing/reading named deliverables.
 - [Multi-agent orchestration](agents-multi-agent.md): delegating to sub-agents.
-- [Advanced custom agents](agents-custom.md): `DefineCustomAgent` for full turn control.
+- [Advanced custom agents](agents-custom.md): `DefineCustomAgent` for full turn
+  control.
 - [Deploying agents](agents-deployment.md): serving agents over HTTP.
+
+- [Packages and import aliases](#packages-and-import-aliases): Lines 48-65
+- [Setup](#setup): Lines 67-78
+- [Define an agent](#define-an-agent): Lines 80-177
+- [Agents and middleware go hand in hand](#agents-and-middleware-go-hand-in-hand): Lines 179-204
+- [Run an agent (single turn)](#run-an-agent-single-turn): Lines 206-234
+- [Chat with an agent (multi-turn)](#chat-with-an-agent-multi-turn): Lines 236-279
+- [Verify an agent from the CLI (flow:run)](#verify-an-agent-from-the-cli-flowrun): Lines 281-296
+- [Serve an agent over HTTP](#serve-an-agent-over-http): Lines 298-339
+- [Client-managed vs server-managed state](#client-managed-vs-server-managed-state): Lines 341-381
+
+---
 
 ## Packages and import aliases
 
@@ -94,7 +112,8 @@ weatherAgent := genkitx.DefineAgent(g, "weatherAgent",
 ```
 
 The `State` type parameter is inferred from the typed options (here
-`aix.WithSessionStore(...[any]())` makes `State = any`). For a **client-managed**
+`aix.WithSessionStore(...[any]())` makes `State = any`). For a
+**client-managed**
 agent with no typed option, pass `State` explicitly:
 `genkitx.DefineAgent[any](g, "name", prompt)`.
 
@@ -112,7 +131,8 @@ Constructor choices:
 `genkitx.DefinePromptAgent` pairs an agent with a prompt from the registry — for
 example a `.prompt` file loaded at startup — so prompt authors can tune the
 model, config, template, and default input without touching the Go wiring. With
-no source option it defaults to the prompt registered under the agent's own name.
+no source option it defaults to the prompt registered under the agent's own
+name.
 
 ```prompt
 ---
@@ -148,9 +168,12 @@ add `aix.WithNamedPrompt(name, input)`.
 
 Common agent options (all from `aix`):
 
-- `aix.WithSessionStore(store)`: server-side snapshot persistence. See [sessions](agents-sessions.md).
-- `aix.WithDescription[State](desc)`: human-readable description (shown in the Dev UI; used by [sub-agent delegation](agents-multi-agent.md)).
-- `aix.WithStateTransform[State](fn)`: rewrite state on its way out to a client (e.g. PII redaction).
+- `aix.WithSessionStore(store)`: server-side snapshot persistence. See
+  [sessions](agents-sessions.md).
+- `aix.WithDescription[State](desc)`: human-readable description (shown in the
+  Dev UI; used by [sub-agent delegation](agents-multi-agent.md)).
+- `aix.WithStateTransform[State](fn)`: rewrite state on its way out to a client
+  (e.g. PII redaction).
 - `aix.WithStreamTransform[State](fn)`: rewrite stream chunks on their way out.
 
 ## Agents and middleware go hand in hand
@@ -205,7 +228,8 @@ out, err := weatherAgent.Run(ctx, &aix.AgentInput{
 ```
 
 In-band failures (a failed turn) resolve as a failed `AgentOutput`
-(`out.FinishReason == aix.AgentFinishReasonFailed`, `out.Error` populated), not a
+(`out.FinishReason == aix.AgentFinishReasonFailed`, `out.Error` populated), not
+a
 Go `error`. A returned `error` means the invocation never started (e.g. a
 rejected session source).
 
@@ -235,7 +259,7 @@ for chunk, err := range conn.Receive() {
 	}
 }
 
-// Turn 2 — history is carried automatically on the same connection:
+// Turn 2 - history is carried automatically on the same connection:
 _ = conn.SendText("What about Paris?")
 for chunk, err := range conn.Receive() {
 	if err != nil {
@@ -275,7 +299,8 @@ genkit.DefineFlow(g, "tryWeatherAgent", func(ctx context.Context, message string
 
 An agent is an `api.BidiAction`, so `genkit.Handler` serves it one turn per
 request. Optionally serve its companion actions for snapshot lookup
-(`GetSnapshotAction`) and background aborts (`AbortAction`); both are `nil` for a
+(`GetSnapshotAction`) and background aborts (`AbortAction`); both are `nil` for
+a
 client-managed agent (no store).
 
 ```go
@@ -293,7 +318,8 @@ if abort := weatherAgent.AbortAction(); abort != nil {
 log.Fatal(server.Start(ctx, "127.0.0.1:8080", mux))
 ```
 
-The request body is `{"data": <AgentInput>, "init": <AgentInit>}`. `data` carries
+The request body is `{"data": <AgentInput>, "init": <AgentInit>}`. `data`
+carries
 the turn's input; `init` carries the session source (see below). Set
 `Accept: text/event-stream` (or add `?stream=true`) to stream chunks.
 
@@ -308,7 +334,8 @@ for _, route := range genkitx.AllAgentRoutes(g) {
 }
 ```
 
-For serving multiple agents, the route helpers, CORS headers for browser clients,
+For serving multiple agents, the route helpers, CORS headers for browser
+clients,
 and companion routing, see [Deploying agents](agents-deployment.md).
 
 ## Client-managed vs server-managed state

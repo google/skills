@@ -2,15 +2,26 @@
 
 > Sessions are experimental. `InMemorySessionStore` and `Session`/`SessionStore`
 > come from `package:genkit/experimental.dart`; `FileSessionStore` from
-> `package:genkit/experimental_io.dart` (needs `dart:io`); `FirestoreSessionStore`
+> `package:genkit/experimental_io.dart` (needs `dart:io`);
+> `FirestoreSessionStore`
 > from `package:genkit_google_cloud`. See [agents.md](agents.md) for the basics
 > and the experimental-import note first.
 
 When an agent has a `store`, the **server** owns the session history. Each turn
 produces an immutable **snapshot**; the snapshot chain is what carries
-conversation state forward. A store also enables [branching](agents-branching.md)
-and [background execution](agents-background.md). (Interrupts work with or without
+conversation state forward. A store also enables
+[branching](agents-branching.md)
+and [background execution](agents-background.md). (Interrupts work with or
+without
 a store — see [human-in-the-loop](agents-human-in-the-loop.md).)
+
+- [Pick a store](#pick-a-store): Lines 26-74
+- [Typed session state](#typed-session-state): Lines 76-115
+- [Interrupts (human-in-the-loop)](#interrupts-human-in-the-loop): Lines 117-122
+- [Firestore session store (scalable)](#firestore-session-store-scalable): Lines 124-167
+- [Implementing a custom SessionStore](#implementing-a-custom-sessionstore): Lines 169-207
+
+---
 
 ## Pick a store
 
@@ -24,7 +35,7 @@ final memStore = InMemorySessionStore();
 // File-backed: snapshots persisted as JSON under <dir>/global/.
 final fileStore = FileSessionStore('./.snapshots');
 
-// File store with chain pruning — keep only the last N snapshots in a chain.
+// File store with chain pruning - keep only the last N snapshots in a chain.
 final pruning = FileSessionStore('./.snapshots', maxPersistedChainLength: 3);
 ```
 
@@ -113,7 +124,8 @@ the exact pause point. They work with a store or with client-managed state
 ## Firestore session store (scalable)
 
 For production, `FirestoreSessionStore` (from `package:genkit_google_cloud`)
-persists each turn as an incremental JSON Patch diff anchored to periodic sharded
+persists each turn as an incremental JSON Patch diff anchored to periodic
+sharded
 checkpoints — no single document approaches Firestore's 1 MiB limit, and
 reads/writes per turn are bounded by `checkpointInterval` rather than total
 session length (scales to long-lived chat/coding agents).
@@ -135,9 +147,11 @@ final myAgent = ai.defineAgent(
 
 > **Project id.** ADC alone may not carry a project id, so the default
 > `Firestore()` can fail at write time with `Project ID has not been discovered
-> yet. Initialize the SDK with credentials that include a project ID, set project
+> yet. Initialize the SDK with credentials that include a project ID, set
+> project
 > ID in Settings, or set the GOOGLE_CLOUD_PROJECT environment variable.` Export
-> `GOOGLE_CLOUD_PROJECT` (the Firestore client also reads a small set of standard
+> `GOOGLE_CLOUD_PROJECT` (the Firestore client also reads a small set of
+> standard
 > GCP project-id env vars), or pass an explicit `Firestore` via `db`.
 
 Options:
@@ -187,6 +201,7 @@ class MySessionStore implements SessionStore {
 }
 ```
 
-> Check the exact `SessionStore` method signatures in your installed version with
+> Check the exact `SessionStore` method signatures in your installed version
+> with
 > `dart doc` or by inspecting `package:genkit` — the shape above matches the
 > in-memory and file stores.

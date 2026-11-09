@@ -1,6 +1,7 @@
 # Genkit Anthropic Plugin (`genkit_anthropic`)
 
-The Anthropic plugin for Genkit Dart, used for interacting with the Claude models.
+The Anthropic plugin for Genkit Dart, used for interacting with the Claude
+models.
 
 ## Usage
 
@@ -30,7 +31,8 @@ void main() async {
 
 ## Claude Thinking Configurations
 
-Provides specific configurations for utilizing Claude 3.7+ "thinking" model capabilities.
+Provides specific configurations for utilizing Claude 3.7+ "thinking" model
+capabilities.
 
 ```dart
 final response = await ai.generate(

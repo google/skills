@@ -1,6 +1,7 @@
 # Deploying / Serving Agents over HTTP (Beta)
 
-> **Beta / preview API.** Uses `expressHandler` from `@genkit-ai/express` and the
+> **Beta / preview API.** Uses `expressHandler` from `@genkit-ai/express` and
+> the
 > agent's beta companion actions. Read [agents.md](agents.md) first.
 
 An agent is served as an HTTP endpoint with `expressHandler`. Most agents also
@@ -14,6 +15,14 @@ expose two companion actions:
 
 These paths match the `remoteAgent` client defaults (`${url}/getSnapshot`,
 `${url}/abort`), so a client only needs the base `url`.
+
+- [A reusable exposeAgent helper](#a-reusable-exposeagent-helper): Lines 27-76
+- [CORS for browser clients](#cors-for-browser-clients): Lines 78-99
+- [Serving a static web UI (optional)](#serving-a-static-web-ui-optional): Lines 101-119
+- [Registering agents/flows](#registering-agentsflows): Lines 121-138
+- [Other host frameworks](#other-host-frameworks): Lines 140-200
+
+---
 
 ## A reusable `exposeAgent` helper
 
@@ -46,13 +55,13 @@ function exposeAgent(
   }
 }
 
-// Plain conversational agent — no companions needed:
+// Plain conversational agent - no companions needed:
 exposeAgent('weatherAgent', weatherAgent);
 
-// Snapshot restore / branching — needs getSnapshot:
+// Snapshot restore / branching - needs getSnapshot:
 exposeAgent('branchingAgent', branchingAgent, { snapshot: true });
 
-// Background agent — needs both getSnapshot (polling) and abort:
+// Background agent - needs both getSnapshot (polling) and abort:
 exposeAgent('backgroundAgent', backgroundAgent, { snapshot: true, abort: true });
 
 app.listen(process.env.PORT ? parseInt(process.env.PORT) : 8080);
@@ -102,7 +111,7 @@ import { join } from 'node:path';
 const webDist = join(__dirname, '..', 'web', 'dist');
 if (existsSync(webDist)) {
   app.use(express.static(webDist));
-  // SPA fallback — send index.html for any non-API GET request.
+  // SPA fallback - send index.html for any non-API GET request.
   app.get(/^\/(?!api\/).*/, (_req, res) => {
     res.sendFile(join(webDist, 'index.html'));
   });
@@ -154,7 +163,8 @@ export const POST = appRoute(weatherAgent.getSnapshotDataAction);
 ### Web Fetch (`@genkit-ai/fetch`)
 
 Works with any Fetch-API runtime (Hono, Bun, Deno, Cloudflare Workers, Vercel/
-Netlify Edge, etc.). `fetchHandler(action)` returns `(request) => Promise<Response>`;
+Netlify Edge, etc.). `fetchHandler(action)` returns
+`(request) => Promise<Response>`;
 `fetchHandlers(actions, prefix)` path-routes multiple actions by name.
 
 ```ts

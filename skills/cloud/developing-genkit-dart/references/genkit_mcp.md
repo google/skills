@@ -9,8 +9,15 @@ initialization-based peers automatically.
 > name is preserved in `metadata.originalName` and tool requests still resolve
 > correctly.
 
+- [MCP Host (Recommended)](#mcp-host-recommended): Lines 18-74
+- [MCP Client (Advanced or Single Server)](#mcp-client-advanced-or-single-server): Lines 76-110
+- [MCP Server](#mcp-server): Lines 112-165
+
+---
+
 ## MCP Host (Recommended)
-Connect to one or more MCP servers and aggregate their capabilities into the Genkit registry automatically.
+Connect to one or more MCP servers and aggregate their capabilities into the
+Genkit registry automatically.
 
 ```dart
 import 'package:genkit/genkit.dart';
@@ -66,8 +73,11 @@ final host = defineMcpHost(
 );
 ```
 
-## MCP Client (Advanced / Single Server)
-Connecting to a single MCP server with a client object is an advanced usecase for when you need manual control over the client lifecycle. Standalone clients do not automatically register tools into the registry, so they must be passed into `generate` or `defineDynamicActionProvider` manually.
+## MCP Client (Advanced or Single Server)
+Connecting to a single MCP server with a client object is an advanced usecase
+for when you need manual control over the client lifecycle. Standalone clients
+do not automatically register tools into the registry, so they must be passed
+into `generate` or `defineDynamicActionProvider` manually.
 
 ```dart
 import 'package:genkit/genkit.dart';
@@ -141,7 +151,8 @@ await server.start(transport);
 
 > **DNS-rebinding protection and batch rejection are on by default.** Loopback
 > hosts work unconfigured, but a non-loopback deployment must set `allowedHosts`
-> (and should set `allowedOrigins`) or requests are rejected. Legacy clients that
+> (and should set `allowedOrigins`) or requests are rejected. Legacy clients
+> that
 > send JSON-RPC batches can opt out with `rejectBatchJsonRpcPayloads: false`.
 >
 > ```dart

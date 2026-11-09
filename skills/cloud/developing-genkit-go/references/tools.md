@@ -1,5 +1,12 @@
 # Tools
 
+- [DefineTool](#definetool): Lines 10-31
+- [Using Tools in Generation](#using-tools-in-generation): Lines 33-61
+- [Tool runtime helpers (ai/tool)](#tool-runtime-helpers-aitool): Lines 63-116
+- [Tool interrupts (DefineResumableTool)](#tool-interrupts-defineresumabletool): Lines 118-262
+
+---
+
 ## DefineTool
 
 Define a tool the model can call during generation.
@@ -118,7 +125,8 @@ the first call.
 > **Do not use** the deprecated `ai.InterruptWith`, `ToolContext.Interrupt`,
 > `RestartWith`/`RespondWith`, `WithToolRestarts`/`WithToolResponses`,
 > `ai.ResumedValue`, `IsResumed`, or `ai.OriginalInputAs`. The experimental
-> `genkitx.DefineInterruptibleTool` and `ai/exp/tool` package were removed in v1.14.0.
+> `genkitx.DefineInterruptibleTool` and `ai/exp/tool` package were removed in
+> v1.14.0.
 
 ### Define a resumable tool
 
@@ -220,7 +228,8 @@ fmt.Println(resp.Text())
 
 Rules:
 
-- **Answer every interrupt** in the turn with exactly one part. Missing one fails
+- **Answer every interrupt** in the turn with exactly one part. Missing one
+  fails
   with `ai.ErrUnresolvedToolRequest`; passing `resp.Interrupts()` back as is
   (still paused) fails with `INVALID_ARGUMENT`. The whole resume is checked
   before any tool runs.
@@ -229,7 +238,8 @@ Rules:
 - **A resume can pause again.** It returns `(resp, nil)` with `FinishReason`
   interrupted, so loop as above.
 - **Middleware holds** (e.g. `ToolApproval`) are not the tool's interrupt: claim
-  them with `middleware.ToolApprovalInterrupted(part)`. See [middleware](middleware.md).
+  them with `middleware.ToolApprovalInterrupted(part)`. See
+  [middleware](middleware.md).
 - **Generic handlers** that only hold the part can build the same parts with
   `part.ToToolRestart(resume)`, `part.ToToolRestartWithInput(input, resume)`,
   and `part.ToToolResponse(output)`. These return an error, since nothing was
@@ -243,9 +253,11 @@ if orig, ok := tool.OriginalInput[TransferInput](ctx); ok {
 }
 ```
 
-`tool.OriginalInput` reports false on a first call and on a restart that kept the
+`tool.OriginalInput` reports false on a first call and on a restart that kept
+the
 input.
 
-Agents use the same tool and claim; only the delivery differs (`aix.ToolResume`).
+Agents use the same tool and claim; only the delivery differs
+(`aix.ToolResume`).
 See [agents-human-in-the-loop.md](agents-human-in-the-loop.md).
 

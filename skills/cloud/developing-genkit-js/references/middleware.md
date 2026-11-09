@@ -28,6 +28,12 @@ a reference for `use: [...]`. The `@genkit-ai/middleware` package ships a set of
 ready-made ones (covered below); to write your own see
 [building custom middleware](middleware-custom.md).
 
+- [Register middleware as a plugin](#register-middleware-as-a-plugin): Lines 37-58
+- [The @genkit-ai/middleware package](#the-genkit-aimiddleware-package): Lines 60-184
+- [Built-in model middleware (in core)](#built-in-model-middleware-in-core): Lines 186-208
+
+---
+
 ## Register middleware as a plugin
 
 Register each middleware with Genkit via its `.plugin()` method. This is the
@@ -90,7 +96,7 @@ fallback({
   models: [googleAI.model('gemini-flash-latest')], // tried in order
   // statuses defaults to UNAVAILABLE, DEADLINE_EXCEEDED, RESOURCE_EXHAUSTED,
   // ABORTED, INTERNAL, NOT_FOUND, UNIMPLEMENTED
-  isolateConfig: false, // default false — fallback inherits the request config
+  isolateConfig: false, // default false - fallback inherits the request config
 });
 ```
 
@@ -119,7 +125,8 @@ See [multi-agent orchestration](agents-multi-agent.md).
 ### `contextCompression(options)`
 
 Keeps long conversations and tool loops inside a token budget
-(requires `genkit >= 1.43.0`). The model gets a compressed view; `response.messages`
+(requires `genkit >= 1.43.0`). The model gets a compressed view;
+`response.messages`
 keeps the full transcript, with compression state in message metadata.
 
 ```ts
@@ -140,8 +147,10 @@ use: [
 const sentToModel = resolveCompressedHistory(response.messages);
 ```
 
-Strategies run cheapest first: per-response hard cap, dedupe, truncate older tool
-responses, message cap, LLM summary, then dropping older messages as a last resort.
+Strategies run cheapest first: per-response hard cap, dedupe, truncate older
+tool
+responses, message cap, LLM summary, then dropping older messages as a last
+resort.
 
 ### `filesystem(options)`
 

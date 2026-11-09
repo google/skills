@@ -3,12 +3,19 @@
 > Requires a [session store](agents-sessions.md) so snapshots are persistent.
 > Read [agents.md](agents.md) first.
 
-A `snapshotId` is an **immutable checkpoint**, like a git commit. You can fork as
+A `snapshotId` is an **immutable checkpoint**, like a git commit. You can fork
+as
 many independent timelines as you want from the same snapshot — each turn from a
 snapshot creates a new, independent snapshot; the original is unchanged.
 
 To branch, open a new `chat` attached to an earlier snapshot via
 `agent.chat(snapshotId: ...)`.
+
+- [Server-side branching](#server-side-branching): Lines 20-47
+- [Client-side branching ("pick a variant")](#client-side-branching-pick-a-variant): Lines 49-80
+- [Restoring history from a snapshot](#restoring-history-from-a-snapshot): Lines 82-110
+
+---
 
 ## Server-side branching
 
@@ -28,12 +35,12 @@ final root = assistant.chat();
 final res1 = await root.send(text: 'Hello!');
 final checkpoint = res1.snapshotId; // branch point
 
-// Branch A — forks from `checkpoint`.
+// Branch A - forks from `checkpoint`.
 final branchA = assistant.chat(snapshotId: checkpoint);
 await branchA.send(text: 'My name is Bob.');
 final resA = await branchA.send(text: 'What is my name?'); // -> Bob
 
-// Branch B — forks from the SAME `checkpoint`, fully independent.
+// Branch B - forks from the SAME `checkpoint`, fully independent.
 final branchB = assistant.chat(snapshotId: checkpoint);
 await branchB.send(text: 'My name is John.');
 final resB = await branchB.send(text: 'What is my name?'); // -> John
@@ -61,7 +68,7 @@ Future<(AgentResponse, AgentResponse)> twoVariants(String text) async {
     makeChat().send(text: text),
     makeChat().send(text: text),
   ]);
-  // results[0].snapshotId != results[1].snapshotId — both branch from the
+  // results[0].snapshotId != results[1].snapshotId - both branch from the
   // same point.
   return (results[0], results[1]);
 }

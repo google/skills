@@ -13,7 +13,17 @@ first if you have not.
 An A2UI-enabled agent streams more than prose. It streams interactive UI
 **surfaces** (cards, lists, forms, buttons) that a client renders incrementally
 as the model responds. The entire Go integration is a single model middleware:
-add `&a2uix.Surfaces{}` to a generate/agent's `ai.WithUse` and nothing else changes.
+add `&a2uix.Surfaces{}` to a generate/agent's `ai.WithUse` and nothing else
+changes.
+
+- [Go is server-only: bring your own client](#go-is-server-only-bring-your-own-client): Lines 28-53
+- [Server: add the a2ui middleware](#server-add-the-a2ui-middleware): Lines 55-120
+- [Serve the agent over HTTP](#serve-the-agent-over-http): Lines 122-173
+- [Custom catalogs](#custom-catalogs): Lines 175-234
+- [Security and the trust boundary](#security-and-the-trust-boundary): Lines 236-257
+- [How it works](#how-it-works): Lines 259-278
+
+---
 
 ## Go is server-only: bring your own client
 
@@ -24,8 +34,10 @@ use a JS or Dart/Flutter client that talks to your Go agent over HTTP. The Go
 server and the JS/Dart client are wire-compatible (same `application/a2ui+json`
 data parts, same catalog ids), so mix and match freely.
 
-For the client half, refer to the A2UI reference in the Genkit **JS** or **Dart**
-skill (the `a2ui.md` reference in `developing-genkit-js` / `developing-genkit-dart`).
+For the client half, refer to the A2UI reference in the Genkit **JS** or
+**Dart**
+skill (the `a2ui.md` reference in `developing-genkit-js` /
+`developing-genkit-dart`).
 Read their client sections and ignore their server/`a2ui()` middleware sections
 (that is the JS/Dart server, replaced by the Go server below):
 
@@ -44,7 +56,8 @@ catalog under the **same catalog id** the Go server advertises.
 
 Add `&a2uix.Surfaces{}` to the generate call (or agent inline prompt) via
 `ai.WithUse`. That is the whole server-side setup. Registering `&a2uix.A2UI{}`
-in `genkit.Init` is **optional**: it only surfaces the middleware and catalogs in
+in `genkit.Init` is **optional**: it only surfaces the middleware and catalogs
+in
 the Dev UI. The middleware works via `ai.WithUse` regardless.
 
 ```go
@@ -108,7 +121,8 @@ ai.WithUse(
 
 ## Serve the agent over HTTP
 
-Serve the agent with `genkit.Handler` (see [Deploying agents](agents-deployment.md)).
+Serve the agent with `genkit.Handler` (see
+[Deploying agents](agents-deployment.md)).
 A server-managed agent exposes three endpoints the `remoteAgent` client expects:
 the turn endpoint plus its `/getSnapshot` and `/abort` companions.
 
@@ -124,9 +138,11 @@ log.Fatal(server.Start(ctx, "127.0.0.1:8080", mux))
 
 If the browser is served from a different origin than the agent (for example a
 Vite dev server on `:5173`), wrap the entire router/mux with permissive CORS
-middleware (as shown in [Deploying agents](agents-deployment.md#cors-for-browser-clients))
+middleware (as shown in
+[Deploying agents](agents-deployment.md#cors-for-browser-clients))
 so that preflight OPTIONS requests are handled automatically without needing to
-register duplicate bare paths. Behind a same-origin proxy (for example Vite preview),
+register duplicate bare paths. Behind a same-origin proxy (for example Vite
+preview),
 CORS is a no-op.
 
 You can also drive the agent directly with curl:
@@ -150,19 +166,23 @@ curl -N -X POST 'http://localhost:8080/api/uiAgent?stream=true' \
 | `SurfaceID`    | fresh UUID                          | Surface-id policy. Set a fixed string to reuse one id per surface; empty mints a fresh UUID per surface.     |
 | `Version`      | `a2uix.DefaultVersion` (`"v0.9"`)    | Protocol version stamped on envelopes. Validated against `a2uix.SupportedVersions`.                           |
 
-Use `Validate: a2uix.ValidateStrict` during development to fail fast on malformed
-JSON or components outside the catalog. See [Security](#security-and-the-trust-boundary)
+Use `Validate: a2uix.ValidateStrict` during development to fail fast on
+malformed
+JSON or components outside the catalog. See
+[Security](#security-and-the-trust-boundary)
 for what strict does and does not check.
 
 ## Custom catalogs
 
 The `CatalogID` is a **catalog id** resolved from the Genkit registry. The
-bundled basic catalog (`a2uix.BasicCatalog()`, id `a2uix.BasicCatalogID`, mirroring
+bundled basic catalog (`a2uix.BasicCatalog()`, id `a2uix.BasicCatalogID`,
+mirroring
 `@a2ui/web_core`'s basic catalog) is the default and needs no registration. A
 catalog describes the components the model may emit:
 
 - `ID`: globally-unique URI (also used as `catalogId` on `createSurface`).
-- `Components`: each an `a2uix.CatalogComponent` with `Name` (matches the renderer
+- `Components`: each an `a2uix.CatalogComponent` with `Name` (matches the
+  renderer
   type), `Description` (one-line summary), and `Props` (a compact, model-facing
   text description of the component's props, kept as plain text to minimize
   prompt tokens).
@@ -198,7 +218,8 @@ uiAgent := genkitx.DefineAgent(g, "uiAgent",
 ```
 
 You can also load a catalog from a JSON file with
-`a2uix.LoadCatalogFile(g, "./my-catalog.json")` (an object with an `id` string and
+`a2uix.LoadCatalogFile(g, "./my-catalog.json")` (an object with an `id` string
+and
 a `components` array). To surface the bundled basic catalog in the Dev UI
 alongside custom ones, call `a2uix.RegisterBasicCatalog(g)` (optional; the
 middleware falls back to it either way). `LoadCatalog` is idempotent per id.
@@ -207,13 +228,16 @@ The **client must register a matching renderer under the same catalog id**, and
 each component `Name` must match on both sides. Otherwise the model emits a
 component the client cannot render. See the A2UI reference in the JS or Dart
 skill for how to register a custom component (a genui `CatalogItem` in Dart, an
-`@a2ui/*` renderer in JS). Catalogs live in the registry under value type `a2uix.CatalogValueType`
-(`"a2ui-catalog"`); the Dev UI lists them at `GET /api/values?type=a2ui-catalog`.
+`@a2ui/*` renderer in JS). Catalogs live in the registry under value type
+`a2uix.CatalogValueType`
+(`"a2ui-catalog"`); the Dev UI lists them at
+`GET /api/values?type=a2ui-catalog`.
 
 ## Security and the trust boundary
 
 Generative UI moves model output into the client UI, so treat every surface an
-agent emits as **untrusted input**. `Validate` (including `ValidateStrict`) checks
+agent emits as **untrusted input**. `Validate` (including `ValidateStrict`)
+checks
 envelope structure and component *type names* against the catalog only. It does
 **not** validate component props or data-model values: model-controlled values
 such as an `Image`'s url or a `Text`'s inline Markdown pass through untouched.

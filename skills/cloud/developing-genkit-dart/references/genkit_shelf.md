@@ -7,6 +7,16 @@ HTTP serving lives in core `package:genkit/io.dart` (`GenkitRouter`, plain
 > There is no `startFlowServer` and no `FlowWithContextProvider`. Do not add
 > `shelf_cors_headers`; CORS is `CorsOptions`.
 
+- [Standalone server (no shelf)](#standalone-server-no-shelf): Lines 20-55
+- [Existing shelf app](#existing-shelf-app): Lines 57-88
+- [Own dart:io server](#own-dartio-server): Lines 90-104
+- [Auth: contextProvider](#auth-contextprovider): Lines 106-121
+- [Agents](#agents): Lines 123-127
+- [CORS](#cors): Lines 129-134
+- [Older clients](#older-clients): Lines 136-144
+
+---
+
 ## Standalone server (no shelf)
 
 ```dart
@@ -40,7 +50,8 @@ void main() async {
 ```
 
 `addAction` returns `void`; use cascades (`..`), not method chaining.
-`serve` logs its address via `package:logging` (`Logger.root.onRecord.listen(print)`
+`serve` logs its address via `package:logging`
+(`Logger.root.onRecord.listen(print)`
 to see it).
 
 ## Existing shelf app
@@ -73,7 +84,8 @@ void main() async {
 ```
 
 Unknown paths get a `404`, so it also works in a shelf `Cascade`. To serve one
-action on a route of your choosing: `router.post('/myFlow', shelfHandler(flow, contextProvider: bearerAuth))`.
+action on a route of your choosing:
+`router.post('/myFlow', shelfHandler(flow, contextProvider: bearerAuth))`.
 
 ## Own `dart:io` server
 

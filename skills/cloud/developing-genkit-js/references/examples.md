@@ -1,11 +1,23 @@
 # Genkit Examples
 
-This reference contains minimal, reproducible examples (MREs) for common Genkit patterns.
+This reference contains minimal, reproducible examples (MREs) for common Genkit
+patterns.
 
-> **Disclaimer**: These examples use **Google AI** models (`googleAI`, `gemini-*`) for demonstration. The patterns apply to **any provider**. To use a different provider:
+> **Disclaimer**: These examples use **Google AI** models (`googleAI`,
+> `gemini-*`) for demonstration. The patterns apply to **any provider**. To use
+> a different provider:
 > 1. Search the docs for the correct plugin: `genkit docs:search "plugins"`.
 > 2. Install and configure the plugin.
 > 3. Swap the model reference in the code.
+
+- [Basic Text Generation](#basic-text-generation): Lines 22-36
+- [Structured Output](#structured-output): Lines 38-59
+- [Streaming](#streaming): Lines 61-76
+- [Advanced Configuration](#advanced-configuration): Lines 78-115
+- [Multimodal Generation](#multimodal-generation): Lines 117-178
+- [Embeddings](#embeddings): Lines 180-214
+
+---
 
 ## Basic Text Generation
 
@@ -160,7 +172,8 @@ if (media?.url) {
 }
 ```
 
-Older preview TTS models (`gemini-2.5-*-preview-tts`, `gemini-3.1-flash-tts-preview`)
+Older preview TTS models (`gemini-2.5-*-preview-tts`,
+`gemini-3.1-flash-tts-preview`)
 are deprecated and return raw PCM that needs conversion to WAV. Run
 `genkit docs:search "speech audio"` for conversion code.
 

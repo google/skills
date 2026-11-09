@@ -1,5 +1,17 @@
 # Dotprompt (.prompt files) — Genkit Dart
 
+- [What it is](#what-it-is): Lines 15-19
+- [Where files live](#where-files-live): Lines 21-34
+- [File format](#file-format): Lines 36-81
+- [Loading and calling a prompt](#loading-and-calling-a-prompt): Lines 83-157
+- [Registering named schemas](#registering-named-schemas): Lines 159-191
+- [Variants](#variants): Lines 193-201
+- [Partials](#partials): Lines 203-213
+- [Tools, tool-loop control, and middleware](#tools-tool-loop-control-and-middleware): Lines 215-266
+- [Backing an agent with a .prompt file](#backing-an-agent-with-a-prompt-file): Lines 268-282
+
+---
+
 ## What it is
 
 `.prompt` files combine YAML frontmatter (model, config, schemas, tools,

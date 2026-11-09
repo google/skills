@@ -7,9 +7,19 @@
 > [agents.md](agents.md) first.
 
 Detaching runs a turn in the background: the server writes a `pending` snapshot
-and returns its `SnapshotID` **immediately**, keeps processing, then rewrites the
+and returns its `SnapshotID` **immediately**, keeps processing, then rewrites
+the
 snapshot to a terminal status (`completed` / `failed` / `aborted`). A reader
 waits on the snapshot (or polls it) and can `Abort` in the meantime.
+
+- [Define the agent (store required)](#define-the-agent-store-required): Lines 24-34
+- [Detach a turn](#detach-a-turn): Lines 36-55
+- [Wait (or poll)](#wait-or-poll): Lines 57-82
+- [Abort and resume](#abort-and-resume): Lines 84-110
+- [Serve detach over HTTP](#serve-detach-over-http): Lines 112-131
+- [Status values (aix.SnapshotStatus)](#status-values-aixsnapshotstatus): Lines 133-146
+
+---
 
 ## Define the agent (store required)
 
@@ -40,7 +50,8 @@ snapshotID := task.SnapshotID() // pending; save this
 ```
 
 On a live connection, send an input with `Detach: true` (or call `conn.Detach()`
-mid-turn); the output has `FinishReason == aix.AgentFinishReasonDetached` and the
+mid-turn); the output has `FinishReason == aix.AgentFinishReasonDetached` and
+the
 pending `SnapshotID`.
 
 ## Wait (or poll)
@@ -64,7 +75,8 @@ case aix.SnapshotStatusExpired:
 }
 ```
 
-`task.Poll(ctx)` does one read instead. `agent.WaitForSnapshot(ctx, id)` waits on
+`task.Poll(ctx)` does one read instead. `agent.WaitForSnapshot(ctx, id)` waits
+on
 a bare snapshot ID. Pass `aix.WithMetadataOnly()` to `Poll` / `GetSnapshot` to
 read status without loading `State`. `Wait` returns the snapshot for every
 outcome; a non-nil error means the wait could not proceed.
@@ -110,7 +122,8 @@ mux.HandleFunc("POST /api/backgroundAgent/waitForSnapshot", genkit.Handler(backg
 mux.HandleFunc("POST /api/backgroundAgent/abort", genkit.Handler(backgroundAgent.AbortAction()))
 ```
 
-One `waitForSnapshot` request holds for at most `aix.WithMaxSnapshotWait` (default
+One `waitForSnapshot` request holds for at most `aix.WithMaxSnapshotWait`
+(default
 25s), then answers with the row as it stands (`pending`/`aborting`); a direct
 HTTP client must loop until settled. `aix.AgentHandle` (local or
 `genkitx.DefineRemoteAgent`) does that for you. `AbortAction()` is non-nil only

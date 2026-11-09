@@ -19,9 +19,19 @@ import 'package:genkit_middleware/agents.dart';
 final ai = Genkit(plugins: [googleAI(), AgentsPlugin()]); // retry() is built in
 ```
 
+- [1. Define the sub-agents](#1-define-the-sub-agents): Lines 31-58
+- [2. Wire up the orchestrator](#2-wire-up-the-orchestrator): Lines 60-102
+- [agents() options](#agents-options): Lines 104-114
+- [Background (async) delegation](#background-async-delegation): Lines 116-144
+- [Sharing artifacts between agents](#sharing-artifacts-between-agents): Lines 146-156
+- [Other middleware](#other-middleware): Lines 158-168
+
+---
+
 ## 1. Define the sub-agents
 
-Give each sub-agent a `description` — it's auto-discovered from registry metadata
+Give each sub-agent a `description` — it's auto-discovered from registry
+metadata
 and shown to the orchestrator so the model knows when to delegate.
 
 ```dart
@@ -140,7 +150,8 @@ controls how they reach the orchestrator:
 
 - `'inline'` (default): artifact content is included in the delegation tool
   result (so the model sees it directly) **and** merged into the parent session.
-- `'session'`: artifacts are merged into the parent session only; the tool result
+- `'session'`: artifacts are merged into the parent session only; the tool
+  result
   lists artifact names, not content. Merged artifacts are namespaced by an
   invocation id (`<invocationId>/<name>`).
 

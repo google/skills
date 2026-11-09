@@ -35,7 +35,8 @@ export const timing = generateMiddleware(
 ## Register it as a plugin
 
 Register custom middleware with Genkit via its `.plugin()` method. This is the
-recommended setup — without it the middleware still works in `use: [...]`, but it
+recommended setup — without it the middleware still works in `use: [...]`, but
+it
 is **not visible to the Genkit Dev UI**.
 
 ```ts
@@ -61,7 +62,8 @@ The instantiate callback returns a `GenerateMiddlewareDef` with any subset of:
 
 - `generate(envelope, ctx, next)` — wrap the **whole generate action**. The
   `envelope` carries `{ request, currentTurn, messageIndex }`. Use it to inject
-  request params, post-process the response, or catch errors across the tool loop.
+  request params, post-process the response, or catch errors across the tool
+  loop.
 - `model(req, ctx, next)` — wrap the **underlying model call** (caching, retry,
   request/response rewriting). `req` is a `GenerateRequest`.
 - `tool(req, ctx, next)` — wrap **individual tool calls** (validate inputs,
@@ -86,11 +88,13 @@ request/envelope) and transform the result before returning it.
 
 ## Choosing a hook
 
-- Transform prompt/messages or the final result across the whole turn → `generate`.
+- Transform prompt/messages or the final result across the whole turn →
+  `generate`.
 - Cache/retry/rewrite a single model round-trip → `model`.
 - Gate or memoize tool execution → `tool`.
 - Make extra capabilities available to the model → `tools`.
 
 > Reminder: register custom middleware via `.plugin()` (see above). It works in
-> `use: [...]` without registering, but unregistered middleware is not visible to
+> `use: [...]` without registering, but unregistered middleware is not visible
+> to
 > the Genkit Dev UI.

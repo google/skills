@@ -8,6 +8,13 @@ and mutate it during a turn, and it is automatically synced to the
 [`remoteAgent`](agents.md#consume-an-agent-from-a-client-remoteagent) client via
 `customPatch` chunks (so the client's tracked state stays live mid-stream).
 
+- [Declare the state shape](#declare-the-state-shape): Lines 18-55
+- [Read and mutate state inside tools](#read-and-mutate-state-inside-tools): Lines 57-160
+- [Seed and read state (server-side)](#seed-and-read-state-server-side): Lines 162-186
+- [Auto-sync to the remoteAgent client](#auto-sync-to-the-remoteagent-client): Lines 188-227
+
+---
+
 ## Declare the state shape
 
 Pass a `stateSchema` (a schemantic `.$schema`) to `defineAgent`. It's validated
@@ -47,7 +54,7 @@ final taskAgent = ai.defineAgent(
 `stateSchema` works with the standard `defineAgent` — you do **not** need
 `defineCustomAgent` for custom state.
 
-## Read & mutate state inside tools
+## Read and mutate state inside tools
 
 Tools call `ai.currentSession<State>()` to access the live, **typed** session,
 then `session.getCustom()` / `session.updateCustom(mutator)`. `updateCustom` is
@@ -97,18 +104,21 @@ session.
 > getters are hard casts and throw (`Null is not a subtype of num`) when a
 > partially populated state blob is reloaded (e.g. a computed field that was
 > never written). Make such fields nullable or give them a `defaultValue`. See
-> [non-nullable getters throw on partial data](schemantic.md#non-nullable-getters-throw-on-partial-data).
+> [non-nullable getters throw on partial
+> data](schemantic.md#non-nullable-getters-throw-on-partial-data).
 
 > **Prefer whole-collection tools over append-one-item tools.** The model may
 > emit several tool calls in a single **parallel** batch. Each
 > `session.updateCustom` reads the current custom state, mutates, and writes it
 > back; when the calls run in one batch they all read the same base and the last
-> write wins, silently dropping the others. An incremental `addTask` tool is only
+> write wins, silently dropping the others. An incremental `addTask` tool is
+> only
 > safe if the model calls it sequentially. For anything the model may batch,
 > prefer a single idempotent "replace the whole collection" tool (e.g.
 > `setTasks(items: [...])`) that writes the entire collection in one call.
 
-`ai.currentSession<State>()` returns `null` when called outside an active session
+`ai.currentSession<State>()` returns `null` when called outside an active
+session
 (e.g. a tool invoked without a running agent turn), so only use it inside agent
 tools.
 
@@ -171,7 +181,8 @@ print(res.state); // res.state returns the custom state directly
 > **Typed state.** When you supply a `stateSchema`, `res.state` / `chat.state`
 > (and `snapshot.custom`) are **parsed into the typed `State` object** (here a
 > `TaskState`), not a raw `Map`. `Agent`/`AgentChat`/`AgentResponse` are generic
-> over `State`, so the type flows through automatically. Without a `stateSchema`,
+> over `State`, so the type flows through automatically. Without a
+> `stateSchema`,
 > `state` is an untyped view over the JSON.
 
 ## Auto-sync to the `remoteAgent` client
@@ -211,5 +222,6 @@ print(chat.state);
 
 State updates ride on the streamed chunks — there is no `onStateChange`
 subscription. For live mid-stream status updates from a multi-step custom agent,
-see [advanced custom agents](agents-custom.md), which emit `customPatch` chunks as
+see [advanced custom agents](agents-custom.md), which emit `customPatch` chunks
+as
 state changes.

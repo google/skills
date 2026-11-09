@@ -1,6 +1,16 @@
 # Genkit Google GenAI Plugin (`genkit_google_genai`)
 
-The Google AI plugin provides an interface against the official Google AI Gemini API.
+The Google AI plugin provides an interface against the official Google AI Gemini
+API.
+
+- [Usage](#usage): Lines 15-35
+- [Model refs and Gemma](#model-refs-and-gemma): Lines 37-49
+- [Embeddings](#embeddings): Lines 51-62
+- [Config types are provider-prefixed](#config-types-are-provider-prefixed): Lines 64-86
+- [Image Generation](#image-generation): Lines 88-115
+- [Text-to-Speech (TTS)](#text-to-speech-tts): Lines 117-151
+
+---
 
 ## Usage
 
@@ -77,7 +87,8 @@ re-exported by `genkit_vertexai`.
 
 ## Image Generation
 
-The plugin also supports image generation models such as `gemini-3.1-flash-image`.
+The plugin also supports image generation models such as
+`gemini-3.1-flash-image`.
 
 ### Example (Nano Banana)
 
@@ -100,11 +111,13 @@ ai.defineFlow(
 );
 ```
 
-The media (url field) contain base64 encoded data uri. You can decode it and save it as a file.
+The media (url field) contain base64 encoded data uri. You can decode it and
+save it as a file.
 
 ## Text-to-Speech (TTS)
 
-You can use text-to-speech models to generate audio from text. The generated `Media` object will contain base64 encoded PCM audio in its data URI.
+You can use text-to-speech models to generate audio from text. The generated
+`Media` object will contain base64 encoded PCM audio in its data URI.
 
 ```dart
 // Define a TTS flow
@@ -134,4 +147,5 @@ ai.defineFlow(
 );
 ```
 
-Google AI also supports multi-speaker TTS by configuring a `MultiSpeakerVoiceConfig` inside `SpeechConfig`.
+Google AI also supports multi-speaker TTS by configuring a
+`MultiSpeakerVoiceConfig` inside `SpeechConfig`.

@@ -1,6 +1,7 @@
 # Background Agents / Detaching (Beta)
 
-> **Beta / preview API.** Detaching **requires a [session store](agents-sessions.md)** —
+> **Beta / preview API.** Detaching **requires a
+> [session store](agents-sessions.md)** —
 > the server needs somewhere to write the result when background work finishes.
 > Read [agents.md](agents.md) first.
 
@@ -8,6 +9,14 @@ Detaching runs a turn in the background: the server saves a `pending` snapshot
 and returns a `snapshotId` **immediately**, keeps processing, then updates the
 snapshot to a terminal status (`completed` / `failed` / `aborted` / `expired`).
 The client polls for completion and can abort.
+
+- [Define the agent (store required)](#define-the-agent-store-required): Lines 21-54
+- [Server-side: detach and wait](#server-side-detach-and-wait): Lines 56-74
+- [Resume a failed or aborted task](#resume-a-failed-or-aborted-task): Lines 76-91
+- [Client-side: detach, poll, and abort](#client-side-detach-poll-and-abort): Lines 93-133
+- [Status values](#status-values): Lines 135-155
+
+---
 
 ## Define the agent (store required)
 
@@ -44,7 +53,7 @@ app.post(
 );
 ```
 
-## Server-side: detach + wait
+## Server-side: detach and wait
 
 `chat.detach(message)` returns a `DetachedTask` carrying the `snapshotId`.
 `task.wait()` blocks until a terminal state and resolves with the final
@@ -66,7 +75,8 @@ does the same from a stored ID.
 
 ## Resume a failed or aborted task
 
-> Requires `genkit >= 1.43.0`. Earlier versions only resumed `completed` snapshots.
+> Requires `genkit >= 1.43.0`. Earlier versions only resumed `completed`
+> snapshots.
 
 `failed` and `aborted` snapshots hold the conversation up to the last completed
 tool round, so they are resume points. `send({})` (no message, no resume)
@@ -80,7 +90,7 @@ if (snap.status === 'failed' || snap.status === 'aborted') {
 }
 ```
 
-## Client-side: detach + poll + abort
+## Client-side: detach, poll, and abort
 
 On the client (`genkit/beta/client`), `task.poll()` yields snapshots until a
 terminal status; `task.abort()` cancels the background work.
@@ -91,7 +101,7 @@ import type { MessageData, Part } from 'genkit/beta';
 
 const agent = remoteAgent({ url: '/api/backgroundAgent' });
 
-// Submit — resolves immediately with a handle.
+// Submit - resolves immediately with a handle.
 const task: DetachedTask = await agent.chat().detach('Quantum computing impact');
 console.log(task.snapshotId);
 
@@ -112,7 +122,7 @@ for await (const snap of task.poll({ intervalMs: 2000 })) {
     break;
   } else if (snap.status === 'expired') {
     // Worker stopped sending heartbeats (e.g. the server restarted) so the
-    // task can never complete — treat as terminal.
+    // task can never complete - treat as terminal.
     break;
   }
   // 'pending' → keep polling
@@ -127,9 +137,11 @@ await task.abort();
 - `pending`: still processing.
 - `aborting`: `abort()` was called; the worker is winding down. Not terminal:
   `wait()` keeps waiting until it settles as `aborted`.
-- `completed`: completed successfully (read the result from `snapshot.state.messages`).
+- `completed`: completed successfully (read the result from
+  `snapshot.state.messages`).
 - `failed`: error during processing. Resumable (see above).
-- `aborted`: stopped by the caller. Carries the state the run had committed; resumable.
+- `aborted`: stopped by the caller. Carries the state the run had committed;
+  resumable.
 - `expired`: the background worker stopped responding (e.g. server restart);
   terminal, the task can never complete.
 
