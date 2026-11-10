@@ -5,23 +5,23 @@ Configure observability and alerting policies for Google Cloud Compute Engine VM
 ## Table of Contents
 
 * [Discover Resource Parameters and Schemas](#discover-resource-parameters-and-schemas): Lines 28-49
-* [Monitor Core Compute Engine VM Golden Signals](#monitor-core-compute-engine-vm-golden-signals): Lines 50-128
+* [Monitor Core Compute Engine VM Golden Signals](#monitor-core-compute-engine-vm-golden-signals): Lines 50-130
   * [Monitor Hypervisor CPU Utilization](#monitor-hypervisor-cpu-utilization): Lines 52-63
-  * [Monitor Guest OS Memory Saturation](#monitor-guest-os-memory-saturation): Lines 64-78
-  * [Monitor Mounted Filesystem Disk Space](#monitor-mounted-filesystem-disk-space): Lines 79-100
-  * [Monitor Persistent Disk and Hyperdisk I/O Throttling](#monitor-persistent-disk-and-hyperdisk-io-throttling): Lines 101-113
-  * [Monitor Network Egress, Packet Drops, and MIG Saturation](#monitor-network-egress-packet-drops-and-mig-saturation): Lines 114-128
-* [Configure Host and Reservation Maintenance Alerts](#configure-host-and-reservation-maintenance-alerts): Lines 129-213
-  * [Differentiate Planned, Emergent, and Combined Maintenance](#differentiate-planned-emergent-and-combined-maintenance): Lines 154-192
-  * [Filter Maintenance Lifecycle Events](#filter-maintenance-lifecycle-events): Lines 193-213
-* [Monitor VM Availability and Interruption Reports](#monitor-vm-availability-and-interruption-reports): Lines 214-263
-  * [Detect Stopped VMs with Absent Uptime Conditions](#detect-stopped-vms-with-absent-uptime-conditions): Lines 216-221
-  * [Alert on VM Interruption Count Metrics](#alert-on-vm-interruption-count-metrics): Lines 222-239
-  * [Diagnose Interruptions with Interruption Report Logs](#diagnose-interruptions-with-interruption-report-logs): Lines 240-263
-* [Configure GPU XID Health Insights Alerts](#configure-gpu-xid-health-insights-alerts): Lines 264-285
-* [Monitor Machine, Sub-Block, and Fabric Health](#monitor-machine-sub-block-and-fabric-health): Lines 286-326
-  * [Query Machine and Fabric Health Metrics](#query-machine-and-fabric-health-metrics): Lines 299-324
-  * [Compare Current Metrics with Evolving Domain Signals](#compare-current-metrics-with-evolving-domain-signals): Lines 325-326
+  * [Monitor Guest OS Memory Saturation](#monitor-guest-os-memory-saturation): Lines 64-79
+  * [Monitor Mounted Filesystem Disk Space](#monitor-mounted-filesystem-disk-space): Lines 80-102
+  * [Monitor Persistent Disk and Hyperdisk I/O Throttling](#monitor-persistent-disk-and-hyperdisk-io-throttling): Lines 103-115
+  * [Monitor Network Egress, Packet Drops, and MIG Saturation](#monitor-network-egress-packet-drops-and-mig-saturation): Lines 116-130
+* [Configure Host and Reservation Maintenance Alerts](#configure-host-and-reservation-maintenance-alerts): Lines 131-215
+  * [Differentiate Planned, Emergent, and Combined Maintenance](#differentiate-planned-emergent-and-combined-maintenance): Lines 156-194
+  * [Filter Maintenance Lifecycle Events](#filter-maintenance-lifecycle-events): Lines 195-215
+* [Monitor VM Availability and Interruption Reports](#monitor-vm-availability-and-interruption-reports): Lines 216-265
+  * [Detect Stopped VMs with Absent Uptime Conditions](#detect-stopped-vms-with-absent-uptime-conditions): Lines 218-223
+  * [Alert on VM Interruption Count Metrics](#alert-on-vm-interruption-count-metrics): Lines 224-241
+  * [Diagnose Interruptions with Interruption Report Logs](#diagnose-interruptions-with-interruption-report-logs): Lines 242-265
+* [Configure GPU XID Health Insights Alerts](#configure-gpu-xid-health-insights-alerts): Lines 266-287
+* [Monitor Machine, Sub-Block, and Fabric Health](#monitor-machine-sub-block-and-fabric-health): Lines 288-328
+  * [Query Machine and Fabric Health Metrics](#query-machine-and-fabric-health-metrics): Lines 301-326
+  * [Compare Current Metrics with Evolving Domain Signals](#compare-current-metrics-with-evolving-domain-signals): Lines 327-328
 
 ---
 
@@ -62,7 +62,8 @@ Before finalizing alert thresholds, label matchers, or Terraform variables, grou
   * Filter human-readable VM names using `instance_name` or `metadata_system_name` (never assign a string hostname to numeric `instance_id`).
 
 ### Monitor Guest OS Memory Saturation
-* **Prerequisite and Cost Guardrail (MUST Explain)**: You **must** explain that native hypervisor memory metrics (`compute.googleapis.com/instance/memory/balloon/ram_used`) are **only available for E2 family VMs**. For N2, C2, C3, M2, A3, and A4 VMs, the **Cloud Ops Agent** must be installed on the VM to emit `agent.googleapis.com/memory/percent_used`, and you **must explicitly state that the Cloud Ops Agent incurs Cloud Monitoring metric ingestion charges** (see [Cloud Monitoring pricing](https://docs.cloud.google.com/stackdriver/pricing.md.txt)).
+
+* **Prerequisite and Cost Guardrail (MUST Explain)**: You **must** explain that native hypervisor memory metrics (`compute.googleapis.com/instance/memory/balloon/ram_used`) are **only available for E2 family VMs**. For N2, C2, C3, M2, A3, and A4 VMs, the **Cloud Ops Agent** must be installed on the VM to emit `agent.googleapis.com/memory/percent_used`, and you **must explicitly state that the Cloud Ops Agent incurs Cloud Monitoring metric ingestion charges** (see [Cloud Monitoring pricing](https://cloud.google.com/products/observability/pricing)).
 * **Parameter and Resource Lookups**:
   * **Machine Type Lookup**: Verify whether target VMs belong to the `e2-*` series or non-E2 series (`n2-*`, `c2-*`, `c3-*`, `m2-*`, `a3-*`, `a4-*`) by running:
     `gcloud compute instances describe <INSTANCE_NAME> --zone=<ZONE> --project=<PROJECT_ID> --format="value(machineType.basename())"`
@@ -77,7 +78,8 @@ Before finalizing alert thresholds, label matchers, or Terraform variables, grou
   *Alternatively, sum non-free states: `sum by (instance_id, zone) (agent_googleapis_com:memory_percent_used{monitored_resource="gce_instance", state!="free"}) >= 90`. Never sum across all states, which always equals 100%.*
 
 ### Monitor Mounted Filesystem Disk Space
-* **Prerequisite and Cost Guardrail (MUST Explain)**: You **must** explain that standard hypervisor `compute.googleapis.com/instance/disk/*` metrics only measure block-level I/O (bytes and IOPS), not mounted filesystem fullness (`ENOSPC`). Monitoring mounted disk space requires the **Cloud Ops Agent** (`agent.googleapis.com/disk/*`, which **incurs Cloud Monitoring metric ingestion charges**; see [Cloud Monitoring pricing](https://docs.cloud.google.com/stackdriver/pricing.md.txt)) or Container-Optimized OS guest metrics (`compute.googleapis.com/guest/disk/bytes_used`).
+
+* **Prerequisite and Cost Guardrail (MUST Explain)**: You **must** explain that standard hypervisor `compute.googleapis.com/instance/disk/*` metrics only measure block-level I/O (bytes and IOPS), not mounted filesystem fullness (`ENOSPC`). Monitoring mounted disk space requires the **Cloud Ops Agent** (`agent.googleapis.com/disk/*`, which **incurs Cloud Monitoring metric ingestion charges**; see [Cloud Monitoring pricing](https://cloud.google.com/products/observability/pricing)) or Container-Optimized OS guest metrics (`compute.googleapis.com/guest/disk/bytes_used`).
 * **Parameter and Resource Lookups**:
   * **Guest OS Image and Device Lookup**: Inspect the boot and data disk OS license (to distinguish `cos-cloud` Container-Optimized OS from standard Linux or Windows) and attached block `deviceName` values by running:
     `gcloud compute instances describe <INSTANCE_NAME> --zone=<ZONE> --project=<PROJECT_ID> --format="yaml(disks[].deviceName,disks[].licenses,metadata.items)"`

@@ -48,7 +48,7 @@ configuring Kubernetes alerts, you MUST:
     At the very top of your response, you MUST: (a) alert the user that the
     policy requires `kube-state-metrics (KSM)`, (b) explain that KSM incurs
     billable Managed Service for Prometheus (GMP) sample ingestion costs (see
-    [Cloud Monitoring pricing](https://docs.cloud.google.com/stackdriver/pricing.md.txt)),
+    [Cloud Monitoring pricing](https://cloud.google.com/products/observability/pricing)),
     (c) **ask the user a direct question in second-person asking for explicit
     permission** (literally include: **"Do you grant explicit permission to
     enable and ingest kube-state-metrics (KSM) in your cluster for this

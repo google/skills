@@ -1,7 +1,7 @@
 ---
 name: cloud-monitoring-alert-configuration
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: CloudObservabilityAndMonitoring
   support_tier: team
   tags: [cloud-monitoring, alerting, terraform, promql, observability]
