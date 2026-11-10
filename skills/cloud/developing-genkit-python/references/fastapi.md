@@ -4,10 +4,10 @@
 - [Serve a Flow or Agent](#serve-a-flow-or-agent): Lines 39-95
 - [HTTP Error Redaction and PublicError](#http-error-redaction-and-publicerror): Lines 99-114
 - [Streaming (SSE)](#streaming-sse): Lines 118-171
-- [Auth and Context Providers](#auth-and-context-providers): Lines 175-250
-- [Advanced Flow Composition](#advanced-flow-composition): Lines 254-328
-- [Structured Output Endpoint](#structured-output-endpoint): Lines 332-356
-- [Python HTTP Client](#python-http-client): Lines 360-372
+- [Auth and Context Providers](#auth-and-context-providers): Lines 175-254
+- [Advanced Flow Composition](#advanced-flow-composition): Lines 258-332
+- [Structured Output Endpoint](#structured-output-endpoint): Lines 336-360
+- [Python HTTP Client](#python-http-client): Lines 364-376
 
 ---
 
@@ -176,15 +176,19 @@ curl -N -X POST http://localhost:8080/api/stream_brief \
 
 ### 1. FastAPI `Depends` via `serve_flow(..., context_dependency=...)`
 
+FastAPI resolves `context_dependency` (and route `Depends(...)` parameters)
+before Genkit's handler runs, so raise `fastapi.HTTPException` here rather than
+`PublicError` (reserve `PublicError` for `context_provider` or the flow body):
+
 ```python
-from fastapi import Header
-from genkit import FlowContext, PublicError
+from fastapi import Header, HTTPException
+from genkit import FlowContext
 from genkit_fastapi import serve_flow
 
 
 async def require_auth(authorization: str | None = Header(default=None)) -> dict:
     if not authorization:
-        raise PublicError('UNAUTHENTICATED', 'Missing Authorization header')  # 401
+        raise HTTPException(status_code=401, detail='Missing Authorization header')
     return {'auth': {'token': authorization}}
 
 

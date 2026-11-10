@@ -6,8 +6,8 @@
 - [Step 3: Install Dependencies](#step-3-install-dependencies): Lines 55-65
 - [Step 4: Start the Dev UI](#step-4-start-the-dev-ui): Lines 69-114
 - [Step 5: Test in the Dev UI](#step-5-test-in-the-dev-ui): Lines 118-130
-- [CLI Commands](#cli-commands): Lines 134-182
-- [Troubleshooting](#troubleshooting): Lines 186-194
+- [CLI Commands](#cli-commands): Lines 134-183
+- [Troubleshooting](#troubleshooting): Lines 187-195
 
 ---
 
@@ -164,13 +164,14 @@ flow to test it (see [Agents](agents.md#verify-an-agent-from-the-cli-flowrun)).
 
 **Inspecting traces from the terminal:**
 ```bash
-genkit trace:list --limit 5     # recent trace IDs with status, input, output
-genkit trace:get <traceId>      # full trace as JSON: every span, attributes, input, output
+genkit trace:list --limit 5              # recent trace IDs with status, input, output
+genkit trace:get <traceId>               # human-readable execution tree
+genkit trace:get <traceId> --format json # machine-readable JSON: spans, attributes, input, output
 ```
-`trace:get` prints a `Telemetry API running on ...` line before the JSON on
-stdout, so strip it before piping into `jq`:
+Always pass `--format json` when piping into `jq` or other parsers (without it,
+`trace:get` prints a human-readable execution tree):
 ```bash
-genkit trace:get <traceId> | sed 1d | jq -r '.spans[].displayName'
+genkit trace:get <traceId> --format json | jq -r '.spans[].displayName'
 # => order_flow
 ```
 
