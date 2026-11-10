@@ -4,8 +4,8 @@ The `google-cloud-developer` plugin equips Codex agent with foundational skills,
 safety guardrails, and live documentation grounding for building on Google
 Cloud.
 
-This plugin bundles curated Agent Skills, routing rules, and configuration for
-the **Developer Knowledge MCP server** into a single portable package.
+This plugin bundles curated Agent Skills, routing rules, and access to the
+Developer Knowledge API into a single portable package.
 
 --------------------------------------------------------------------------------
 
