@@ -78,10 +78,23 @@ jobs:
               effective = parts[1].rstrip("/") if len(parts) > 1 else ""
               return code, effective
 
+          def has_md_endpoint(candidate_md: str) -> bool:
+              res = subprocess.run(
+                  [
+                      "curl", "--http1.1", "-sIL", "-o", "/dev/null",
+                      "-w", "%{http_code} %{content_type}",
+                      "--max-time", "10", candidate_md,
+                  ],
+                  capture_output=True, text=True, check=False,
+              )
+              parts = res.stdout.strip().split(" ", 1)
+              code = parts[0] if parts else ""
+              ctype = parts[1].lower() if len(parts) > 1 else ""
+              return code == "200" and ctype.startswith("text/markdown")
+
           def format_fix(canonical_html: str) -> str:
               md_candidate = f"{canonical_html.rstrip('/')}.md.txt"
-              md_code, _ = probe_url(md_candidate)
-              if md_code == "200":
+              if has_md_endpoint(md_candidate):
                   return f"Update to `{md_candidate}` (or HTML `{canonical_html}`, HTTP 200)"
               return f"Update to `{canonical_html}` (HTTP 200, no `.md.txt` endpoint)"
 
@@ -139,8 +152,7 @@ jobs:
                       bare_code, effective = probe_url(bare_url)
                       if bare_code == "200" and effective and effective != bare_url.rstrip("/"):
                           candidate_md = f"{effective}.md.txt"
-                          md_code, _ = probe_url(candidate_md)
-                          if md_code == "200":
+                          if has_md_endpoint(candidate_md):
                               rows.append((
                                   f"`{url}`",
                                   "`.md.txt` Redirect 404",
