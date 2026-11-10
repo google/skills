@@ -1,0 +1,29 @@
+{
+  "_comment": [
+    "Single source of the LiteRT versions this skill installs and downloads.",
+    "compile_model.py reads pip_release and python (--print-install, install hints, installed-version check).",
+    "benchmark_on_device.py reads binaries_release (default download URL) and pip_release (Versions line).",
+    "package_ai_pack.py reads maven_release: the Google Maven version of com.google.ai.edge.litert:litert and com.google.ai.edge.litert:litert-npu-runtime-google-tensor that it writes into the generated Gradle files and INTEGRATION.md. Both artifacts must exist at that version (on 2026-10-27 Google Maven listed 2.3.0 and 2.3.2 for both, and no 2.3.1).",
+    "package_ai_pack.py also reads kotlin_min: the oldest Kotlin (Gradle plugin) version that can read the Kotlin metadata of com.google.ai.edge.litert:litert-api at maven_release; INTEGRATION.md tells users to use it or newer. litert-api 2.3.0 carries Kotlin metadata 2.4.0, which Kotlin 2.3 reads and Kotlin 2.1 rejects (checked 2026-10-14 by compiling assets/templates/TensorModelLoader.kt with Kotlin 2.1.0 and 2.3.21); litert-api 2.3.2 carries the same metadata 2.4.0 (javap, and the verified.app builds with Kotlin 2.3.21, 2026-10-27).",
+    "scripts/install_and_verify.py reads bundletool_release: without --bundletool it downloads bundletool-all-<bundletool_release>.jar from https://github.com/google/bundletool/releases (cached in ~/.cache/litert-google-tensor/). Local testing of AI packs needs 1.18.0 or newer.",
+    "SKILL.md and references/ never repeat these values as instructions; observations there name the version they were seen with.",
+    "The two releases differ because the pip packages and the binaries bucket are separate sources (references/contributing.md, \"Why two release fields\"). pip_release stays at 2.1.6, the stable ai-edge-litert release in the Tensor SDK compatibility matrix and the one verified with this skill; the 2.3.1 binaries run models compiled with it (see verified).",
+    "binaries/2.3.1/ was uploaded twice: on 2026-10-20 with a libLiteRtDispatch_GoogleTensor.so byte-identical to 2.3.0's (its TPU tile-time and power hooks count every inference twice), and again on 2026-10-23 17:54 UTC with a rebuilt library that counts once per dispatch invoke. The pin is the second upload (md5s in verified.binaries); a copy fetched before then stays cached under the same name (~/.cache/litert-google-tensor/2.3.1_android_arm64_*) until --refresh-binary.",
+    "maven_release and binaries_release differ too: Google Maven skipped 2.3.1, and the bucket has no 2.3.2 (both checked 2026-10-27). The libLiteRtDispatch_GoogleTensor.so in the litert-npu-runtime-google-tensor 2.3.2 AAR is a different build than the bucket's 2.3.1 library (579,024 vs 629,984 bytes) with the same hook fix: TPU tile time and energy counted once per dispatch invoke (verified.app). The 2.3.0 AAR's library has the old hooks.",
+    "Change this file only by following references/contributing.md."
+  ],
+  "pip_release": "2.1.6",
+  "binaries_release": "2.3.1",
+  "maven_release": "2.3.2",
+  "bundletool_release": "1.18.3",
+  "kotlin_min": "2.3",
+  "python": "3.10-3.13",
+  "verified": {
+    "date": "2026-10-26",
+    "evidence": "the efficientnet_b7 example in references/benchmark-flags.md (\"Example with TPU tile time and energy\"): compiled with ai-edge-litert 2.1.6 (930/930 ops), then strict NPU (1 of 1 nodes delegated) + CPU baseline on the 2.3.1 binaries, with TPU tile time and TPU energy (both hooks counted 1 call per run)",
+    "device": "Pixel 10 (Tensor G5), Android 17 build CP2A.260705.006.A1",
+    "host": "Linux x86_64, Python 3.13",
+    "binaries": "bucket release 2.3.1 as re-uploaded 2026-10-23 17:54 UTC, fetched 2026-10-26: benchmark_model md5 bx6O455Ns4gjZWozKljNfQ==, libLiteRtDispatch_GoogleTensor.so md5 tp26wryZhjaU3IYIz2w7/g==",
+    "app": "2026-10-27, Pixel 10 (Tensor G5), Android 17 build CP2A.260705.006.A1, Maven litert + litert-npu-runtime-google-tensor 2.3.2, efficientnet_b7 compiled with ai-edge-litert 2.1.6 (930/930 ops), bundletool 1.18.3 (AGP 8.13.1, Gradle 8.13, Kotlin 2.3.21, JDK 21): end-to-end run (package, Gradle build, bundletool install, launch) PASS for install-time and on-demand, and the optional quick test (on-demand: installDebug -PtensorQuickTest=Tensor_G5, no bundletool) PASS, all on the NPU, with outputs for fixed inputs identical to 2.3.0's (same SHA-256); SKILL.md steps 6-7 on the plain test app (no LiteRT, Kotlin 2.0.21, minSdk 26): package_ai_pack.py --check-project plan applied (Kotlin 2.3.21, minSdk 31, arm64-v8a only), re-check 19/19 passed, install_and_verify.py PASS (path npu, install-time; bundletool jars from Google Maven via --bundletool <folder>), and the app's own inference ran on the NPU; the dispatch library of the 2.3.2 Maven AAR passed the strict benchmark with TPU tile time and TPU energy, both hooks counting 1 call per run (26.45 ms average, tile time 17.891 ms, energy 21.438 mJ; the bucket's 2.3.1 library in the next run: 26.86 / 18.168 / 21.643). Not rerun with 2.3.2 (PASS with 2.3.0 on 2026-10-14 and 2026-10-15): the update flow (package_ai_pack.py --update-project to a --truncation-type half build, then rebuilt, installed and run), and install_and_verify.py stopping with exit 7 on a rerun and reinstalling with --uninstall-first"
+  }
+}

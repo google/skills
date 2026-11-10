@@ -72,6 +72,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Genkit Go**](./skills/cloud/developing-genkit-go)
   - [**Genkit JS**](./skills/cloud/developing-genkit-js)
   - [**Genkit Python**](./skills/cloud/developing-genkit-python)
+  - [**LiteRT on Google Tensor: compile, benchmark, package for apps**](./skills/platform-devices/litert-google-tensor)
   - [**LiveAPI Service Skill**](./skills/cloud/gemini-live-api)
   - [**Migrating from Gemini API in AI Studio to Agent Platform**](./skills/cloud/agent-platform-migrate-from-ai-studio)
   - [**Pathways on Cloud Workload Debugging Skill**](./skills/cloud/pathways-workload)
