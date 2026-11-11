@@ -206,6 +206,7 @@ This command gives you an option to also remove obsolete skills.
   - [**IAM Access Troubleshooter & Remediation Orchestrator on Google Cloud**](./skills/cloud/iam-helper-for-troubleshooting)
   - [**IAM Helper for Policy Management**](./skills/cloud/iam-helper-for-policy-management)
   - [**IAM Policy Simulator (v1 Allow)**](./skills/cloud/iam-helper-for-policy-simulator)
+  - [**IAP troubleshooting for Gemini Enterprise Agent Platform**](./skills/cloud/iap-agent-platform-troubleshooting)
   - [**Privileged Access Manager (PAM)**](./skills/cloud/iam-helper-for-privileged-access-management)
   - [**SecOps Detection Coverage Skill**](./skills/cloud/detection-engineering-coverage-evaluation)
   - [**Security Command Center Query Skill on Google Cloud**](./skills/cloud/google-cloud-scc-query)
