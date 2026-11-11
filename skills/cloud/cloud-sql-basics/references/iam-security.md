@@ -90,8 +90,8 @@ gcloud projects add-iam-policy-binding project_id \
     - `CUSTOMER_MANAGED_CAS_CA` (Customer-managed CA): Integrates with your own
       CA Service pool.
     - **Recommendation:** Use **Customer-managed CA** for maximum security to
-      maintain ownership of the trust anchor, utilize modern ECDSA 256-bit keys,
-      and support custom DNS naming.
+      maintain ownership of the trust anchor, utilize modern ECDSA 384-bit (EC
+      P-384) keys, and support custom DNS naming.
 
 -   **SSL/TLS Enforcement:** Enforce encryption for all incoming connections
     by configuring the instance `sslMode` (or `--ssl-mode` in CLI / `ssl_mode` 
@@ -207,6 +207,7 @@ instances to manage access, IAM conditions, and organization policies.
     gcloud sql instances create instance_name \
         --tags="tagKeys/123456789012=tagValues/987654321098" \
         --database-version=POSTGRES_18 \
+        --edition=ENTERPRISE \
         --cpu=2 \
         --memory=7680MiB \
         --region=region

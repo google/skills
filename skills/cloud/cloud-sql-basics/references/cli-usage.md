@@ -19,7 +19,8 @@ gcloud sql [GROUP] [COMMAND] [FLAGS]
   gcloud sql instances create my-instance \
       --database-version=POSTGRES_18 \
       --edition=ENTERPRISE \
-      --tier=db-custom-2-7680 \
+      --cpu=2 \
+      --memory=7680MiB \
       --region=us-central1 \
       --ssl-mode=ENCRYPTED_ONLY \
       --enable-point-in-time-recovery \
@@ -133,7 +134,7 @@ gcloud sql [GROUP] [COMMAND] [FLAGS]
 
 - `--edition`: Database edition (`ENTERPRISE` or `ENTERPRISE_PLUS`).
 
-- `--tier`: Machine tier (e.g., `db-custom-2-7680`, `db-perf-optimized-N-2`).
+- `--tier`: Machine tier (e.g., `db-f1-micro`, `db-perf-optimized-N-2`).
 
 - `--ssl-mode`: SSL enforcement mode (`ALLOW_UNENCRYPTED_AND_ENCRYPTED`, `ENCRYPTED_ONLY`, `TRUSTED_CLIENT_CERTIFICATE_REQUIRED`).
 

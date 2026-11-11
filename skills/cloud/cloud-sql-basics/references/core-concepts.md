@@ -38,7 +38,7 @@ performance, availability, and operational requirements:
 Cloud SQL supports the following database engines (see [supported
 versions](https://docs.cloud.google.com/sql/docs/db-versions.md.txt)):
 
--   **MySQL:** Versions 5.6, 5.7, 8.0, and 8.4.
+-   **MySQL:** Versions 5.6, 5.7, 8.0, 8.4 (default), and 9.7.
 
 -   **PostgreSQL:** Versions 9.6, 10, 11, 12, 13, 14, 15, 16, 17, and 18
     (default).
@@ -70,10 +70,10 @@ database program.
     -   **Scaling Options:**
         -   **Manual Scaling:** Sub-second downtime for manual scale-out/scale-in 
             (adding or removing nodes) and scale-up/scale-down (changing node machine tiers).
-        -   **Autoscaling:** Dynamically adjusts node counts between specified 
-            `--auto-scale-min-node-count` and `--auto-scale-max-node-count` 
-            thresholds based on `AVERAGE_CPU_UTILIZATION` or `AVERAGE_DB_CONNECTIONS`. 
-            Supports configurable cooldown periods (default 600s, minimum 60s) 
+        -   **Autoscaling:** Dynamically adjusts node counts between specified
+            `--auto-scale-min-node-count` and `--auto-scale-max-node-count`
+            thresholds based on `AVERAGE_CPU_UTILIZATION` or `AVERAGE_DB_CONNECTIONS`.
+            Supports configurable cooldown periods (default 600s, minimum 60s)
             and optional scale-in disabling (`--auto-scale-disable-scale-in`).
     -   **High Availability & SLA:** Pools with 2 or more nodes are covered under the Cloud SQL SLA, with nodes distributed across zones within the region.
     -   **Routing & Consistency:** Routes traffic based on node process health 

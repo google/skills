@@ -4,7 +4,10 @@ Cloud SQL provides multiple mechanisms for data protection, continuous replicati
 
 ## Backup Types and Recovery
 
-- **Automated Backups:** Daily instance snapshots taken during a user-configurable 4-hour window. Enterprise edition retains up to 7 backups by default; Enterprise Plus edition supports retention up to 35 days.
+- **Automated Backups:** Daily instance snapshots taken during a
+  user-configurable 4-hour window. Enterprise edition retains 7 backups by
+  default; Enterprise Plus edition retains 15 backups by default (configurable
+  from 1 to 365 backups for both editions).
 
 - **On-Demand Backups:** Manually created backups that remain stored until explicitly deleted. Useful before performing high-risk schema migrations or administrative changes.
 
@@ -51,7 +54,9 @@ Exclusive to **Cloud SQL Enterprise Plus Edition**, Advanced DR simplifies regio
 
 - **Replica Failover:** Rapid cross-region failover triggered during primary region outages. Promotes the designated DR replica to primary while retaining the old primary in the replication topology for eventual restoration.
 
-- **Switchover:** Zero-data-loss, zero-downtime operation used for planned cross-region failover or routine DR drills. Gracefully reverses roles between the primary instance and the DR replica.
+- **Switchover:** Zero-data-loss, minimal-downtime operation used for planned
+  cross-region failover or routine DR drills. Gracefully reverses roles between
+  the primary instance and the DR replica.
 
 - **DNS Write Endpoints:** Provides a global DNS endpoint that automatically shifts write traffic to the newly promoted primary instance following a switchover or replica failover.
 

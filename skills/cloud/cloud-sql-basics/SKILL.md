@@ -1,7 +1,7 @@
 ---
 name: cloud-sql-basics
 metadata:
-  version: "1.0.1"
+  version: "1.1.0"
   category: Databases
 description: >-
   This file generates or explains Cloud SQL resources. Use this file when the
@@ -52,6 +52,7 @@ access to Cloud SQL resources.
     ```bash
     gcloud sql instances create INSTANCE_NAME \
       --database-version=POSTGRES_18 \
+      --edition=ENTERPRISE \
       --cpu=2 \
       --memory=7680MiB \
       --region=REGION \
