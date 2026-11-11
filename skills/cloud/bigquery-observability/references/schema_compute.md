@@ -301,7 +301,7 @@ Edition tiers, scaling modes, and disaster recovery replica locations.
 | `project_number` | `INT64` | Numeric ID | Number of the administration project. |
 | `reservation_group_path` | `ARRAY<STRING>` | Array | Reservation group hierarchy path (e.g. `['my-group']`). |
 | `reservation_name` | `STRING` | Resource Path | User-provided reservation name. |
-| `scaling_mode` | `STRING` | Enum | Scaling mode determining progression from baseline to `max_slots` (`'AUTOSCALE'`, `'MANUAL'`). |
+| `scaling_mode` | `STRING` | Enum | Scaling mode determining progression from baseline to `max_slots` (`'ALL_SLOTS'`, `'IDLE_SLOTS_ONLY'`, `'AUTOSCALE_ONLY'`, `'SCALING_MODE_UNSPECIFIED'`). |
 | `secondary_location` | `STRING` | Region | Current location of reservation's secondary replica in Disaster Recovery. |
 | `slot_capacity` | `INT64` | **Slots** | Baseline slot capacity configured for the reservation. |
 | `target_job_concurrency` | `INT64` | Count | Target maximum concurrent queries before queueing (0 = dynamic auto-concurrency). |
@@ -343,7 +343,7 @@ removed from the view).
 | `project_number` | `INT64` | Numeric ID | Number of the administration project. |
 | `reservation_group_path` | `ARRAY<STRING>` | Array | Reservation group hierarchy path. |
 | `reservation_name` | `STRING` | Resource Path | User-provided reservation name. |
-| `scaling_mode` | `STRING` | Enum | Scaling mode (`'AUTOSCALE'`, `'MANUAL'`). |
+| `scaling_mode` | `STRING` | Enum | Scaling mode (`'ALL_SLOTS'`, `'IDLE_SLOTS_ONLY'`, `'AUTOSCALE_ONLY'`, `'SCALING_MODE_UNSPECIFIED'`). |
 | `secondary_location` | `STRING` | Region | Location of secondary replica in Disaster Recovery. |
 | `slot_capacity` | `INT64` | **Slots** | Baseline slot capacity configured at event time. |
 | `target_job_concurrency` | `INT64` | Count | Target query concurrency limit. |
@@ -388,7 +388,7 @@ records).
 | `reservation_group_path` | `ARRAY<STRING>` | Array | Hierarchical reservation group path. |
 | `reservation_id` | `STRING` | Resource Path | Formatted reservation path (`project_id:location.reservation_name`) for joining with `JOBS_TIMELINE`. |
 | `reservation_name` | `STRING` | Resource Path | Name of the reservation. |
-| `scaling_mode` | `STRING` | Enum | Scaling mode (`'AUTOSCALE'`, `'MANUAL'`). |
+| `scaling_mode` | `STRING` | Enum | Scaling mode (`'ALL_SLOTS'`, `'IDLE_SLOTS_ONLY'`, `'AUTOSCALE_ONLY'`, `'SCALING_MODE_UNSPECIFIED'`). |
 | `slot_capacity` | `INT64` | **Slots** | Total configured baseline slot capacity. **Formula for Billable Baseline Slots:** `IF(is_creation_region, slot_capacity, 0)`. |
 | `slots_assigned` | `INT64` | **Slots** | Instantaneous active baseline allocation. Shifts to secondary region during DR failover events (for invoicing, use `slot_capacity` with `is_creation_region`). |
 | `slots_max_assigned` | `INT64` | **Slots** | Maximum slot capacity for reservation including idle sharing (`slots_assigned` if `ignore_idle_slots = TRUE`). |
@@ -569,7 +569,7 @@ sub-second SQL acceleration.
 
 #### Required IAM Permissions & Predefined Roles
 
-*   Requires `bigquery.biengine.get` or `bigquery.biengine.list` on the project.
+*   Requires `bigquery.bireservations.get` on the project.
 *   **Predefined Roles:** **BigQuery Resource Viewer**
     (`roles/bigquery.resourceViewer`), **BigQuery Resource Admin**
     (`roles/bigquery.resourceAdmin`), or **BigQuery Admin**

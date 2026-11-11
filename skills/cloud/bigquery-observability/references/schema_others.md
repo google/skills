@@ -8,55 +8,55 @@ Indexes, Configurations, and Recommendations.
 ## Table of Contents
 
 -   [View Scoping & Qualification Matrix](#view-scoping-qualification-matrix)
-    (Lines 61-79)
+    (Lines 61-78)
 -   [5. Routines, Functions, Stored Procedures & ML Views](#5-routines-functions-stored-procedures-ml-views)
-    (Lines 80-179)
+    (Lines 79-178)
     -   [`INFORMATION_SCHEMA.ROUTINES`](#information_schemaroutines) (Lines
-        82-120)
+        81-119)
     -   [`INFORMATION_SCHEMA.PARAMETERS`](#information_schemaparameters) (Lines
-        121-151)
+        120-150)
     -   [`INFORMATION_SCHEMA.ROUTINE_OPTIONS`](#information_schemaroutine_options)
-        (Lines 152-179)
+        (Lines 151-178)
 -   [6. Streaming & Ingestion Views](#6-streaming-ingestion-views) (Lines
-    180-249)
+    179-248)
     -   [`INFORMATION_SCHEMA.STREAMING_TIMELINE_BY_PROJECT` (and `_BY_ORGANIZATION`, `_BY_FOLDER`)](#information_schemastreaming_timeline_by_project-and-_by_organization-_by_folder)
-        (Lines 182-214)
+        (Lines 181-213)
     -   [`INFORMATION_SCHEMA.WRITE_API_TIMELINE_BY_PROJECT` (and `_BY_ORGANIZATION`, `_BY_FOLDER`)](#information_schemawrite_api_timeline_by_project-and-_by_organization-_by_folder)
-        (Lines 215-249)
+        (Lines 214-248)
 -   [7. Search, Vector, AI Indexes & BI Engine Views](#7-search-vector-ai-indexes-bi-engine-views)
-    (Lines 250-405)
+    (Lines 249-404)
     -   [`INFORMATION_SCHEMA.SEARCH_INDEXES` (and `_OPTIONS`)](#information_schemasearch_indexes-and-_options)
-        (Lines 252-290)
+        (Lines 251-289)
     -   [`INFORMATION_SCHEMA.SEARCH_INDEX_COLUMNS`](#information_schemasearch_index_columns)
-        (Lines 291-316)
+        (Lines 290-315)
     -   [`INFORMATION_SCHEMA.VECTOR_INDEXES` (and `_OPTIONS`)](#information_schemavector_indexes-and-_options)
-        (Lines 317-354)
+        (Lines 316-353)
     -   [`INFORMATION_SCHEMA.VECTOR_INDEX_COLUMNS`](#information_schemavector_index_columns)
-        (Lines 355-380)
+        (Lines 354-379)
     -   [`INFORMATION_SCHEMA.BI_CAPACITIES` & `BI_CAPACITY_CHANGES`](#information_schemabi_capacities-bi_capacity_changes)
-        (Lines 381-405)
+        (Lines 380-404)
 -   [8. Security, Access Control, Governance & Policy Views](#8-security-access-control-governance-policy-views)
-    (Lines 406-459)
+    (Lines 405-441)
     -   [`INFORMATION_SCHEMA.OBJECT_PRIVILEGES`](#information_schemaobject_privileges)
-        (Lines 408-433)
-    -   [`INFORMATION_SCHEMA.ROW_ACCESS_POLICIES` & `ROW_ACCESS_POLICY_OPTIONS`](#information_schemarow_access_policies-row_access_policy_options)
-        (Lines 434-459)
+        (Lines 407-432)
+    -   [Row-Level Access Policies (CLI / REST API Only)](#row-level-access-policies-cli-rest-api-only)
+        (Lines 433-441)
 -   [9. Recommendations & Insights Views](#9-recommendations-insights-views)
-    (Lines 460-536)
+    (Lines 442-518)
     -   [`INFORMATION_SCHEMA.RECOMMENDATIONS` (and `_BY_PROJECT`, `_BY_ORGANIZATION`)](#information_schemarecommendations-and-_by_project-_by_organization)
-        (Lines 462-498)
+        (Lines 444-480)
     -   [`INFORMATION_SCHEMA.INSIGHTS` (and `_BY_PROJECT`)](#information_schemainsights-and-_by_project)
-        (Lines 499-536)
+        (Lines 481-518)
 -   [10. Project & Organization Configuration Views](#10-project-organization-configuration-views)
-    (Lines 537-633)
+    (Lines 519-615)
     -   [`INFORMATION_SCHEMA.PROJECT_OPTIONS`](#information_schemaproject_options)
-        (Lines 539-565)
+        (Lines 521-547)
     -   [`INFORMATION_SCHEMA.EFFECTIVE_PROJECT_OPTIONS`](#information_schemaeffective_project_options)
-        (Lines 566-591)
+        (Lines 548-573)
     -   [`INFORMATION_SCHEMA.ORGANIZATION_OPTIONS`](#information_schemaorganization_options)
-        (Lines 592-613)
+        (Lines 574-595)
     -   [`INFORMATION_SCHEMA.ORGANIZATION_OPTIONS_CHANGES`](#information_schemaorganization_options_changes)
-        (Lines 614-633)
+        (Lines 596-615)
 
 ## View Scoping & Qualification Matrix
 
@@ -69,8 +69,7 @@ Platform, acceleration, and governance views fall into **Dual-Scoped**,
 | **BI Engine Acceleration** | `BI_CAPACITIES`, `BI_CAPACITY_CHANGES` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.BI_CAPACITIES*``<br>• In-memory RAM capacity and allocation modification logs. |
 | **Search Indexes** | `SEARCH_INDEXES`, `SEARCH_INDEX_COLUMNS`, `SEARCH_INDEX_OPTIONS`, `SEARCH_INDEX_COLUMN_OPTIONS`<br><br>`SEARCH_INDEXES_BY_ORGANIZATION` | **Dataset-Only**<br><br><br>**Region-Only** | • Dataset views require `{dataset_id}`.<br>• Org view requires `region-{region}`. |
 | **Vector Indexes** | `VECTOR_INDEXES`, `VECTOR_INDEX_COLUMNS`, `VECTOR_INDEX_OPTIONS` | **Dual-Scoped** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.VECTOR_INDEXES*``<br>OR<br>`` `{project_id}`.`{dataset_id}`.INFORMATION_SCHEMA.VECTOR_INDEXES*`` |
-| **Access Control** | `OBJECT_PRIVILEGES` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.OBJECT_PRIVILEGES``<br>• IAM permissions on datasets, tables, views, and routines. |
-| **Row-Level Security** | `ROW_ACCESS_POLICIES`, `ROW_ACCESS_POLICY_OPTIONS` | **Dataset-Only** | `` `{project_id}`.`{dataset_id}`.INFORMATION_SCHEMA.ROW_ACCESS_POLICIES*``<br>• Row access filter expressions and predicate definitions. |
+| **Access Control** | `OBJECT_PRIVILEGES` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.OBJECT_PRIVILEGES``<br>• IAM permissions on datasets, tables, and views. |
 | **Streaming Ingestion** | `STREAMING_TIMELINE_BY_PROJECT*`, `WRITE_API_TIMELINE_BY_PROJECT*` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.{view_name}``<br>• Streaming buffer and Storage Write API append throughput. |
 | **Configurations** | `PROJECT_OPTIONS*`, `EFFECTIVE_PROJECT_OPTIONS`, `ORGANIZATION_OPTIONS*` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.{view_name}``<br>• Default option settings and audit history. |
 | **Insights & Recommendations** | `RECOMMENDATIONS*`, `INSIGHTS` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.{view_name}``<br>• Slot rightsizing and partitioning recommendations. |
@@ -109,9 +108,9 @@ Cloud Function connection endpoints.
 | `data_type` | `STRING` | SQL Type | Return data type (or `NULL` for procedures). |
 | `routine_body` | `STRING` | Enum | `'SQL'` or `'EXTERNAL'`. |
 | `routine_definition` | `STRING` | SQL Code | Routine body expression or JavaScript/Python function text. |
-| `external_language` | `STRING` | Enum | `'JAVASCRIPT'`, `'PYTHON'`, `'SQL'`. |
-| `is_deterministic` | `STRING` | `'YES'` / `'NO'` | Indicates whether identical inputs always return identical results. |
-| `security_type` | `STRING` | Enum | Execution security context: `'DEFINER'` or `'INVOKER'`. |
+| `external_language` | `STRING` | Enum | `'JAVASCRIPT'`, `'PYTHON'`, or `NULL` (when defined with SQL). |
+| `is_deterministic` | `STRING` | `'YES'` / `'NO'` | Indicates whether identical inputs always return identical results (`NULL` if unknown). |
+| `security_type` | `STRING` | Nullable | Security type of the routine (always `NULL`). |
 | `created` | `TIMESTAMP` | UTC Timestamp | Creation timestamp. |
 | `last_altered` | `TIMESTAMP` | UTC Timestamp | Last modification timestamp. |
 | `ddl` | `STRING` | SQL String | DDL statement to recreate the routine. |
@@ -397,7 +396,7 @@ capacities, and capacity alteration events.
 | Column Name | Data Type | Physical Unit | Description |
 | :--- | :--- | :--- | :--- |
 | `bi_capacity_name` | `STRING` | Resource Path | BI Engine capacity identifier. |
-| `preferred_tables` | `ARRAY<RECORD>` | Array | Pinned tables prioritized for memory caching. |
+| `preferred_tables` | `ARRAY<STRING>` | Array | Pinned tables prioritized for memory caching (`NULL` = all tables in project). |
 | `project_id` | `STRING` | Project ID | Project hosting the BI Engine capacity. |
 | `project_number` | `INT64` | Numeric ID | Project number. |
 | `size` | `INT64` | **Bytes** | Configured in-memory RAM capacity allocation. |
@@ -409,13 +408,13 @@ capacities, and capacity alteration events.
 
 #### High-Level Description
 
-Lists IAM permissions and role grants across datasets, tables, views, routines,
-and models.
+Lists explicit IAM role bindings across datasets, tables, views, and external
+tables.
 
 #### Required IAM Permissions & Predefined Roles
 
-*   Requires `bigquery.datasets.getIamPolicy` on datasets or
-    `bigquery.tables.getIamPolicy` on tables.
+*   Requires `bigquery.datasets.get` on datasets or
+    `bigquery.tables.getIamPolicy` on tables and views.
 *   **Predefined Roles:** **BigQuery Data Owner** (`roles/bigquery.dataOwner`),
     **BigQuery Admin** (`roles/bigquery.admin`), or **Security Admin**
     (`roles/iam.securityAdmin`).
@@ -427,35 +426,18 @@ and models.
 | `object_catalog` | `STRING` | Project ID | Project containing the resource. |
 | `object_name` | `STRING` | Resource Name | Name of table, view, or dataset. |
 | `object_schema` | `STRING` | Dataset ID | Dataset containing the resource. |
-| `object_type` | `STRING` | Enum | `'SCHEMA'`, `'TABLE'`, `'VIEW'`, `'ROUTINE'`, `'MODEL'`. |
+| `object_type` | `STRING` | Enum | `'SCHEMA'`, `'TABLE'`, `'VIEW'`, `'EXTERNAL'`. |
 | `privilege_type` | `STRING` | Role ID | IAM Role ID granted (e.g. `'roles/bigquery.dataViewer'`). |
 <!-- mdformat on -->
 
-### `INFORMATION_SCHEMA.ROW_ACCESS_POLICIES` & `ROW_ACCESS_POLICY_OPTIONS`
+### Row-Level Access Policies (CLI / REST API Only)
 
-#### High-Level Description
-
-Defines Row-Level Security (RLS) policies and filter predicates on base tables
-within a dataset.
-
-#### Required IAM Permissions & Predefined Roles
-
-*   Requires `bigquery.rowAccessPolicies.getFilteredData` or
-    `bigquery.rowAccessPolicies.getIamPolicy` on the target table/dataset.
-*   **Predefined Roles:** **BigQuery Data Owner** (`roles/bigquery.dataOwner`)
-    or **BigQuery Admin** (`roles/bigquery.admin`).
-
-<!-- mdformat off -->
-| Column Name | Data Type | Physical Unit | Description |
-| :--- | :--- | :--- | :--- |
-| `creation_time` | `TIMESTAMP` | UTC Timestamp | Timestamp when policy was created. |
-| `filter_predicate` | `STRING` | SQL Boolean | GoogleSQL filter expression applied to restrict row visibility. |
-| `last_modified_time` | `TIMESTAMP` | UTC Timestamp | Timestamp when filter predicate was modified. |
-| `row_access_policy_name` | `STRING` | Policy Name | Unique RLS policy identifier. |
-| `table_catalog` | `STRING` | Project ID | Project name. |
-| `table_name` | `STRING` | Table ID | Table identifier. |
-| `table_schema` | `STRING` | Dataset ID | Dataset identifier. |
-<!-- mdformat on -->
+BigQuery does not expose `INFORMATION_SCHEMA` views for row-level access
+policies. List row-level access policies on a table using `bq ls
+--row_access_policies {dataset_id}.{table_id}` or the `RowAccessPolicies.List`
+REST API method (requires `bigquery.rowAccessPolicies.list`, plus
+`bigquery.rowAccessPolicies.getIamPolicy` to view policy grantees, granted by
+`roles/bigquery.dataOwner` or `roles/bigquery.admin`).
 
 ## 9. Recommendations & Insights Views
 

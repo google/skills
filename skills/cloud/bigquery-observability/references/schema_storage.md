@@ -18,7 +18,7 @@ views in BigQuery `INFORMATION_SCHEMA`.
         (Lines 167-213)
     -   [`INFORMATION_SCHEMA.TABLE_OPTIONS`](#information_schematable_options)
         (Lines 214-241)
-    -   [`INFORMATION_SCHEMA.TABLE_SNAPSHOTS` (and `_BY_PROJECT`)](#information_schematable_snapshots-and-_by_project)
+    -   [`INFORMATION_SCHEMA.TABLE_SNAPSHOTS`](#information_schematable_snapshots)
         (Lines 242-268)
     -   [`INFORMATION_SCHEMA.PARTITIONS`](#information_schemapartitions) (Lines
         269-300)
@@ -55,7 +55,7 @@ and **Dataset-Only** qualification categories:
 | **Storage Footprints** | `TABLE_STORAGE*` (`_BY_PROJECT`, `_BY_FOLDER`, `_BY_ORGANIZATION`), `TABLE_STORAGE_USAGE_TIMELINE*` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.TABLE_STORAGE*``<br>• Storage billing models (Logical vs Physical) and daily usage integrals (`MiB * seconds`). |
 | **Tables & Metadata** | `TABLES`, `TABLE_OPTIONS`, `COLUMNS`, `COLUMN_FIELD_PATHS`, `VIEWS`, `MATERIALIZED_VIEWS` | **Dual-Scoped** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.{view_name}``<br>OR<br>`` `{project_id}`.`{dataset_id}`.INFORMATION_SCHEMA.{view_name}`` |
 | **Table Partitions** | `PARTITIONS` | **Dataset-Only** | `` `{project_id}`.`{dataset_id}`.INFORMATION_SCHEMA.PARTITIONS``<br>• Partition boundaries and storage tiers. Must be qualified with `{dataset_id}`. |
-| **Table Snapshots** | `TABLE_SNAPSHOTS*` (`_BY_PROJECT`) | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.TABLE_SNAPSHOTS*``<br>• Table snapshot metadata, base table references, and expiration times. |
+| **Table Snapshots** | `TABLE_SNAPSHOTS` | **Dual-Scoped** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.TABLE_SNAPSHOTS``<br>OR<br>`` `{project_id}`.`{dataset_id}`.INFORMATION_SCHEMA.TABLE_SNAPSHOTS`` |
 | **Datasets & Replication** | `SCHEMATA*`, `SCHEMATA_OPTIONS`, `SCHEMATA_REPLICAS*`, `SCHEMATA_LINKS`, `SHARED_DATASET_USAGE` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.SCHEMATA*``<br>• Dataset catalog, cross-region replication, and failover status. |
 | **Table Constraints** | `TABLE_CONSTRAINTS`, `KEY_COLUMN_USAGE` | **Dual-Scoped** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.{view_name}``<br>OR<br>`` `{project_id}`.`{dataset_id}`.INFORMATION_SCHEMA.{view_name}`` |
 <!-- mdformat on -->
@@ -75,8 +75,8 @@ and Logical vs. Physical billing tiers.
 *   **Project-Level (Least Privilege):** Requires `bigquery.tables.get` and
     `bigquery.tables.list` on the project. Granted by **BigQuery Metadata
     Viewer** (`roles/bigquery.metadataViewer`), **BigQuery Data Viewer**
-    (`roles/bigquery.dataViewer`), **BigQuery Data Owner**
-    (`roles/bigquery.dataOwner`), or **BigQuery Admin**
+    (`roles/bigquery.dataViewer`), **BigQuery Data Editor**
+    (`roles/bigquery.dataEditor`), or **BigQuery Admin**
     (`roles/bigquery.admin`).
 *   **`_BY_FOLDER`:** Requires `bigquery.tables.get` and `bigquery.tables.list`
     on the parent folder.
@@ -107,10 +107,10 @@ and Logical vs. Physical billing tiers.
 > and then by 1,024: `(usage / 86400) / 1024`.
 
 > [!NOTE] **Access Requirements:** Accessing `TABLE_STORAGE_USAGE_TIMELINE`
-> requires `bigquery.admin` or `bigquery.resourceAdmin` IAM permissions (or
-> granular `bigquery.tables.get` and `bigquery.datasets.get`) to view
-> cross-dataset storage usage. Does not require `enable_info_schema_storage`
-> opt-in.
+> requires `bigquery.tables.get` and `bigquery.tables.list` IAM permissions
+> (granted by `roles/bigquery.metadataViewer`, `roles/bigquery.dataViewer`,
+> `roles/bigquery.dataEditor`, or `roles/bigquery.admin`) on the project. Does
+> not require `enable_info_schema_storage` opt-in.
 
 ### `INFORMATION_SCHEMA.TABLE_STORAGE` (and `_BY_PROJECT`, `_BY_ORGANIZATION`, `_BY_FOLDER`)
 
@@ -126,8 +126,8 @@ roles for new projects.
 *   **Project-Level (Least Privilege):** Requires `bigquery.tables.get` and
     `bigquery.tables.list` on the project. Granted by **BigQuery Metadata
     Viewer** (`roles/bigquery.metadataViewer`), **BigQuery Data Viewer**
-    (`roles/bigquery.dataViewer`), **BigQuery Data Owner**
-    (`roles/bigquery.dataOwner`), or **BigQuery Admin**
+    (`roles/bigquery.dataViewer`), **BigQuery Data Editor**
+    (`roles/bigquery.dataEditor`), or **BigQuery Admin**
     (`roles/bigquery.admin`).
 *   **`_BY_FOLDER`:** Requires `bigquery.tables.get` and `bigquery.tables.list`
     on the parent folder.
@@ -239,7 +239,7 @@ partition filter requirements.
 | `table_schema` | `STRING` | Dataset ID | Dataset name. |
 <!-- mdformat on -->
 
-### `INFORMATION_SCHEMA.TABLE_SNAPSHOTS` (and `_BY_PROJECT`)
+### `INFORMATION_SCHEMA.TABLE_SNAPSHOTS`
 
 #### High-Level Description
 

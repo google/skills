@@ -1,7 +1,7 @@
 ---
 name: bigquery-observability
 metadata:
-  version: "1.2.1"
+  version: "1.2.2"
   category: BigDataAndAnalytics
 description: >-
   Provides data-retrieval best practices, tool selection guidance, and
@@ -134,8 +134,8 @@ a **project qualifier**.
 
     *Example:* `` `my-project`.`analytics`.INFORMATION_SCHEMA.TABLES``
 
-    *Applies to:* Dataset-scoped views (`PARTITIONS`, `SEARCH_INDEXES*`,
-    `ROW_ACCESS_POLICIES`). Never use `region-` with dataset views.
+    *Applies to:* Dataset-scoped views (`PARTITIONS`, `SEARCH_INDEXES*`).
+    Never use `region-` with dataset views.
 
 3.  **Dual-Scoped Views:** Views like `TABLES`, `COLUMNS`, `COLUMN_FIELD_PATHS`,
     `VIEWS`, `ROUTINES`, and `VECTOR_INDEXES` can be qualified with either
@@ -254,14 +254,13 @@ analytical need:
     column, snapshot, dataset, constraint, and replication views
     (`TABLE_STORAGE*`, `TABLE_STORAGE_USAGE_TIMELINE*`, `TABLES*`,
     `TABLE_OPTIONS`, `COLUMNS`, `COLUMN_FIELD_PATHS`, `PARTITIONS`, `VIEWS`,
-    `MATERIALIZED_VIEWS`, `TABLE_SNAPSHOTS*`, `TABLE_CONSTRAINTS`,
+    `MATERIALIZED_VIEWS`, `TABLE_SNAPSHOTS`, `TABLE_CONSTRAINTS`,
     `KEY_COLUMN_USAGE`, `SCHEMATA*`, `SCHEMATA_OPTIONS`, `SCHEMATA_REPLICAS*`,
     `SCHEMATA_LINKS`, `SHARED_DATASET_USAGE`).
 *   **Platform, Governance & Ingestion Schema Dictionary**
     (`references/schema_others.md`): Complete column dictionary, physical units,
     and least-privilege IAM roles for all remaining views including Access
-    Control (`OBJECT_PRIVILEGES`, `ROW_ACCESS_POLICIES`,
-    `ROW_ACCESS_POLICY_OPTIONS`), Streaming Ingestion
+    Control (`OBJECT_PRIVILEGES`), Streaming Ingestion
     (`STREAMING_TIMELINE_BY_PROJECT*`, `WRITE_API_TIMELINE_BY_PROJECT*`),
     Configuration Options (`PROJECT_OPTIONS*`, `EFFECTIVE_PROJECT_OPTIONS`,
     `ORGANIZATION_OPTIONS*`, `ORGANIZATION_OPTIONS_CHANGES`), Insights &
