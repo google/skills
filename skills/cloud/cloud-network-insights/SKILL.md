@@ -2,7 +2,7 @@
 name: cloud-network-insights
 metadata:
   category: Networking
-  version: "1.0.0"
+  version: "1.0.1"
 description: >-
   Guides and automates setup, onboarding, and synthetic monitoring operations
   for Cloud Network Insights in Google Cloud and Broadcom AppNeta. Use when
@@ -146,6 +146,14 @@ Once policies are configured and MPs are online, verify provisioned paths:
       --project=PROJECT_ID \
       --format=json
     ```
+-   **Filter by Monitoring Point**: Add
+    `--filter="sourceMonitoringPointId=MONITORING_POINT_ID"` to list only paths
+    sourced from a specific Monitoring Point, where `MONITORING_POINT_ID` is the
+    last segment of the Monitoring Point's `name` in `monitoring-points list`.
+-   **Expected Extra Paths**: Each Web policy also creates a companion
+    `NetworkPath` to the target host (unless one already exists), and a newly
+    deployed Monitoring Point inherits paths from existing policies whose
+    `monitoringPointRules` match it.
 
 ### 5. Querying Cloud Network Insights Resources and State
 
@@ -173,7 +181,10 @@ Once policies are configured and MPs are online, verify provisioned paths:
     [Set up alerts and notifications](https://cloud.google.com/network-intelligence-center/docs/cloud-network-insights/set-up-alerts)).
     For `insights_alarm` policies, include `AND NOT
     jsonPayload.noise_conditions:*` by default to filter out frequent/burst
-    noise unless the user asks to include noisy alarms:
+    noise unless the user asks to include noisy alarms. Always set
+    `"userLabels": {"cloud-network-insights": "true"}` in `POLICY_FILE` so the
+    policy appears in the Cloud Network Insights alert policies view in the
+    Google Cloud console:
 
     ```bash
     # Create an alert policy from a JSON or YAML file
