@@ -1,7 +1,7 @@
 ---
 name: google-cloud-filestore-autoscale
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: Storage
 description: >-
   Inspects Filestore capacity and utilization on Google Cloud, evaluates storage
@@ -52,7 +52,10 @@ Prefix `gcloud` commands with the correct metrics environment targeting this ski
 
 ```bash
 CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-autoscale)" \
-gcloud filestore instances update ...
+gcloud filestore instances update <INSTANCE_ID> \
+    --project=<PROJECT_ID> \
+    --zone=<ZONE_OR_REGION> \
+    --file-share=name=<FILE_SHARE_NAME>,capacity=<TARGET_CAPACITY>
 ```
 On direct HTTP calls to the REST API, append the `User-Agent`:
 
@@ -72,11 +75,24 @@ For purely conceptual, educational, or informational questions (e.g., "What are 
 
 If the user prompt contains constraints like "Do not execute commands", "without executing", or "read-only":
 
-*   **Rule**: **Strictly avoid calling the `run_command` tool** to execute any shell or `gcloud` commands (including read-only list/describe commands).
+*   **Rule**: **Strictly avoid calling the `run_command` tool** to execute any
+    shell, `gcloud`, or code search (`cs`) commands (including read-only
+    list/describe commands).
 *   **Discovery**:
-    1.  First, check if Filestore MCP tools (`list_instances`, `get_instance`) are available and use them (these are API calls, not command executions).
-    2.  If MCP tools are not available, search local markdown documentation files (e.g., `references/instance-tiers-specs.md`) for any mock instance definitions or project details matching the request. (Do NOT attempt to read evaluation config files such as `EVAL.yaml` or `EVAL.txtpb` during evaluation runs as access is restricted).
-    3.  If no data can be found, explain the required steps and formulas, and output the exact commands the user should run, without executing them yourself.
+    1.  If the user prompt already provides the instance's tier, capacity, and
+        utilization or free space, evaluate the instance directly using those
+        provided values without searching for additional files.
+    2.  Otherwise, check if Filestore MCP tools (`list_instances`,
+        `get_instance`) are available and use them (these are API calls, not
+        command executions).
+    3.  If MCP tools are not available, check
+        `references/instance-tiers-specs.md` for any mock instance definitions
+        or project details matching the request. (Do NOT run repository-wide
+        searches or attempt to read evaluation config files such as `EVAL.yaml`
+        or `EVAL.txtpb` during evaluation runs as access is restricted).
+    4.  If no data can be found, explain the required steps and formulas, and
+        output the exact commands the user should run, without executing them
+        yourself.
 *   **Mandatory User Confirmation Requirement**: Even when the user prompt asks not to execute commands or asks only for command syntax/recommendations, your response MUST STILL end with a clear question prompting the user for confirmation before executing any capacity resizing commands (e.g., *"Would you like me to proceed with scaling `[instance]` from [A] TiB to [B] TiB? Please confirm to execute."*).
 
 ## Tier & Capacity Limits Matrix
@@ -88,7 +104,9 @@ See `references/instance-tiers-specs.md` for the full Tier & Capacity Limits Mat
 **Critical Thresholds:**
 
 - **Basic HDD / Basic SSD**: Can scale up, but **cannot scale down**.
-- **Zonal / Regional**: Can scale down, but cannot shrink below their minimum floor (1 TiB or 10 TiB depending on band) AND cannot shrink below the current `used_bytes` metric.
+- **Zonal / Regional**: Can scale down, but cannot shrink below their minimum
+  floor (100 GiB for Regional Small Band, 1 TiB for Zonal Small Band, or 10 TiB
+  for Large Band) AND cannot shrink below current `used_bytes`.
 
 ## Core Operational Workflow
 
@@ -131,10 +149,15 @@ The skill must categorize each evaluated instance into one of 5 definitive verdi
     scale-up safety threshold (< 15% free space remaining). The evaluation
     response MUST explicitly state that the current free space percentage is
     below the 15% scale-up safety threshold. Capacity must be increased by 10%
-    (default) or step-size minimum, rounded to the tier's step increment (256
-    GiB for Small Band [1–9.75 TiB], 2.5 TiB for Large Band [10–100 TiB], as
-    specified in `references/instance-tiers-specs.md`), not exceeding the
-    maximum capacity. Suggest target capacity, provide the attributed `gcloud`
+    (default) or step-size minimum, rounded to the tier's step increment (1 GiB
+    for Regional Small Band [100 GiB-10,239 GiB] or Basic, 256 GiB for Zonal
+    Small Band [1-9.75 TiB] or Enterprise [1-10 TiB],
+    2.5 TiB for Large Band [10-100 TiB],
+    as specified in `references/instance-tiers-specs.md`), not exceeding the
+    maximum capacity. Always explicitly state the calculated target capacity in
+    TiB (for example, for a 1 TiB [1024 GiB] Basic instance increased by +10%,
+    explicitly state `1.1 TiB` alongside its 1 GiB step-aligned equivalent `1126
+    GiB` / `1127 GiB`). Suggest target capacity, provide the attributed `gcloud`
     update command, and MUST conclude the response with a clear question
     prompting the user for confirmation to execute (e.g., *"Would you like me to
     proceed with scaling `[instance]` from [A] TiB to [B] TiB? Please confirm to
@@ -143,23 +166,26 @@ The skill must categorize each evaluated instance into one of 5 definitive verdi
     threshold (> 30% free space remaining) and the instance is eligible for
     downscaling (Zonal or Regional / Enterprise tiers). Apply the default step
     reduction of -10% of current capacity, aligned to the tier's step increment
-    (256 GiB for Small Band [1–9.75 TiB], 2.5 TiB for Large Band [10–100 TiB],
-    as specified in `references/instance-tiers-specs.md`). For example, for a 2
-    TiB (2048 GiB) Enterprise / Regional instance, rounding to the 256 GiB step
-    yields a proposed target capacity of 1.75 TiB (1792 GiB, or 1.8 TiB). The
-    response MUST explicitly verify that the proposed target capacity (e.g. 1.75
-    TiB / 1792 GiB or 1.8 TiB) remains strictly above both the tier's minimum
-    capacity floor (e.g. 1 TiB for Enterprise / Small Band, 10 TiB for Large
-    Band) and currently used space (e.g. 0.9 TiB). Do NOT reduce directly to the
-    floor in a single step. Suggest target capacity, estimated cost savings,
-    provide the attributed `gcloud` update command, and prompt the user for
-    confirmation to execute.
+    (1 GiB for Regional Small Band [100 GiB-10,239 GiB], 256 GiB for Zonal
+    Small Band [1-9.75 TiB] or Enterprise [1-10 TiB],
+    2.5 TiB for Large Band [10-100 TiB],
+    as specified in `references/instance-tiers-specs.md`). For example, for a
+    2 TiB (2048 GiB) Enterprise / Zonal Small Band instance, rounding to the
+    256 GiB step yields a proposed target capacity of 1.75 TiB (1792 GiB, or
+    1.8 TiB). The response MUST explicitly verify that the proposed target
+    capacity (e.g. 1.75 TiB / 1792 GiB or 1.8 TiB) remains strictly above both
+    the tier's minimum capacity floor (100 GiB for Regional Small Band, 1 TiB
+    for Zonal Small Band / Enterprise, or 10 TiB for Large Band) and currently
+    used space (e.g. 0.9 TiB). Do NOT reduce directly to the floor in a single
+    step. Suggest target capacity, estimated cost savings, provide the
+    attributed `gcloud` update command, and prompt the user for confirmation to
+    execute.
 -   **No (Healthy)**: Triggered when the instance's free space is within the
     optimal operating range (15% – 30%). No action required.
 -   **No (At min capacity limit)**: Triggered when free space is > 30%, but the
-    instance is already at the minimum allowed tier capacity floor (e.g. 1 TiB
-    for Small Band or 10 TiB for Large Band) or currently used space limit. No
-    action can be taken.
+    instance is already at the minimum allowed tier capacity floor (100 GiB for
+    Regional Small Band, 1 TiB for Zonal Small Band / Enterprise, or 10 TiB for
+    Large Band) or currently used space limit. No action can be taken.
 -   **No (Tier cannot scale down)**: Triggered when free space is > 30%, but the
     instance is on a Basic tier (Basic HDD / Basic SSD) which does not support
     downscaling. The agent must explicitly inform the user that scale-down is

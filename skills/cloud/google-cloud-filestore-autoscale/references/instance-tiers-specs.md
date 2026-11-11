@@ -19,7 +19,8 @@ Google Cloud rebranded Filestore tiers in the UI. For API/CLI operations, legacy
 - **Architecture**: ECFS (Elastifile Cloud File System) multi-node cluster.
 - **Behavior**: These tiers support both **Scale-up** and **Scale-down**, providing significant flexibility for cost optimization.
 - **Capacity Bands**:
-  - Small Band: 1 TiB - 9.75 TiB.
+  - Regional Small Band: 100 GiB - 10,239 GiB (1 GiB increments).
+  - Zonal Small Band: 1 TiB - 9.75 TiB (256 GiB increments).
   - Large Band: 10 TiB - 100 TiB.
   - *Instances cannot currently cross the boundary between small and large bands.*
 - **Availability**:
@@ -40,8 +41,9 @@ Filestore tiers enforce specific boundaries and behaviors. The skill must accept
 | :--- | :--- | :--- | :--- | :---: | :---: |
 | **Basic HDD** (`BASIC_HDD` / `STANDARD`) | **1 TiB** (100 GiB on GKE) | **63.9 TiB** | **1 GiB** | Yes | **No (Scale-Up Only)** |
 | **Basic SSD** (`BASIC_SSD` / `PREMIUM`) | **2.5 TiB** | **63.9 TiB** | **1 GiB** | Yes | **No (Scale-Up Only)** |
-| **Regional (Small Band)** (`REGIONAL`, `ENTERPRISE`) | **1 TiB** (100 GiB v2) | **9.75 TiB** | **256 GiB** (1 GiB v2) | Yes | **Yes** (Floor: 1 TiB, usage) |
-| **Regional (Large Band)** (`REGIONAL`) | **10 TiB** | **100 TiB** | **2.5 TiB** (2560 GiB) | Yes | **Yes** (Floor: 10 TiB, usage) |
-| **Zonal (Small Band)** (`ZONAL`) | **1 TiB** (100 GiB v2) | **9.75 TiB** | **256 GiB** (1 GiB v2) | Yes | **Yes** (Floor: 1 TiB, usage) |
-| **Zonal (Large Band)** (`ZONAL`, `HIGH_SCALE_SSD`)| **10 TiB** | **100 TiB** | **2.5 TiB** (2560 GiB) | Yes | **Yes** (Floor: 10 TiB, usage) |
+| **Regional (Small Band)** (`REGIONAL`) | **100 GiB** | **10,239 GiB** | **1 GiB** | Yes | **Yes** (Floor: 100 GiB, usage) |
+| **Regional (Large Band)** (`REGIONAL`) | **10 TiB** | **100 TiB** | **2.5 TiB** | Yes | **Yes** (Floor: 10 TiB, usage) |
+| **Zonal (Small Band)** (`ZONAL`) | **1 TiB** | **9.75 TiB** | **256 GiB** | Yes | **Yes** (Floor: 1 TiB, usage) |
+| **Zonal (Large Band)** (`ZONAL`, `HIGH_SCALE_SSD`)| **10 TiB** | **100 TiB** | **2.5 TiB** | Yes | **Yes** (Floor: 10 TiB, usage) |
+| **Enterprise** (`ENTERPRISE`) | **1 TiB** | **10 TiB** | **256 GiB** | Yes | **Yes** (Floor: 1 TiB, usage) |
 
