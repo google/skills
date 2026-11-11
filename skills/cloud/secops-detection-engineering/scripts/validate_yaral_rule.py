@@ -38,6 +38,14 @@ ALLOWED_AGGREGATIONS = (
     "count_distinct",
     "array",
     "array_distinct",
+    "window.avg",
+    "window.first",
+    "window.last",
+    "window.median",
+    "window.mode",
+    "window.range",
+    "window.stddev",
+    "window.variance",
 )
 ARRAY_COMPATIBLE_AGGREGATIONS = (
     "array",

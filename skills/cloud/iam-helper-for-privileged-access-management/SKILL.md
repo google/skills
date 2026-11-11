@@ -1,7 +1,7 @@
 ---
 name: iam-helper-for-privileged-access-management
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: Security
 description: >-
   Manages the end-to-end lifecycle of on-demand, temporary access using
@@ -153,7 +153,7 @@ Follow these steps for entitlement configurations.
 ### Required Permissions for Entitlement Admins
 
 *   `roles/privilegedaccessmanager.admin`: Required to create, update, and
-    delete entitlement configurations (`Mode 1 Step 3` and `Mode 2 CRUD`).
+    delete entitlement configurations (`Mode 2 CRUD`).
 *   **Scope IAM Admin Rights:** Required on the target hierarchy scope because
     creating an entitlement authorizes future role evaluations and bindings on
     that scope:
@@ -186,7 +186,10 @@ gcloud pam entitlements describe ENTITLEMENT_ID \
     (e.g., `compute-admin` for `roles/compute.admin`). **Note:**
     *   You may specify multiple IAM roles under `roleBindings`.
     *   You may also include an optional IAM `conditionExpression` for each role binding.
-    *   Legacy basic roles (e.g., `roles/viewer`, `roles/editor`, `roles/owner`) are NOT supported. Instead, use their v2 basic role equivalents (e.g., `roles/basic.viewer`, `roles/basic.editor`, `roles/basic.owner`). Ensure you select a valid predefined, custom, or v2 basic role.
+    *   Legacy basic roles (e.g., `roles/viewer`, `roles/editor`, `roles/owner`)
+        are NOT supported. Instead, use the basic roles (`roles/reader`,
+        `roles/writer`, `roles/admin`). Ensure you select a valid predefined,
+        custom, or basic role.
 *   Set `maxRequestDuration` based on user specification (e.g. `"28800s"` for 8
     hours, `"3600s"` for 1 hour). If unspecified by the user, default to
     `"14400s"` (4 hours). If manual approval is specified by policy or requested

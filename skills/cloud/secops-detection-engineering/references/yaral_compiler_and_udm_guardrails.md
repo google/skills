@@ -45,8 +45,13 @@ This reference defines the compiler syntax rules, type-checking constraints, agg
 
 ## 2. `outcome:` Aggregations & Dynamic Risk Scoring
 
-1. **The 7 Valid Outcome Aggregation Functions**:
-   - Use only `max()`, `min()`, `sum()`, `count()`, `count_distinct()`, `array()`, and `array_distinct()` (`avg()`, `mean()`, and `stddev()` do not exist).
+1. **Valid Outcome Aggregation Functions**:
+   - Use core aggregations `max()`, `min()`, `sum()`, `count()`,
+     `count_distinct()`, `array()`, and `array_distinct()`, or windowed
+     `window.*` aggregations (`window.avg()`, `window.first()`, `window.last()`,
+     `window.median()`, `window.mode()`, `window.range()`, `window.stddev()`,
+     and `window.variance()`) when `match:` is present (unprefixed `avg()`,
+     `mean()`, and `stddev()` do not exist).
 2. **Mandatory Aggregation When `match:` Is Present**:
    - Whenever `match:` is present, **every** `outcome:` variable referencing an event field or scalar constant must use an aggregation function (`$risk_score = max(85)`).
    - Never nest another `$outcome_var` inside an aggregate (`max($base_score)` fails); aggregate raw event expressions first and combine via top-level arithmetic (`$risk_score = $base_score + $bonus_score`).

@@ -93,25 +93,24 @@ the user (e.g., if the user requests elevation for `2 hours`, pass exactly
 timeframe, use the `60 mins` (`3600s`) default.
 
 Pass the scope flag matching where the entitlement is defined (`--project`,
-`--folder`, or `--organization`), and specify the target resource where access
-is needed using `--requested-resources`:
+`--folder`, or `--organization`):
 
 ```bash
-# Example using an organization-level entitlement for a project resource:
+# Example using a project-level entitlement:
 gcloud pam grants create \
     --entitlement=ENTITLEMENT_ID \
     --location=global \
     --requested-duration=DURATION \
     --justification="Automated temporary access request" \
-    --organization=ORGANIZATION_ID \
-    --requested-resources=projects/PROJECT_ID
+    --project=PROJECT_ID
 ```
 
 *(Note: The scope flag `--project`, `--folder`, or `--organization` must match
-where the entitlement is defined. The `--requested-resources` flag specifies the
-exact target resource where access is needed, formatted as
-`projects/PROJECT_ID`, `folders/FOLDER_ID`, or
-`organizations/ORGANIZATION_ID`).*
+where the entitlement is defined. To narrow an organization- or folder-level
+entitlement to a child resource via `--requested-resources=projects/PROJECT_ID`,
+use `gcloud beta pam grants create`, as `--requested-resources` is only
+available
+in the `beta` track).*
 
 ### Step 4: Handle Status & Termination {#step-4}
 
