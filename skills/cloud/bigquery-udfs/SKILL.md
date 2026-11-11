@@ -1,7 +1,7 @@
 ---
 name: bigquery-udfs
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: BigDataAndAnalytics
 description: >-
   Creates, deploys, and troubleshoots BigQuery User-Defined Functions (UDFs)
@@ -335,7 +335,11 @@ functions (for non-Python languages, VPC networking, or custom hardware):
     ```
 
 See [Remote Functions](references/remote-functions.md) for Cloud Run handler
-templates and retry handling.
+templates, batch limits (`max_batching_rows`, 5 MB max input per row, 15 MB max
+response on Cloud Run / 10 MB on 1st gen functions), and error/retry semantics
+(BigQuery automatically retries a batch only on HTTP `408`, `429`, `500`, `503`,
+or `504`; any other non-200 status or JSON `{"errorMessage": "..."}` fails the
+query without retrying).
 
 --------------------------------------------------------------------------------
 
@@ -400,7 +404,7 @@ gcloud storage rm gs://{bucket_name}/udf_libs/bundle.js
 ## Related Skills
 
 -   **BigQuery Basics** (`bigquery-basics`): Dataset, table, and job management.
--   [BigQuery DataFrames](../bigquery-bigframes): Creating Python UDFs from
-    Python via `@bpd.udf`.
--   [BigQuery AI & ML](../bigquery-ai-ml): Built-in `ML.GENERATE_TEXT` and
+-   The `bigquery-bigframes` skill: Creating Python UDFs from Python via
+    `@bpd.udf`.
+-   The `bigquery-ai-ml` skill: Built-in `AI.GENERATE_TEXT` and
     `AI.GENERATE` functions.
