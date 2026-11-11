@@ -1,78 +1,53 @@
 # Phase 3: Output Based on User Intent
 
-This phase handles generating the final bucket configuration in the user's
-preferred format and executing the creation if authorized.
+This phase generates the final bucket configuration in the user's preferred
+format and offers execution if authorized.
 
 ## Step 1: Determine Preferred Format
 
-The agent must determine the user's preferred output format.
-
-*   If the user has already specified a format in their prompt (e.g., "give me
-    Terraform", "write a gcloud command"), use that format.
-*   If the format is not specified, the agent MUST ask the user to select one of
-    the following formats:
-    *   **gcloud**: Command-line interface commands.
-    *   **REST (JSON)**: JSON payload and corresponding `curl` command.
-    *   **Terraform**: Terraform configuration block.
-    *   **SDK**: Client library code snippet. If selected, ask for the preferred
-        language (C++, Java, Python, or Go).
-
---------------------------------------------------------------------------------
+*   If the user already specified a format in their prompt (`gcloud`, `REST` /
+    `curl`, `Terraform`, or an `SDK` language), use that format.
+*   Otherwise, ask the user to choose: **gcloud**, **REST (JSON)**,
+    **Terraform**, or **SDK** (C++, Java, Python, or Go).
 
 ## Step 2: Generate Configuration Snippet and Recommendations
 
-1.  Based on the confirmed **Draft Bucket Creation Plan** (from Phase 2) and the
-    selected format, generate the configuration using the templates and rules in
-    the corresponding reference file:
-
-    *   **gcloud**: Refer to [gcloud.md](gcloud.md)
-    *   **REST (JSON)**: Refer to [rest.md](rest.md)
-    *   **Terraform**: Refer to [terraform.md](terraform.md)
-    *   **SDK**: Refer to [sdk.md](sdk.md)
-
-2.  **CRITICAL**: Ensure that all generated commands, payloads, configurations,
-    or code snippets—including any auxiliary or prerequisite commands/requests
-    in the **Other Recommendations** section—include the appropriate attribution
-    tagging as described in `SKILL.md` and the respective reference files.
-
-3.  **CRITICAL**: In your final output, you MUST include a section for **Other
-    Recommendations** (such as Cloud Monitoring, Storage Insights, or
-    prerequisite IAM bindings) that were proposed in the draft plan. Describe
-    their purpose and provide the necessary commands or guidance for the user to
-    configure them.
-
-4.  **CRITICAL**: If the reference files indicate version support limitations
-    for any of the configured features (e.g., Encryption Enforcement Config in
-    SDKs), you MUST include a warning in the final output. The warning must
-    specify the minimum supported version and instruct the user to use
-    alternative methods (REST, gcloud, or Terraform) if they are using an
-    unsupported version.
-
-Present the generated command/code block and recommendations to the user.
-
---------------------------------------------------------------------------------
+1.  Generate the configuration using the templates and rules in the format's
+    reference file:
+    *   **gcloud**: [gcloud.md](gcloud.md) (natively supports all features; do
+        **not** read `sdk.md`)
+    *   **REST (JSON)**: [rest.md](rest.md) (natively supports all features; do
+        **not** read `sdk.md`)
+    *   **Terraform**: [terraform.md](terraform.md) (do **not** read `sdk.md`)
+    *   **SDK**: [sdk.md](sdk.md) + `sdk_<lang>.md`
+2.  **Attribution (Mandatory for `gcloud` and `REST`)**: Prefix every generated
+    `gcloud` command (except `gcloud auth print-access-token` inside REST
+    `curl`) with the inline `CLOUDSDK_METRICS_ENVIRONMENT` append prefix, and
+    include
+    `User-Agent: gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)`
+    on every REST `curl` command.
+3.  **Keep Output Focused & Concise**: Output only the commands/code and helper
+    JSON files (`encryption_enforcement.json`, `lifecycle.json`, `cors.json`,
+    `ip_filter.json`) needed for the active settings in the Draft Plan. Do
+    **not** generate unrequested `gcloud kms keys add-iam-policy-binding`
+    commands or unrequested `--update-labels` commands when the user did not
+    request labels.
+4.  **Other Recommendations**: Include a concise prose **Other Recommendations**
+    section covering the ecosystem tools proposed in the plan
+    (`Cloud Audit Logs`, `Cloud Monitoring`, `Storage Insights`,
+    `Storage Transfer Service`, or CMEK IAM role notes).
+5.  **SDK Version Warnings (SDK Format Only)**: When generating **SDK** code for
+    features with version gates (such as `EncryptionEnforcementConfig`, which
+    requires Python `>= 3.10.0`, Go `>= 1.61.0`, C++ `>= 2.46.0`, Java
+    `>= 2.55.0`), include a warning specifying the minimum SDK version and
+    advising `REST`, `gcloud`, or `Terraform` if using an older version.
 
 ## Step 3: Execution and Delivery
 
-The action to take depends on the selected format:
-
-### For `gcloud` and `REST` (JSON)
-
-1.  Display the full command (including the payload for REST).
-2.  Explicitly ask the user for confirmation to execute the command: > "Would
-    you like me to execute this command to create the bucket now? Please
-    confirm."
-3.  **CRITICAL**: Do NOT execute any command without explicit, affirmative
-    confirmation from the user.
-4.  If confirmed:
-    *   Execute the command.
-    *   If successful, report success and provide the bucket details.
-    *   If it fails (e.g. permission error, network issue), report the error
-        details to the user and suggest they run the displayed command manually.
-
-### For `Terraform` and `SDK`
-
-1.  Display the configuration snippet or code block.
-2.  Do NOT offer to execute or apply it, unless the user has explicitly
-    requested to update a specific file in their workspace.
-3.  Instruct the user on how to integrate the snippet into their project.
+*   **For `gcloud` and `REST` (JSON)**: Display the commands/payload and ask for
+    confirmation before executing
+    (`"Would you like me to execute this command to create the bucket now?"`).
+    Never execute any of these commands without explicit, affirmative
+    confirmation.
+*   **For `Terraform` and `SDK`**: Display the snippet and instruct the user on
+    how to integrate it into their project (do not offer to execute it).

@@ -72,20 +72,22 @@ agent MUST explicitly configure and recommend the following:
 ## Bucket Configuration Plan Mapping
 
 The following table maps Cloud Storage features to AI/ML workloads and details
-their recommendation status.
+their recommendation status. See
+[Official Documentation References](#official-documentation-references) below
+for feature links if further reference is needed (do not fetch routinely).
 
-Feature Group   | Cloud Storage Feature / Setting        | Status                     | Recommendations & Implementation Details                                                                                                                                | Documentation Link
-:-------------- | :------------------------------------- | :------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-----------------
-**Core**        | **Storage Class**                      | Highly Recommended         | Use **STANDARD** for standard buckets, or **RAPID** storage class for zonal buckets.                                                                                    | [Storage Classes](https://cloud.google.com/storage/docs/storage-classes)<br>[Rapid Bucket Terminology](https://cloud.google.com/storage/docs/rapid/rapid-bucket#terminology)
-                | **Bucket Type**                        | Highly Recommended         | **Zonal** (with Rapid Bucket) or **Regional / Dual-region / Multi-region** (for Cloud Storage bucket with Rapid Cache) to co-locate storage and compute.                | [Locations](https://cloud.google.com/storage/docs/locations)
-**Serving**     | **CORS & Signed URLs**                 | Optional / Not Recommended | Avoid exposing AI datasets directly to public users.                                                                                                                    |
-**Security**    | **Uniform Bucket-Level Access (UBLA)** | **Required**               | **Must be enabled** for baseline access control security.                                                                                                               | [Uniform Bucket-Level Access](https://cloud.google.com/storage/docs/uniform-bucket-level-access)
-                | **Encryption (CMEK)**                  | Highly Recommended         | Configure CMEK. Use KMS Autokey for automation.                                                                                                                         | [CMEK](https://cloud.google.com/storage/docs/encryption/customer-managed-keys)
-                | **Soft Delete**                        | Good to Have               | Optional for non-zonal buckets (useful but not highly recommended due to potential storage cost overhead from massive AI dataset churn). Unsupported for zonal buckets. | [Soft Delete](https://cloud.google.com/storage/docs/soft-delete)
-**Cost**        | **Object Lifecycle Management (OLM)**  | Highly Recommended         | Define OLM rules to automatically delete stale checkpoints (e.g. keep only the last 3 days of checkpoints) to avoid massive storage bills on zonal disks.               | [Lifecycle Management](https://cloud.google.com/storage/docs/lifecycle)
-**Management**  | **Labels & Tagging**                   | Highly Recommended         | Apply billing and ownership labels (e.g. `{"workload": "ai-training"}`) to accurately trace expensive high-performance storage spend.                                   | [Bucket Labels](https://cloud.google.com/storage/docs/using-bucket-labels)
-**Specialized** | **BiDi (Bidirectional Streaming)**     | Highly Recommended         | Utilize the BiDi protocol on zonal buckets to enable low-latency, high-QPS streaming and append operations.                                                             | [Hierarchical Namespace](https://cloud.google.com/storage/docs/hns-overview)
-**Monitoring**  | **Cloud Monitoring**                   | Highly Recommended         | Monitor caching metrics, hit rates, and ingress/egress bandwidth to ensure TPUs/GPUs are not bottlenecked by storage.                                                   | [Cloud Monitoring](https://cloud.google.com/storage/docs/monitoring)
+Cloud Storage Feature / Setting        | Status                     | Recommendations & Implementation Details
+:------------------------------------- | :------------------------- | :---------------------------------------
+**Storage Class**                      | Highly Recommended         | Use **STANDARD** for standard buckets, or **RAPID** storage class for zonal buckets.
+**Bucket Type**                        | Highly Recommended         | **Zonal** (with Rapid Bucket) or **Regional / Dual-region / Multi-region** (for Cloud Storage bucket with Rapid Cache) to co-locate storage and compute.
+**CORS & Signed URLs**                 | Optional / Not Recommended | Avoid exposing AI datasets directly to public users.
+**Uniform Bucket-Level Access (UBLA)** | **Required**               | **Must be enabled** for baseline access control security.
+**Encryption (CMEK)**                  | Highly Recommended         | Configure CMEK. Use KMS Autokey for automation.
+**Soft Delete**                        | Good to Have               | Optional for non-zonal buckets (useful but not highly recommended due to potential storage cost overhead from massive AI dataset churn). Unsupported for zonal buckets.
+**Object Lifecycle Management (OLM)**  | Highly Recommended         | Define OLM rules to automatically delete stale checkpoints (e.g. keep only the last 3 days of checkpoints) to avoid massive storage bills on zonal disks.
+**Labels & Tagging**                   | Highly Recommended         | Apply billing and ownership labels (e.g. `{"workload": "ai-training"}`) to accurately trace expensive high-performance storage spend.
+**BiDi (Bidirectional Streaming)**     | Highly Recommended         | Utilize the BiDi protocol on zonal buckets to enable low-latency, high-QPS streaming and append operations.
+**Cloud Monitoring**                   | Highly Recommended         | Monitor caching metrics, hit rates, and ingress/egress bandwidth to ensure TPUs/GPUs are not bottlenecked by storage.
 
 ## Key Pre-Deployment Questions to Ask:
 
@@ -102,3 +104,18 @@ Feature Group   | Cloud Storage Feature / Setting        | Status               
     *   *Recommendation*: Enable ingest-on-write so that data is ingested into
         the cache upon write, eliminating initial cache misses and cold-start
         penalties.
+
+## Official Documentation References
+
+Feature / Topic             | Documentation Link
+:-------------------------- | :-----------------
+Storage Classes             | https://cloud.google.com/storage/docs/storage-classes
+Rapid Bucket Terminology    | https://cloud.google.com/storage/docs/rapid/rapid-bucket#terminology
+Locations                   | https://cloud.google.com/storage/docs/locations
+Uniform Bucket-Level Access | https://cloud.google.com/storage/docs/uniform-bucket-level-access
+CMEK                        | https://cloud.google.com/storage/docs/encryption/customer-managed-keys
+Soft Delete                 | https://cloud.google.com/storage/docs/soft-delete
+Lifecycle Management        | https://cloud.google.com/storage/docs/lifecycle
+Bucket Labels               | https://cloud.google.com/storage/docs/using-bucket-labels
+Hierarchical Namespace      | https://cloud.google.com/storage/docs/hns-overview
+Cloud Monitoring            | https://cloud.google.com/storage/docs/monitoring

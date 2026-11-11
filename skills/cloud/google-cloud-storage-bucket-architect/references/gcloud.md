@@ -2,14 +2,12 @@
 
 > [!IMPORTANT]
 >
-> **DO NOT EXECUTE THESE COMMANDS AUTOMATICALLY.** The purpose of this guide is
-> to define the mapping and translation rules to generate the correct command
-> structure. These generated commands must be presented to the user for
-> confirmation and are only executed in a subsequent phase if explicit
+> **DO NOT EXECUTE THESE COMMANDS AUTOMATICALLY.** Present generated commands to
+> the user for confirmation and execute them in Phase 3 only if explicit
 > confirmation is granted by the user.
 
-This guide describes how to translate a **Draft Bucket Creation Plan** (from
-Phase 2) into the corresponding `gcloud storage` commands.
+This guide translates a **Draft Bucket Creation Plan** (Phase 2) into
+`gcloud storage` commands.
 
 ## Official Documentation References
 
@@ -28,69 +26,90 @@ Phase 2) into the corresponding `gcloud storage` commands.
 
 > [!CAUTION]
 >
-> **DO NOT HALLUCINATE GCLOUD FLAGS.** The `gcloud storage` CLI syntax and flags
-> evolve. The agent MUST strictly ground all flags, settings, and argument
-> formats in the provided reference and anything unclear should come from the
-> `--help` flag. If it is still unclear, reference the official Google Cloud SDK
-> documentation (linked above) before presenting them in the commands. Do not
-> assume a flag exists or guess its name (e.g. do not guess
-> `--enable-versioning` if it is `--versioning`). If unsure about a flag or its
-> compatibility with other settings, the agent must perform a search or verify
-> with official documentation first.
+> **DO NOT HALLUCINATE GCLOUD FLAGS.** Ground all `gcloud storage` commands and
+> flags strictly in the **Translation Mapping Table** and **Helper Configuration
+> Templates** below—do **not** run `gcloud ... --help` or documentation searches
+> for any feature already covered in this guide. Never guess or invent flag
+> names (e.g., use `--versioning`, not `--enable-versioning`). Only if the user
+> explicitly requests a specialized Cloud Storage CLI setting absent from the
+> table below (and has not forbidden running commands), verify the exact flag
+> via `--help` or the official documentation linked above before presenting it.
 
 ## Translation Mapping Table
 
-Use this mapping table to translate draft configurations into `gcloud` flags or
-secondary commands. Where possible, **prefer** adding configurations directly in
-a single `gcloud storage buckets create` command rather than splitting them into
-multiple `update` commands. For settings that must be applied via `update` (such
-as labels, versioning, CORS, website configuration, or usage logging),
-**prefer** combining them into a single `gcloud storage buckets update` command
-(sticking to `create` or `create` + one `update` where possible) rather than a
-long chain of separate `update` commands.
+Prefer combining supported creation flags into a single
+`gcloud storage buckets create` command, and combining `update`-only settings
+(labels, versioning, CORS, website config, usage logging, or retention lock)
+into a single `gcloud storage buckets update` command.
 
-Draft Plan Field / Setting                | gcloud CLI Element / Flag                                                                                                                                               | Notes / Action
-:---------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------
-**Attribution**                           | `CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)"` | **CRITICAL: Required inline prefix for all `gcloud` commands** (including any auxiliary `gcloud` commands in recommendations, except `gcloud auth print-access-token` when used for REST `curl` headers).
-**Bucket Name**                           | `gs://[bucket-name]`                                                                                                                                                    | Positional argument at the end of the `create` command. Must be globally unique.
-**Project**                               | `--project=[project-id]`                                                                                                                                                | Global flag. Specify to ensure target project is correct.
-**Location**                              | `--location=[location]`                                                                                                                                                 | E.g. `us-central1` (region), `US` (multi-region/custom dual-region), or `NAM4` (predefined dual-region). For zonal buckets (using the Rapid storage class), this must be the region (e.g. `us-east1`).
-**Placement**                             | `--placement=[placement]`                                                                                                                                               | Used ONLY for custom dual-regions or zonal buckets. For custom dual-regions, set to a comma-separated list of regions (e.g., `us-east1,us-west1`) and `--location` to the geo area (e.g., `US`). For zonal buckets, set to the zone (e.g., `us-east1-b`) and `--location` to the region (e.g., `us-east1`).
-**Replication Speed (RPO)**               | `--rpo=ASYNC_TURBO`                                                                                                                                                     | Optional. Enables Turbo Replication for dual-region buckets to guarantee replication within 15 minutes.
-**Storage Class**                         | `--default-storage-class=[class]`                                                                                                                                       | Values: `STANDARD`, `NEARLINE`, `COLDLINE`, `ARCHIVE`, `RAPID`. Default is `STANDARD` (so omitting it on `create` when `STANDARD` is desired is valid, but it must not be set to another class when Autoclass is enabled). Must be explicitly set to `RAPID` for zonal buckets.
-**UBLA**                                  | `--uniform-bucket-level-access`                                                                                                                                         | Boolean flag. Always enable this flag.
-**Public Access Prevention**              | `--public-access-prevention` or `--no-public-access-prevention`                                                                                                         | A secure bucket should have this enabled. Only disable with clear use-case driven intent and explicit consent from the user.
-**Soft Delete**                           | `--soft-delete-duration=[duration]`                                                                                                                                     | E.g., `7d` (7 days). Set to `0` to disable soft delete. Must be set to `0` (disabled) for zonal buckets.
-**Object Versioning**                     | `gcloud storage buckets update gs://[bucket-name] --versioning` or `--no-versioning`                                                                                    | **Cannot be set during creation.** Must be applied via `update` (not `create`). Recommended as fallback if Soft Delete is disabled.
-**Encryption (CMEK)**                     | `--default-encryption-key=[key-id]`                                                                                                                                     | Pass the full KMS key resource ID if CMEK is specified (format: `projects/[project-id]/locations/[location]/keyRings/[key-ring]/cryptoKeys/[my-key]`). Omit for GMEK.
-**Restrict Encryption (CSEK)**            | `--encryption-enforcement-file=[file]`                                                                                                                                  | Uses a JSON file to set the encryption enforcement configuration. See **Helper Configuration Templates** below for an example.
-**Autoclass**                             | `--enable-autoclass`                                                                                                                                                    | Boolean flag. *Incompatible with zonal buckets*. Requires `STANDARD` storage class (default on `create`; if enabling Autoclass on an existing bucket whose current storage class is not `STANDARD`, `--default-storage-class=STANDARD` must be explicitly set).
-**Hierarchical Namespace**                | `--enable-hierarchical-namespace`                                                                                                                                       | Boolean flag. Requires UBLA. Required for Zonal buckets.
-**Labels**                                | `gcloud storage buckets update gs://[bucket-name] --update-labels=[key=value,...]`                                                                                      | **Cannot be set during creation.** Must be applied via `update` (not `create`). The agent MUST explicitly state in the response or plan document that labels cannot be set during creation via `gcloud` and must be applied via an `update` command.
-**IP Filtering**                          | `--ip-filter-file=[file]`                                                                                                                                               | JSON file defining IP access restrictions. See **Helper Configuration Templates** below.
-**Cloud Logging (Usage Logs)**            | `gcloud storage buckets update gs://[bucket-name] --log-bucket=gs://[log-bucket] [--log-object-prefix=[prefix]]`                                                        | **Cannot be set during creation.** Enables usage and storage logging via `update`. The Google-managed group `cloud-storage-analytics@google.com` must be granted `roles/storage.objectCreator` on the log bucket.
-**Lifecycle Policies (OLM)**              | `--lifecycle-file=[file]`                                                                                                                                               | JSON file defining OLM rules. Prefer passing during `create` (though `update` is also supported). See template below.
-**CORS**                                  | `gcloud storage buckets update ... --cors-file=[file]`                                                                                                                  | **Cannot be set during creation.** Must be applied via `update` (not `create`). Prefer combining with other `update` flags into a single `update` command. See **Helper Configuration Templates** below.
-**Website Configuration**                 | `gcloud storage buckets update ... --web-main-page-suffix=[main] --web-error-page=[error]`                                                                              | **Cannot be set during creation.** Must be applied via `update` (not `create`). Prefer combining with other `update` flags into a single `update` command.
-**Public IAM Policy**                     | `gcloud storage buckets add-iam-policy-binding ... --member=allUsers --role=roles/storage.objectViewer`                                                                 | **Cannot be set during creation.** Required to allow public read access for websites.
-**Pub/Sub Notifications**                 | `gcloud storage buckets notifications create gs://[bucket-name] --topic=[topic-name]`                                                                                   | **Cannot be set during creation.** Creates a Pub/Sub notification configuration on the bucket to trigger events.
-**Bucket Retention Period (Bucket Lock)** | `--retention-period=[duration]`                                                                                                                                         | Sets a default retention period for all objects. E.g. `1d43200s`. Supports standard durations (e.g. `90d`) or ISO 8601 (e.g. `P1Y1M1DT5S`).
-**Lock Bucket Retention Policy**          | `gcloud storage buckets update gs://[bucket-name] --lock-retention-period`                                                                                              | Locks the retention policy via `update`. **Irreversible.**
-**Object Retention (Object Lock)**        | `--enable-per-object-retention`                                                                                                                                         | Enables per-object retention. **Can only be set during bucket creation via gcloud.**
-**Set Object Retention**                  | `gcloud storage objects update gs://[bucket]/[object] --retain-until=[timestamp] --retention-mode=[Locked/Unlocked]`                                                    | Sets retention on a specific object (if object commands are requested). Can also be set during upload.
-**Rapid Cache**                           | `gcloud storage buckets anywhere-caches create gs://[bucket-name] [zone] --ttl=[duration]`                                                                              | **Cannot be set during creation.** Creates Rapid Cache instance for the bucket in the specified zone.
+Draft Plan Field / Setting         | gcloud CLI Flag / Subcommand           | Notes / Full Command Syntax
+:--------------------------------- | :------------------------------------- | :--------------------------
+**Attribution**                    | `CLOUDSDK_METRICS_ENVIRONMENT`         | **Required inline on EVERY `gcloud` command** (including auxiliary `gcloud` commands). ⚠️ **CRITICAL: See Note 1 below.**
+**Bucket Name**                    | `gs://[bucket-name]`                   | Positional argument on `create` / `update`. Must be globally unique.
+**Project**                        | `--project=[project-id]`               | Global flag specifying target project ID.
+**Location**                       | `--location=[location]`                | Region (`us-central1`), multi-region/custom dual-region geo (`US`), or predefined dual-region (`nam4`). ⚠️ **See Note 2 below.**
+**Placement**                      | `--placement=[placement]`              | ONLY for custom dual-region (`us-east1,us-west1` with `--location=US`) or zonal (`us-east1-b` with `--location=us-east1`). **NEVER** use with `nam4`/`eur4`/`asia1`. ⚠️ **See Note 2.**
+**Replication Speed (RPO)**        | `--rpo=ASYNC_TURBO`                    | Optional. Enables 15-minute Turbo Replication on dual-region buckets.
+**Storage Class**                  | `--default-storage-class=[class]`      | `STANDARD` (default; must not be set to another class with Autoclass), `NEARLINE`, `COLDLINE`, `ARCHIVE`, `RAPID` (required for zonal buckets).
+**UBLA**                           | `--uniform-bucket-level-access`        | Always enable (`--uniform-bucket-level-access`).
+**Public Access Prevention**       | `--[no-]public-access-prevention`      | Enforce (`--public-access-prevention`) by default; use `--no-public-access-prevention` only with clear use-case intent and explicit user consent.
+**Soft Delete**                    | `--soft-delete-duration=[duration]`    | E.g., `7d` (default), `14d`. Set to `0` to disable (MUST be `0` for zonal `RAPID` buckets).
+**Object Versioning**              | `update ... --versioning`              | **Cannot be set on `create`.** Apply via `gcloud storage buckets update gs://[b] --versioning` (or `--no-versioning`). Recommended fallback if Soft Delete is disabled.
+**Encryption (CMEK)**              | `--default-encryption-key=[key-id]`    | Full KMS key path (`projects/[project]/locations/[loc]/keyRings/[ring]/cryptoKeys/[key]`). Omit for GMEK.
+**Restrict Encryption (CSEK)**     | `--encryption-enforcement-file=[file]` | JSON file restricting CSEK on `create` or `update`. See **Helper Configuration Templates** below.
+**Autoclass**                      | `--enable-autoclass`                   | Requires `STANDARD` storage class; incompatible with zonal buckets and OLM `SetStorageClass` rules (optional: `--autoclass-terminal-storage-class=ARCHIVE`).
+**Hierarchical Namespace**         | `--enable-hierarchical-namespace`      | Boolean flag on `create`. Requires UBLA. Required for zonal `RAPID` buckets.
+**Labels**                         | `update ... --update-labels=[k=v,...]` | **Cannot be set on `create`.** Apply via `gcloud storage buckets update gs://[b] --update-labels=k1=v1,k2=v2`. ⚠️ **See Note 3.**
+**IP Filtering**                   | `--ip-filter-file=[file]`              | JSON file defining IP/VPC rules. See **Helper Configuration Templates** below.
+**Cloud Logging (Usage Logs)**     | `update ... --log-bucket=gs://[b]`     | **Cannot be set on `create`.** Apply via `gcloud storage buckets update gs://[b] --log-bucket=gs://[log-bucket] [--log-object-prefix=[prefix]]` (grant `roles/storage.objectCreator` to `cloud-storage-analytics@google.com` on log bucket).
+**Lifecycle Policies (OLM)**       | `--lifecycle-file=[file]`              | JSON file defining OLM rules (prefer on `create`; also supported on `update`). See template below.
+**CORS**                           | `update ... --cors-file=[file]`        | **Cannot be set on `create`.** Apply via `gcloud storage buckets update gs://[b] --cors-file=cors.json`.
+**Website Configuration**          | `update ... --web-main-page-suffix`    | **Cannot be set on `create`.** Apply via `gcloud storage buckets update gs://[b] --web-main-page-suffix=index.html --web-error-page=404.html`.
+**Public IAM Policy**              | `buckets add-iam-policy-binding`       | **Cannot be set on `create`.** For public websites/VOD: `gcloud storage buckets add-iam-policy-binding gs://[b] --member=allUsers --role=roles/storage.objectViewer`.
+**Pub/Sub Notifications**          | `buckets notifications create`         | **Cannot be set on `create`.** Run `gcloud storage buckets notifications create gs://[b] --topic=[topic-name]`.
+**Bucket Retention (Bucket Lock)** | `--retention-period=[duration]`        | E.g., `30d`, `90d`, `2555d`, `157680000s`, or ISO 8601 (`P1Y1M1DT5S`). Sets bucket-wide retention on `create` or `update`.
+**Lock Bucket Retention Policy**   | `update ... --lock-retention-period`   | **Cannot be set on `create`.** Run `gcloud storage buckets update gs://[b] --lock-retention-period`. **Permanent and irreversible.**
+**Object Retention (Object Lock)** | `--enable-per-object-retention`        | Enables per-object retention. **Can only be set on `create` via `gcloud`.**
+**Set Object Retention**           | `objects update` / `storage cp`        | If object commands requested: `gcloud storage objects update gs://[b]/[obj] --retain-until=[RFC3339-ts] --retention-mode=[Locked/Unlocked] [--override-unlocked-retention]` (or set on upload via `gcloud storage cp`; `--override-unlocked-retention` is required to lock, shorten `--retain-until`, or `--clear-retention` on `Unlocked` objects).
+**Rapid Cache (Anywhere Cache)**   | `buckets anywhere-caches create`       | **Cannot be set on `create`.** Run `gcloud storage buckets anywhere-caches create gs://[b] [zone] [--ttl=24h] [--enable-ingest-on-write]` (use `--enable-ingest-on-write`, never `--ingest-on-write`).
+**Storage Insights Inventory**     | `insights inventory-reports create`    | Optional (only if CLI command is requested): `gcloud storage insights inventory-reports create gs://[src] --destination=gs://[dst]/inventory_reports/`.
+
+> [!IMPORTANT]
+>
+> *   **Note 1 (Mandatory Inline Attribution Prefix)**: Prefix EVERY `gcloud`
+>     command (including auxiliary `gcloud` commands in recommendations, except
+>     `gcloud auth print-access-token` inside REST `curl` headers) inline with:
+>
+>     ```bash
+>     CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)"
+>     ```
+>
+> *   **Note 2 (Predefined Dual-Regions vs. Custom Dual-Regions & Zonal)**:
+>
+>     *   When `nam4` (`us-east1` + `us-central1`), `eur4` (`europe-north1` +
+>         `europe-west4`), or `asia1` (`asia-northeast1` + `asia-northeast2`) is
+>         specified—even if constituent regions are mentioned—set
+>         `--location=nam4` (or `eur4`/`asia1`) directly and **NEVER** pass
+>         `--placement` (fails with `HTTPError 400`).
+>     *   For **custom dual-regions**, set `--location` to the continent geo
+>         area (e.g., `US`) and `--placement=us-east1,us-west1`.
+>     *   For **zonal (`RAPID`) buckets**, set `--location=<region>` (e.g.,
+>         `us-east1`) and `--placement=<zone>` (e.g., `us-east1-b`).
+>
+> *   **Note 3 (Explain `create` vs. `update` for Labels)**: Whenever labels are
+>     requested with `gcloud`, explicitly state in prose that labels cannot be
+>     set during bucket creation via `gcloud` and must be applied using
+>     `gcloud storage buckets update --update-labels=...`.
 
 --------------------------------------------------------------------------------
 
 ## Helper Configuration Templates
 
-When the plan requires complex configurations (CORS, Lifecycles, Encryption
-Enforcement, IP Filters), you must write them to temporary JSON files in the
-workspace before running `gcloud`.
+Include the JSON file content alongside your `gcloud` commands whenever
+`--encryption-enforcement-file`, `--cors-file`, `--lifecycle-file`, or
+`--ip-filter-file` is used (and write it before executing in Phase 3).
 
 ### 1. Encryption Enforcement (`encryption_enforcement.json`)
-
-Used to restrict CSEK:
 
 ```json
 {
@@ -100,68 +119,59 @@ Used to restrict CSEK:
 }
 ```
 
-You must allow at least one encryption type. If you omit the enforcement
-configuration for a specific encryption type, then that encryption type is
-allowed by default on create.
+At least one encryption type must remain `NotRestricted`; omitted encryption
+types default to allowed on `create`.
 
 ### 2. CORS Template (`cors.json`)
-
-Configure allowed domains and methods:
 
 ```json
 [
   {
     "origin": ["https://my-website.appspot.com"],
-    "method": ["GET", "POST", "PUT"],
+    "method": ["GET", "HEAD", "PUT"],
     "responseHeader": ["Content-Type", "x-goog-resumable"],
     "maxAgeSeconds": 3600
   }
 ]
 ```
 
-### 3. Lifecycle OLM Template (`lifecycle.json`)
+*(`responseHeader` and `maxAgeSeconds` are optional; match `origin` and `method`
+to the user's request.)*
 
-Configure object deletion or transitions. e.g. aborting incomplete uploads and
-deleting files after 365 days:
+### 3. Lifecycle OLM Template (`lifecycle.json`)
 
 ```json
 {
   "rule": [
-    {
-      "action": {"type": "AbortIncompleteMultipartUpload"},
-      "condition": {"age": 7}
-    },
-    {
-      "action": {"type": "Delete"},
-      "condition": {"age": 365}
-    }
+    {"action": {"type": "AbortIncompleteMultipartUpload"}, "condition": {"age": 7}},
+    {"action": {"type": "Delete"}, "condition": {"age": 365}}
   ]
 }
 ```
 
-> [!WARNING] **Autoclass Restrictions**: If Autoclass is enabled on the bucket,
-> the Object Lifecycle Management (OLM) configuration **MUST NOT** contain rules
-> that use the `SetStorageClass` action or the `matchesStorageClass` condition.
-> Combining Autoclass with these rules will cause the bucket creation or update
-> to fail.
+*   Storage class transition (ONLY when Autoclass is disabled): `{"action":
+    {"type": "SetStorageClass", "storageClass": "ARCHIVE"}, "condition": {"age":
+    365}}`.
+*   Prune non-current versions: `{"action": {"type": "Delete"}, "condition":
+    {"daysSinceNoncurrentTime": 30, "isLive": false}}`.
+
+> [!WARNING]
+>
+> **Autoclass Restrictions**: If Autoclass is enabled on the bucket, the Object
+> Lifecycle Management (OLM) configuration **MUST NOT** contain rules using the
+> `SetStorageClass` action or `matchesStorageClass` condition (doing so causes
+> bucket creation or update to fail).
 
 ### 4. IP Filtering Template (`ip_filter.json`)
-
-Configure allowed IP ranges and VPC networks:
 
 ```json
 {
   "mode": "Enabled",
   "allowAllServiceAgentAccess": true,
   "allowCrossOrgVpcs": false,
-  "publicNetworkSource": {
-    "allowedIpCidrRanges": ["192.0.2.0/24", "198.51.100.0/32"]
-  },
+  "publicNetworkSource": {"allowedIpCidrRanges": ["192.0.2.0/24", "198.51.100.0/32"]},
   "vpcNetworkSources": [
-    {
-      "network": "projects/PROJECT_ID/global/networks/NETWORK_NAME",
-      "allowedIpCidrRanges": ["10.0.0.0/16"]
-    }
+    {"network": "projects/PROJECT_ID/global/networks/NETWORK_NAME", "allowedIpCidrRanges": ["10.0.0.0/16"]}
   ]
 }
 ```
@@ -170,341 +180,83 @@ Configure allowed IP ranges and VPC networks:
 
 ## Conversion Examples
 
-### Example 1: Standard Secure Bucket (Baseline)
+### Example 1: Sensitive Data / Compliance (CMEK, Autoclass, CSEK Restricted, Retention, Labels, OLM, IP Filter)
 
-#### Input Draft Plan
+```bash
+# 1. Create the bucket (omit optional flags like CMEK/retention/IP filter if not needed)
+CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
+gcloud storage buckets create gs://my-compliance-pii-bucket \
+    --project=my-compliance-project --location=us-central1 \
+    --uniform-bucket-level-access --public-access-prevention \
+    --soft-delete-duration=7d --retention-period=90d --enable-autoclass \
+    --default-encryption-key=projects/my-kms-project/locations/us-central1/keyRings/my-keyring/cryptoKeys/my-key \
+    --encryption-enforcement-file=encryption_enforcement.json \
+    --lifecycle-file=lifecycle_abort.json --ip-filter-file=ip_filter.json
 
-```markdown
-*   **Bucket Name**: `my-company-secure-bucket`
-*   **Project**: `my-security-project`
-*   **Location**: `us-east1`
-*   **Storage Class**: `STANDARD`
-*   **UBLA**: Enabled
-*   **Public Access Prevention (PAP)**: Enforced
-*   **Soft Delete**: Enabled (7 days)
-*   **Encryption Enforcement**: CSEK Restricted
+# 2. Add labels (labels cannot be set during bucket creation via gcloud; must use update)
+CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
+gcloud storage buckets update gs://my-compliance-pii-bucket \
+    --project=my-compliance-project --update-labels=data-class=pii,owner=security-team
+
+# 3. Optional: Lock retention policy (WARNING: irreversible; neither admins nor Cloud Support can shorten/remove it)
+# CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
+# gcloud storage buckets update gs://my-compliance-pii-bucket --lock-retention-period
 ```
 
-#### Output Commands
+### Example 2: Static Website Hosting (Multi-Region `US`, Public Access, Website Config, CORS, Versioning)
 
-Create `encryption_enforcement.json` with CSEK restricted:
+```bash
+# 1. Create the bucket with PAP disabled (--no-public-access-prevention)
+CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
+gcloud storage buckets create gs://www.my-company-site.com \
+    --project=my-frontend-project --location=US --default-storage-class=STANDARD \
+    --uniform-bucket-level-access --no-public-access-prevention --soft-delete-duration=7d
 
-```json
-{
-  "gmekEnforcement": {"restrictionMode": "NotRestricted"},
-  "cmekEnforcement": {"restrictionMode": "NotRestricted"},
-  "csekEnforcement": {"restrictionMode": "FullyRestricted"}
-}
+# 2. Configure Website settings, CORS, and Versioning in a single update (cannot be set on create)
+CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
+gcloud storage buckets update gs://www.my-company-site.com \
+    --web-main-page-suffix=index.html --web-error-page=404.html --cors-file=cors_web.json --versioning
+
+# 3. Grant public read access to website files
+CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
+gcloud storage buckets add-iam-policy-binding gs://www.my-company-site.com \
+    --member=allUsers --role=roles/storage.objectViewer
 ```
 
-gcloud Command:
+### Example 3: AI/ML Checkpointing (Zonal `RAPID` Bucket in `us-east1-b`, HNS, Soft Delete Disabled)
 
 ```bash
 CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
-gcloud storage buckets create gs://my-company-secure-bucket \
-    --project=my-security-project \
-    --location=us-east1 \
-    --default-storage-class=STANDARD \
-    --uniform-bucket-level-access \
-    --public-access-prevention \
-    --soft-delete-duration=7d \
-    --encryption-enforcement-file=encryption_enforcement.json
+gcloud storage buckets create gs://my-training-checkpoints-us-east1-b \
+    --project=my-ai-project --location=us-east1 --placement=us-east1-b \
+    --default-storage-class=RAPID --uniform-bucket-level-access \
+    --enable-hierarchical-namespace --public-access-prevention \
+    --soft-delete-duration=0 --lifecycle-file=lifecycle_checkpoint.json
 ```
 
---------------------------------------------------------------------------------
+### Example 4: WORM Archive with Object Lock (Per-Object Retention)
 
-### Example 2: Sensitive Data / Compliance
+```bash
+# 1. Create the bucket with per-object retention enabled (can only be set at creation time)
+CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
+gcloud storage buckets create gs://my-legal-archive-bucket \
+    --project=my-legal-project --location=us-east1 --default-storage-class=ARCHIVE \
+    --uniform-bucket-level-access --public-access-prevention --soft-delete-duration=7d \
+    --enable-per-object-retention --lifecycle-file=lifecycle_archive.json \
+    --default-encryption-key=projects/my-kms-project/locations/us-east1/keyRings/my-keyring/cryptoKeys/my-key
 
-#### Input Draft Plan
+# 2. Apply labels via update (cannot be set during create)
+CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
+gcloud storage buckets update gs://my-legal-archive-bucket \
+    --project=my-legal-project --update-labels=compliance-type=regulatory,retention-period=7y
 
-```markdown
-*   **Bucket Name**: `my-compliance-pii-bucket`
-*   **Project**: `my-compliance-project`
-*   **Location**: `us-central1`
-*   **Storage Class**: `STANDARD` (Autoclass will handle transitions)
-*   **UBLA**: Enabled
-*   **Public Access Prevention (PAP)**: Enforced
-*   **Encryption Enforcement**: Restrict CSEK
-*   **Encryption**: Customer-Managed Key (CMEK)
-*   **Soft Delete**: Enabled (7 days)
-*   **Bucket Lock (Retention Policy)**: Enabled (90 days, Unlocked)
-*   **Use-case specific settings**:
-    *   Autoclass: Enabled
-    *   CMEK Key ID: `projects/my-kms-project/locations/us-central1/keyRings/my-keyring/cryptoKeys/my-key`
-    *   Labels: `data-class=pii`, `owner=security-team`
-    *   Lifecycle: Abort incomplete multipart uploads after 7 days
-    *   IP Filtering: Restrict access to `192.0.2.0/24` (Corporate Range)
+# 3. Upload an object with per-object retention (WARNING: Locked mode is permanent and irreversible; no one can delete/shorten until expiry)
+CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
+gcloud storage cp case_file_abc.pdf gs://my-legal-archive-bucket/case_file_abc.pdf \
+    --retain-until=2030-12-31T23:59:59Z --retention-mode=Locked
+
+# 4. Or update retention on an existing object (--override-unlocked-retention required to lock, shorten --retain-until, or --clear-retention on Unlocked):
+CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
+gcloud storage objects update gs://my-legal-archive-bucket/case_file_abc.pdf \
+    --retain-until=2030-12-31T23:59:59Z --retention-mode=Locked --override-unlocked-retention
 ```
-
-#### Output Commands
-
-1.  Create `encryption_enforcement.json` (CSEK restricted):
-
-    ```json
-    {
-      "gmekEnforcement": {"restrictionMode": "NotRestricted"},
-      "cmekEnforcement": {"restrictionMode": "NotRestricted"},
-      "csekEnforcement": {"restrictionMode": "FullyRestricted"}
-    }
-    ```
-
-2.  Create `lifecycle_abort.json`:
-
-    ```json
-    {
-      "rule": [
-        {
-          "action": {"type": "AbortIncompleteMultipartUpload"},
-          "condition": {"age": 7}
-        }
-      ]
-    }
-    ```
-
-3.  Create `ip_filter.json` (allowing corporate IP range):
-
-    ```json
-    {
-      "mode": "Enabled",
-      "allowAllServiceAgentAccess": true,
-      "publicNetworkSource": {
-        "allowedIpCidrRanges": ["192.0.2.0/24"]
-      },
-    }
-    ```
-
-4.  Run:
-
-    ```bash
-    # 1. Create the bucket
-    CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
-    gcloud storage buckets create gs://my-compliance-pii-bucket \
-        --project=my-compliance-project \
-        --location=us-central1 \
-        --uniform-bucket-level-access \
-        --public-access-prevention \
-        --soft-delete-duration=7d \
-        --retention-period=90d \
-        --encryption-enforcement-file=encryption_enforcement.json \
-        --enable-autoclass \
-        --default-encryption-key=projects/my-kms-project/locations/us-central1/keyRings/my-keyring/cryptoKeys/my-key \
-        --lifecycle-file=lifecycle_abort.json \
-        --ip-filter-file=ip_filter.json
-
-    # 2. Add labels (cannot be set during create)
-    CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
-    gcloud storage buckets update gs://my-compliance-pii-bucket \
-        --project=my-compliance-project \
-        --update-labels=data-class=pii,owner=security-team
-    ```
-
-    *Note: The retention policy is created unlocked. To lock it (making it
-    permanent and irreversible), run:*
-
-    ```bash
-    # WARNING: Locking is irreversible. Neither an administrator nor Cloud
-    # Support can reduce or remove the retention period on a locked bucket.
-    # CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
-    # gcloud storage buckets update gs://my-compliance-pii-bucket --lock-retention-period
-    ```
-
---------------------------------------------------------------------------------
-
-### Example 3: Static Website Hosting
-
-#### Input Draft Plan
-
-```markdown
-*   **Bucket Name**: `www.my-company-site.com`
-*   **Project**: `my-frontend-project`
-*   **Location**: `US`
-*   **Storage Class**: `STANDARD`
-*   **UBLA**: Enabled
-*   **Public Access Prevention (PAP)**: Inherited (Disabled to allow public website access)
-*   **Soft Delete**: Enabled (7 days)
-*   **Use-case specific settings**:
-    *   Website Config: Main page `index.html`, Error page `404.html`
-    *   Public Access: Required (allUsers -> storage.objectViewer)
-    *   CORS: Allowed GET/HEAD from any domain
-```
-
-#### Output Commands
-
-1.  Create `cors_web.json` (allowing GET/HEAD from `*`).
-2.  Run:
-
-    ```bash
-    # 1. Create the bucket with PAP inherited (allowing public access)
-    CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
-    gcloud storage buckets create gs://www.my-company-site.com \
-        --project=my-frontend-project \
-        --location=US \
-        --default-storage-class=STANDARD \
-        --uniform-bucket-level-access \
-        --no-public-access-prevention \
-        --soft-delete-duration=7d
-
-    # 2. Configure Website settings and CORS in a single update (cannot be set during create)
-    CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
-    gcloud storage buckets update gs://www.my-company-site.com \
-        --web-main-page-suffix=index.html \
-        --web-error-page=404.html \
-        --cors-file=cors_web.json
-
-    # 3. Grant public read access to website files
-    CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
-    gcloud storage buckets add-iam-policy-binding gs://www.my-company-site.com \
-        --member=allUsers \
-        --role=roles/storage.objectViewer
-    ```
-
---------------------------------------------------------------------------------
-
-### Example 4: AI/ML Checkpointing (Zonal Buckets)
-
-#### Input Draft Plan
-
-```markdown
-*   **Bucket Name**: `my-training-checkpoints-us-east1-b`
-*   **Project**: `my-ai-project`
-*   **Location**: `us-east1-b` (Zone-level co-location for high performance)
-*   **Storage Class**: `RAPID` (Must be explicitly specified for zonal buckets)
-*   **UBLA**: Enabled (Required for Hierarchical Namespace)
-*   **Public Access Prevention (PAP)**: Enforced
-*   **Encryption**: Google-managed key
-*   **Soft Delete**: Disabled (0 days) (Soft delete is not supported for zonal buckets)
-*   **Use-case specific settings**:
-    *   Hierarchical Namespace: Enabled (Required for Zonal buckets)
-    *   Lifecycle: Delete checkpoint files older than 14 days
-```
-
-#### Output Commands
-
-1.  Create `lifecycle_checkpoint.json`:
-
-    ```json
-    {
-      "rule": [
-        {
-          "action": {"type": "Delete"},
-          "condition": {"age": 14}
-        }
-      ]
-    }
-    ```
-
-2.  Run:
-
-    ```bash
-    # Specifying a zone (e.g. us-east1-b) and RAPID storage class sets up a zonal bucket.
-    # Zonal buckets require enabling Hierarchical Namespace and UBLA.
-    CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
-    gcloud storage buckets create gs://my-training-checkpoints-us-east1-b \
-        --project=my-ai-project \
-        --location=us-east1 \
-        --placement=us-east1-b \
-        --default-storage-class=RAPID \
-        --uniform-bucket-level-access \
-        --enable-hierarchical-namespace \
-        --public-access-prevention \
-        --soft-delete-duration=0 \
-        --lifecycle-file=lifecycle_checkpoint.json
-    ```
-
---------------------------------------------------------------------------------
-
-### Example 5: WORM Archive with Object Lock (Per-Object Retention)
-
-#### Input Draft Plan
-
-```markdown
-*   **Bucket Name**: `my-legal-archive-bucket`
-*   **Project**: `my-legal-project`
-*   **Location**: `us-east1`
-*   **UBLA**: Enabled
-*   **Public Access Prevention (PAP)**: Enforced
-*   **Soft Delete**: Enabled (7 days)
-*   **Encryption**: Customer-Managed Key (CMEK) (Highly Recommended)
-*   **Use-case specific settings**:
-    *   Storage Class: `ARCHIVE`
-    *   Object Lock (Per-Object Retention): Enabled
-    *   CMEK Key ID: `projects/my-kms-project/locations/us-east1/keyRings/my-keyring/cryptoKeys/my-key`
-    *   Labels: `compliance-type=regulatory`, `retention-period=7y` (Highly Recommended tags)
-    *   Lifecycle: Delete objects older than 7 years (2555 days) (Highly Recommended OLM)
-```
-
-#### Output Commands
-
-1.  Create `lifecycle_archive.json` to purge objects after 7 years:
-
-    ```json
-    {
-      "rule": [
-        {
-          "action": {"type": "Delete"},
-          "condition": {"age": 2555}
-        }
-      ]
-    }
-    ```
-
-2.  Create the bucket and apply labels:
-
-    ```bash
-    # 1. Create the bucket (object retention must be enabled at bucket creation time)
-    CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
-    gcloud storage buckets create gs://my-legal-archive-bucket \
-        --project=my-legal-project \
-        --location=us-east1 \
-        --default-storage-class=ARCHIVE \
-        --uniform-bucket-level-access \
-        --public-access-prevention \
-        --soft-delete-duration=7d \
-        --enable-per-object-retention \
-        --default-encryption-key=projects/my-kms-project/locations/us-east1/keyRings/my-keyring/cryptoKeys/my-key \
-        --lifecycle-file=lifecycle_archive.json
-
-    # 2. Add labels (cannot be set during create)
-    CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
-    gcloud storage buckets update gs://my-legal-archive-bucket \
-        --project=my-legal-project \
-        --update-labels=compliance-type=regulatory,retention-period=7y
-    ```
-
-3.  Upload an object with a specific retention period (e.g., retain until
-    December 31, 2030, in `Locked` mode):
-
-    ```bash
-    # Uploading and setting retention in one command:
-    CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
-    gcloud storage cp case_file_abc.pdf gs://my-legal-archive-bucket/case_file_abc.pdf \
-        --retain-until=2030-12-31T23:59:59Z \
-        --retention-mode=Locked
-    ```
-
-4.  Alternatively, set or update retention on an existing object in the bucket:
-
-    ```bash
-    # Update retention on an existing object:
-    CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
-    gcloud storage objects update gs://my-legal-archive-bucket/case_file_abc.pdf \
-        --retain-until=2030-12-31T23:59:59Z \
-        --retention-mode=Locked \
-        --override-unlocked-retention
-    ```
-
-    *Note: Setting the retention mode to `Locked` is permanent and irreversible.
-    Once locked, the retention period cannot be shortened or removed, and the
-    object cannot be deleted or overwritten by anyone (including administrators)
-    until the retention period expires.*
-
-    > [!IMPORTANT] If you are modifying an existing `Unlocked` retention
-    > configuration on an object, you must include the
-    > `--override-unlocked-retention` flag if you want to:
-    >
-    > *   Change the mode to `Locked` (`--retention-mode=Locked`).
-    > *   Reduce the retention time (`--retain-until`).
-    > *   Clear the retention settings (`--clear-retention`).
-    >
-    > Failing to include this flag when performing these actions on an object
-    > with existing `Unlocked` retention will cause the command to fail.

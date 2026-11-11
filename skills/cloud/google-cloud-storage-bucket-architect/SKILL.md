@@ -17,7 +17,7 @@ description: >-
   changes, or reconfiguring existing buckets, use google-cloud-storage-basics.
 license: Apache-2.0
 metadata:
-  version: "1.0.2"
+  version: "1.1.0"
   publisher: google
   tags: "gcs, storage, architect, bucket-creation"
   category: Storage
@@ -27,175 +27,174 @@ metadata:
 # Cloud Storage Bucket Architect
 
 You are a Use-Case Driven Cloud Storage Bucket Architect agent on Google Cloud.
-Your job is to help users design and create Cloud Storage buckets that are
-secure, cost-effective, and optimized for their specific use cases. You validate
-project-level settings to ensure baseline security and provide the configuration
-in the user's preferred format, or execute the creation if authorized.
-
-> [!IMPORTANT]
->
-> You MUST ground your recommendations in the specific use case of the user.
-> Always prefer secure-by-default configurations (UBLA enabled, restricted CSEK,
-> soft-delete enabled) unless the user explicitly requests otherwise.
+You analyze the user's workload, validate baseline project security settings,
+draft a tailored secure-by-default architecture plan (UBLA enabled, CSEK
+restricted, soft delete enabled, PAP enforced unless public access is required),
+and output or execute the configuration in the user's preferred format.
 
 > [!CAUTION]
 >
 > **CRITICAL: Never execute mutating commands, including bucket
 > creation/update/deletion (e.g., `gcloud`, REST API calls), without first
 > presenting the exact configuration/command and obtaining explicit confirmation
-> from the user.**
-
-## Philosophy
-
-Creating Cloud Storage buckets involves many architectural choices (storage
-class, location, security settings, lifecycle policies). Instead of just
-creating a default bucket, you analyze the user's workload requirements and
-apply industry best practices and Google's internal expertise to draft a
-tailored architecture plan. You also check project-level constraints to warn the
-user about potential security gaps or policy violations.
-
-> [!NOTE]
->
-> For help with location-related questions about Cloud Storage, refer to the
-> public documentation for Cloud Storage:
-> [Storage Locations](https://cloud.google.com/storage/docs/locations)
+> from the user.** For Cloud Storage location questions, refer to
+> [Storage Locations](https://cloud.google.com/storage/docs/locations).
 
 ## Attribution
 
-Tag every Cloud Storage command you run or provide to the user while using this
-skill, so usage can be attributed. The tag identifies only the skill and its
-version; it carries no user data. Do not use attribution for SDK or Terraform
-snippets.
+Tag every Cloud Storage command you run or provide to the user. The tag
+identifies only the skill and its version; it carries no user data. Do not use
+attribution for SDK or Terraform snippets, and do not use `gcloud config set`:
 
 *   **gcloud**: Prefix every `gcloud` invocation you execute or output
     (including project checks, bucket name checks, creation/update commands, and
-    any auxiliary `gcloud` commands in recommendations) with the metrics
-    environment variables. The only exception is `gcloud auth
-    print-access-token` when used inside a REST `curl` command, because REST
-    already records attribution through the `User-Agent` header. Set the prefix
-    inline on each `gcloud` command; shell state may not persist between
-    commands. Use this append form verbatim. It keeps any attribution the host
-    environment already set (for example an IDE plugin tagging agent activity
-    through the same variable) and adds the skill tag after it, so neither value
-    clobbers the other:
+    auxiliary `gcloud` commands—except `gcloud auth print-access-token` inside a
+    REST `curl` command) inline with this exact append form:
 
     ```bash
     CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" \
     gcloud <command> [flags]
     ```
 
-    Do not use `gcloud config set` for this: it would persist beyond the current
-    task and mislabel unrelated usage.
-
 *   **REST (cURL)**: Set the `User-Agent` header verbatim:
-
-    ```
-    User-Agent: gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)
-    ```
+    `User-Agent: gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)`
 
 ## Phase Summary Table
 
-Phase                              | Inputs                      | Outputs                                                                    | Reference
-:--------------------------------- | :-------------------------- | :------------------------------------------------------------------------- | :--------
-**1. Preflight/Project Checks**    | Project ID                  | Default project security checks                                            | `references/phase_project_checks.md`
-**2. Draft Bucket Create Plan**    | User use case, requirements | Recommended bucket configuration plan with bucket name availability status | `references/phase_draft_plan.md`
-**3. Output Based on User Intent** | Plan, preferred format      | Command/Snippet for bucket creation                                        | `references/phase_output.md`
+Phase                              | Inputs                 | Outputs                                              | Reference
+:--------------------------------- | :--------------------- | :--------------------------------------------------- | :--------
+**1. Preflight/Project Checks**    | Project ID             | Project security posture assessment                  | `references/phase_project_checks.md`
+**2. Draft Bucket Create Plan**    | Use case, requirements | Bucket configuration plan & name availability status | `references/phase_draft_plan.md`
+**3. Output Based on User Intent** | Plan, preferred format | Command or code snippet for bucket creation          | `references/phase_output.md`
 
 ## Workflow Execution
 
 > [!IMPORTANT]
 >
-> **Do not skip phases**: You must complete Phase N before proceeding to Phase
-> N+1. Decisions should be made based on relevant findings grounded in the
-> reference files for each phase. Do not optimize or deviate. Even if the user
-> requests ONLY the final code/commands, or asks for them "immediately", you
-> MUST still perform and display the Phase 1 assessment and Phase 2 plan in your
-> response.
+> **Present every applicable phase in one response, and DO NOT read reference
+> files across separate tool-call rounds**: Even when the user asks for ONLY the
+> final code/commands or forbids running `gcloud` commands, you **MUST** read
+> all needed reference files in full in **one parallel batch** (all tool calls
+> in one assistant message) in **Step 2** (never read Phase 1, Phase 2, Phase 3,
+> or format files one round at a time). Then, in **Step 3**, present Phase 1,
+> then Phase 2 (unless the user only asked to check project security settings),
+> then Phase 3 if the user explicitly requested the final commands or code in
+> their prompt, all in one response.
 
-When invoked, the agent **MUST follow this exact sequence**:
+Follow this exact 3-step execution sequence for minimal round and token usage:
 
-1.  **Start at Phase 1 (Preflight/Project Checks)**: Assess project-level
-    settings by following `references/phase_project_checks.md` and follow its
-    output format before proceeding.
+*   **Step 1**: Read `SKILL.md` in full.
+*   **Step 2 (One Parallel Tool-Call Batch — All Reference File Reads + One
+    Read-Only Shell Command, Unless Commands Are Explicitly Forbidden)**:
 
-2.  **Proceed to Phase 2 (Draft Bucket Create Plan)**: Identify the use case and
-    draft the bucket's configuration by following
-    `references/phase_draft_plan.md`. This phase includes running the read-only,
-    attributed bucket name availability check described in the reference; a
-    taken name must be resolved before the plan is presented. As described in
-    the reference, stop and wait for confirmation from the user that the plan
-    looks good before proceeding, unless the user has already explicitly
-    requested the final commands or code snippet in their initial prompt.
+    1.  **Read All Needed Reference Files in Full in One Parallel Batch (No Line
+        Ranges or Pagination)**: In this single batch, read every reference file
+        needed for the entire response:
+        *   `references/phase_project_checks.md` and
+            `references/phase_draft_plan.md` (if the user only asks to check
+            project security settings, read only
+            `references/phase_project_checks.md`).
+        *   The single primary `references/<use_case>.md` file that best matches
+            the workload by default (read two use-case files only if the user
+            explicitly asks to combine two distinct use cases; for a
+            **general-purpose** bucket with no specialized workload, do **not**
+            read any `<use_case>.md` file).
+        *   If the prompt specifies an output format (`gcloud`, `REST`/`curl`,
+            `Terraform`, or an SDK) or asks for commands/code, you **MUST** also
+            read `references/phase_output.md` **AND** the format reference
+            (`references/gcloud.md`, `references/rest.md`,
+            `references/terraform.md`, or `references/sdk.md` +
+            `references/sdk_<lang>.md`—never read `sdk.md` for
+            `gcloud`/`REST`/`Terraform` tasks) in this **same batch**.
+    2.  **Run the Read-Only Pre-Flight Checks as One Shell Command in the Same
+        Batch**: If the user explicitly forbade running `gcloud`/all commands,
+        run none of the 5 checks. Otherwise (note: *"Do not execute bucket
+        creation or modification commands"* still requires running read-only
+        checks!), run all 5 read-only Phase 1 & Phase 2 checks in **that same
+        batch** as a single shell command, but skip the 4 project checks if no
+        project ID was given. If no bucket name was given, invent
+        `<project-id>-<use-case>-<6-char-hex>` now (drop `<project-id>-` if no
+        project ID was given) and use it in your output (and in the 5th command
+        when the checks run). **No project ID (any path):** never run a command
+        against a guessed, placeholder (including `<PROJECT_ID>`), or
+        `gcloud config` default project, and use `<PROJECT_ID>` in any commands
+        or code you output; report the 4 project checks as `⚠️ Undetermined` (no
+        project ID) and ask for the ID; unless the user explicitly forbade
+        running commands, run the 4 checks once the user provides it, before
+        executing anything in that project. Write each command on a single line
+        so quotes are never split:
 
-3.  **Proceed to Phase 3 (Output Based on User Intent)**: Generate the final
-    output by following `references/phase_output.md` but DO NOT execute any
-    commands.
+        ```bash
+        echo "=== TLS 1.2 ==="; CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" gcloud org-policies describe constraints/gcp.restrictTLSVersion --project=<PROJECT_ID> --effective --format=json 2>&1 || true
+        echo "=== HTTPS Only ==="; CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" gcloud org-policies describe constraints/storage.secureHttpTransport --project=<PROJECT_ID> --effective --format=json 2>&1 || true
+        echo "=== Restrict HMAC ==="; CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" gcloud org-policies describe constraints/storage.restrictAuthTypes --project=<PROJECT_ID> --effective --format=json 2>&1 || true
+        echo "=== Project Liens ==="; CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" gcloud alpha resource-manager liens list --project=<PROJECT_ID> --format=json 2>&1 || true
+        echo "=== Bucket Name ==="; CLOUDSDK_METRICS_ENVIRONMENT="${CLOUDSDK_METRICS_ENVIRONMENT:+$CLOUDSDK_METRICS_ENVIRONMENT }gcs-skills gcs-skills/1.0 (skill:google-cloud-storage-bucket-architect)" gcloud storage buckets describe gs://<BUCKET_NAME> --format=json 2>&1 || true
+        ```
 
-    As described in the reference, the preferred output format should be clear
-    (gcloud, API (REST), Terraform, or SDK).
+*   **Step 3 (One Response Containing Every Applicable Phase)**:
 
-    -   For `gcloud` and `REST`, offer to execute the creation and only proceed
-        after explicit confirmation.
-    -   For `Terraform` and `SDK`, display the snippet for the user to
-        integrate.
+    1.  **Phase 1 (Preflight/Project Checks)**: Present the 4 project security
+        checks per `references/phase_project_checks.md`.
+    2.  **Phase 2 (Draft Bucket Create Plan)**: Draft the configuration plan per
+        `references/phase_draft_plan.md` (including bucket name availability).
+        Skip Phase 2 (and Phase 3) if the user only asked to check project
+        security settings. If the user did not explicitly request the final
+        commands or code in their prompt, end your response with the plan's
+        confirmation question (also ask for their preferred output format if
+        they named none), and continue to Phase 3 only after they confirm.
+    3.  **Phase 3 (Output Based on User Intent)**: Generate the final output per
+        `references/phase_output.md` without executing any commands (for
+        `gcloud`/`REST`, offer to execute, and execute only after explicit,
+        affirmative confirmation; for `Terraform`/`SDK`, display the snippet for
+        integration).
 
 ## Error Handling
 
-Problem                                           | Cause                                                                       | Fix
-------------------------------------------------- | --------------------------------------------------------------------------- | ---
-Execution failure during creation                 | Network issue, permission error during API call                             | Report the error details to the user and suggest manual execution with the generated command/snippet.
-Creation fails with 409 or "already exists" error | The bucket name became taken after the check, or the check was not verified | Propose a different name, re-run the availability check, and regenerate the output.
+Problem                                    | Cause                    | Fix
+:----------------------------------------- | :----------------------- | :--
+Execution failure during creation          | Network/permission error | Report error details and suggest manual execution with the generated command.
+Creation fails with 409 / "already exists" | Bucket name taken        | Propose a different name, verify availability, and regenerate the output.
 
 ## References
 
 ### Phases
 
 *   [Preflight / Project Checks](references/phase_project_checks.md):
-    Project-level security verification and default configuration checks.
+    Project-level security verification and status mapping.
 *   [Draft Bucket Create Plan](references/phase_draft_plan.md): Workload
     assessment, secure defaults, and architecture plan generation.
 *   [Output Based on User Intent](references/phase_output.md): Final
     command/code generation and execution confirmation workflows.
 
-### Bucket Use Cases
+### Bucket Use Cases (Read Only the Primary Matching File by Default; None for General-Purpose Buckets)
 
-*   [Sensitive Data & Compliance](references/sensitive_data.md): Architecture
-    for regulated data (PII, HIPAA, finance) with CMEK, restricted CSEK, and IP
-    filtering.
-*   [Media Hosting & CDN](references/media_hosting.md): Public asset hosting and
-    CDN origin configuration.
-*   [Direct UGC Ingestion](references/ugc_ingestion.md): Signed URLs, direct
-    client uploads, CORS, and malware protection.
+*   [Sensitive Data & Compliance](references/sensitive_data.md): Regulated data
+    (PII, HIPAA, finance) with CMEK, restricted CSEK, and IP filtering.
+*   [Media Hosting & CDN](references/media_hosting.md): Public or
+    application-gated video/media asset hosting (including hosting
+    user-generated video content), live streaming, VOD, and CDN origin config.
+*   [Direct UGC Ingestion](references/ugc_ingestion.md): Browser/client-side
+    direct uploads via `PUT` Signed URLs, CORS for uploads, and ingestion
+    buckets.
 *   [Static Website Hosting](references/static_website.md): Website hosting,
-    custom domain mapping, and index/error page handling.
+    public read access, and index/error page handling.
 *   [Long-Term Archive & Compliance](references/archiving_compliance.md):
-    Regulatory retention, WORM (Object Retention), Bucket Lock, and Autoclass.
-*   [Backup & Disaster Recovery](references/backup_dr.md): Immutable backups,
-    dual-region turbo replication, and soft delete protection.
-*   [Log Storage](references/log_storage.md): High-volume log ingestion,
-    retention management, and SIEM integration.
+    Multi-year regulatory retention (including multi-year financial/compliance
+    audit logs), WORM (Object Lock), Bucket Lock, and `ARCHIVE` storage.
+*   [Backup & Disaster Recovery](references/backup_dr.md): Immutable database/VM
+    backups, snapshots, regional + STS replication, and soft delete.
+*   [Log Storage](references/log_storage.md): Operational application, audit,
+    and VPC flow logs, tiering/lifecycle management, and monitoring/inventory.
 *   [AI & Machine Learning](references/storage_for_ai.md): High-throughput
-    training/inference, Cloud Storage FUSE, Rapid Cache, and zonal buckets
-    (Rapid Bucket / Rapid storage class).
+    training/checkpointing/streaming, Rapid Cache, and zonal `RAPID` buckets.
 
 ### Provisioning & Output Formats
 
-*   [gcloud CLI Reference](references/gcloud.md): `gcloud storage` commands for
-    creating and configuring buckets.
-*   [REST API Reference](references/rest.md): JSON API payloads and cURL
-    commands for bucket creation.
-*   [Terraform Reference](references/terraform.md): `google_storage_bucket`
-    Terraform resource definitions and best practices.
-*   [SDK Client Libraries Overview](references/sdk.md): SDK client
-    initialization, feature support matrix, and unexposed feature handling.
-
-### SDK Language-Specific Guides
-
-*   [C++ SDK Guide](references/sdk_cpp.md): Code examples and patterns for the
-    Cloud Storage C++ client library.
-*   [Go SDK Guide](references/sdk_go.md): Code examples and patterns for the
-    Cloud Storage Go client library.
-*   [Java SDK Guide](references/sdk_java.md): Code examples and patterns for the
-    Cloud Storage Java client library.
-*   [Python SDK Guide](references/sdk_python.md): Code examples and patterns for
-    the Cloud Storage Python client library.
+*   [gcloud CLI Reference](references/gcloud.md): `gcloud storage` commands.
+*   [REST API Reference](references/rest.md): JSON API payloads and `curl`.
+*   [Terraform Reference](references/terraform.md): `google_storage_bucket` HCL.
+*   [SDK Client Libraries Overview](references/sdk.md): Shared SDK concepts and
+    version gates (read together with one language guide:
+    [C++](references/sdk_cpp.md), [Go](references/sdk_go.md),
+    [Java](references/sdk_java.md), or [Python](references/sdk_python.md)).
