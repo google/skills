@@ -1,7 +1,7 @@
 ---
 name: datalineage-summary
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: BigDataAndAnalytics
 description: >-
   Summarizes data lineage graphs on Google Cloud to help users debug data quality issues and understand data provenance for BigQuery and Cloud Storage.
@@ -44,7 +44,7 @@ and downstream) by making *two separate calls* to the MCP tool: one with
 
 *   **Location Strategy**: You **MUST** use the `read_url` tool to fetch the
     comprehensive list of locations dynamically from the provided
-    [Knowledge Catalog Locations](https://docs.cloud.google.com/dataplex/docs/locations.md.txt)
+    [Knowledge Catalog Locations](https://docs.cloud.google.com/knowledge-catalog/docs/locations.md.txt)
     link. To ensure cross-regional lineage is not missed, always verify the
     current list of Google Cloud regions using this link before populating the
     `locations` array. You **MUST** populate the `locations` array with all
@@ -161,6 +161,6 @@ Return the final summarized output back to the user.
 
 ## External Documentation
 
--   [Knowledge Catalog Data Lineage Documentation](https://docs.cloud.google.com/dataplex/docs/about-data-lineage.md.txt)
--   [Use the Data Lineage MCP server](https://docs.cloud.google.com/dataplex/docs/use-lineage-mcp.md.txt)
--   [Knowledge Catalog Data Lineage API Reference](https://docs.cloud.google.com/dataplex/docs/reference/data-lineage/rest.md.txt)
+-   [Knowledge Catalog Data Lineage Documentation](https://docs.cloud.google.com/knowledge-catalog/docs/about-data-lineage.md.txt)
+-   [Use the Data Lineage MCP server](https://docs.cloud.google.com/knowledge-catalog/docs/use-lineage-mcp.md.txt)
+-   [Knowledge Catalog Data Lineage API Reference](https://docs.cloud.google.com/knowledge-catalog/docs/reference/data-lineage/rest.md.txt)

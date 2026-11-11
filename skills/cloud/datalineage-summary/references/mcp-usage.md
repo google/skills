@@ -20,7 +20,7 @@ assets.
 ## Setup Instructions
 
 To connect to the Data Lineage MCP server, see
-[Use the Data Lineage MCP server](https://docs.cloud.google.com/dataplex/docs/use-lineage-mcp.md.txt).
+[Use the Data Lineage MCP server](https://docs.cloud.google.com/knowledge-catalog/docs/use-lineage-mcp.md.txt).
 
 For client configuration, add the following block to your agent's MCP
 configuration file (e.g., `mcp_config.json`):
