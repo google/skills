@@ -4,7 +4,7 @@
       "serverUrl": "https://developerknowledge.googleapis.com/mcp",
       "authProviderType": "google_credentials",
       "headers": {
-        "X-Goog-Api-Client": "google-cloud-developer/1.1.18 agent-skills/1.0 (plugin:google-cloud-developer)"
+        "X-Goog-Api-Client": "google-cloud-developer/1.1.19 agent-skills/1.0 (plugin:google-cloud-developer)"
       }
     }
   }

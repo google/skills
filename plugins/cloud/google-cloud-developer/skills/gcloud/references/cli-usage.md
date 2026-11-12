@@ -114,7 +114,7 @@ Authenticate the CLI with Google Cloud according to the operational environment:
     For CI/CD and external compute environments (GitHub Actions, AWS, on-prem),
     authenticate using federated tokens without managing service account keys.
     See
-    [Authorizing the gcloud CLI](https://docs.cloud.google.com/sdk/docs/authorizing.md.txt).
+    [Authenticate for the gcloud CLI](https://docs.cloud.google.com/sdk/docs/authenticate.md.txt).
 
 ## Local Configuration Management
 

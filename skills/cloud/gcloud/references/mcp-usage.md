@@ -19,7 +19,8 @@ managed remote environment on behalf of the user.
 
 ## Client Configuration (`mcp_config.json`)
 
-To connect an MCP client (such as Jetski) to the remote Cloud CLI MCP server,
+To connect an MCP client (such as Antigravity) to the remote Cloud CLI MCP
+server,
 configure the server entry in `mcp_config.json` with `authProviderType` set to
 `"google_credentials"`:
 
@@ -102,9 +103,10 @@ Calls to `run_gcloud_command` accept the following parameters:
 >     `--project={resource_project}` within the `command` string. The target
 >     `{resource_project}` does NOT have to be the project hosting the Cloud CLI
 >     Execution API.
-> -   For **non-project-scoped commands** (such as billing or organization
->     queries), you MUST include `--billing-project={billing_project}` in the
->     `command` string if the underlying API requires a quota project.
+> -   For **non-project-scoped commands** (such as billing, folder, or
+>     organization queries), you MUST include
+>     `--billing-project={billing_project}` in the `command` string if the
+>     underlying API requires a quota project.
 
 ### Example Invocations
 

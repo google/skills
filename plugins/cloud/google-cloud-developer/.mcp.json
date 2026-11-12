@@ -6,7 +6,7 @@
       "url": "https://developerknowledge.googleapis.com/mcp",
       "headers": {
           "X-Goog-Api-Key": "${DEVELOPERKNOWLEDGE_API_KEY}",
-          "X-Goog-Api-Client": "google-cloud-developer/1.1.18 agent-skills/1.0 (plugin:google-cloud-developer)"
+          "X-Goog-Api-Client": "google-cloud-developer/1.1.19 agent-skills/1.0 (plugin:google-cloud-developer)"
       }
     }
   }

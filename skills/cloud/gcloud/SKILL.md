@@ -1,7 +1,7 @@
 ---
 name: gcloud
 metadata:
-  version: "1.0.3"
+  version: "1.0.4"
   category: CloudInfrastructureAndServices
 description: >-
   Provides safety-critical validation, guardrails, and data reduction for gcloud
@@ -31,7 +31,13 @@ description: >-
 > 1.  **Direct Execution & Code Generation**: **ALWAYS** invoke `gcloud help
 >     <leaf_command>` (e.g. `gcloud help compute instances create` or `gcloud
 >     help sql instances create`) before proposing or executing the final
->     command syntax.
+>     command syntax, **UNLESS** the user prompt already provides `gcloud help`
+>     output, states to assume command syntax is already validated, or instructs
+>     not to execute any commands. When instructed not to execute any commands,
+>     **NEVER** invoke `run_command` (not even for `gcloud help` or directory
+>     listing commands like `ls`); read bundled reference files
+>     (`references/cli-usage.md`, `references/mcp-usage.md`, and
+>     `references/attribution.md`) directly with `read_file`.
 >
 > 2.  **Planning & Strategy Queries**: When asked for a plan, strategy, or next
 >     steps to achieve a user goal (e.g., *"What is your plan to accomplish
@@ -274,7 +280,7 @@ Learn Filters      | `gcloud topic filters`
 Learn Formats      | `gcloud topic formats`
 Learn Projections  | `gcloud topic projections`
 Asynchronous Op    | `gcloud <COMMAND> --async`
-Check Operation    | `gcloud operations describe <OPERATION_ID>`
+Check Operation    | `gcloud <GROUP> operations describe <OPERATION_ID>`
 Common commands    | `gcloud cheat-sheet`
 List Regions (GCE) | `gcloud compute regions list --project=<PROJECT_ID>`
 List Zones (GCE)   | `gcloud compute zones list --project=<PROJECT_ID>`
