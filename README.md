@@ -133,6 +133,7 @@ This command gives you an option to also remove obsolete skills.
   - [**BigQuery Basics**](./skills/cloud/bigquery-basics)
   - [**BigQuery Migration Data Loader**](./skills/cloud/bigquery-migration-data-loader)
   - [**BigQuery Migration Service (BQMS) SQL Translator**](./skills/cloud/bigquery-migration-sql-translator)
+  - [**BigQuery Migration Validator**](./skills/cloud/bigquery-migration-validator)
   - [**BigQuery Observability**](./skills/cloud/bigquery-observability)
   - [**BigQuery Optimization Workflow**](./skills/cloud/bigquery-optimization)
   - [**BigQuery Troubleshooting**](./skills/cloud/bigquery-troubleshooting)
