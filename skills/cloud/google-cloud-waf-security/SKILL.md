@@ -1,19 +1,27 @@
 ---
 name: google-cloud-waf-security
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: WellArchitectedFramework
 description: >-
-  Generates security-focused guidance for Google Cloud workloads based on the
-  design principles and recommendations in the Google Cloud Well-Architected
-  Framework (WAF). Use this skill to evaluate workloads, identify security
-  requirements, and provide actionable recommendations for IAM, network
-  security, data protection, and operational security.
+  Evaluates Google Cloud workloads and provides actionable recommendations for
+  identity management, access control, permissions and roles, network and
+  perimeter security, data security and encryption, security logging and threat
+  detection, software supply chain hardening, AI security, data privacy,
+  regulatory compliance, and cloud sovereignty. The recommendations are aligned
+  with the Security, Privacy, and Compliance pillar of the Google Cloud
+  Well-Architected Framework (WAF). Use when the user asks about firewall rules,
+  zero trust, shared responsibility and shared fate, audit logging, security
+  monitoring, threat mitigation, shift-left CI/CD security, Secure AI
+  Framework (SAIF), data residency, or hardening Google Cloud resources.
+  Don't use for other Well-Architected Framework pillars (Cost Optimization,
+  Operational Excellence, Reliability, Performance Optimization, or
+  Sustainability).
 ---
 
-# Google Cloud Well-Architected Framework skill for the Security pillar
+# Google Cloud Well-Architected Framework skill for the Security, Privacy, and Compliance pillar
 
-## Attribution
+## Usage attribution
 
 **MUST READ**: Before executing any `gcloud`, REST API, or MCP command, you
 MUST read and follow the instructions in
@@ -21,13 +29,14 @@ MUST read and follow the instructions in
 
 ## Overview
 
-The security pillar of the Google Cloud Well-Architected Framework provides
-design principles and best practices for building a robust security posture by
-integrating security into every layer of the architecture for cloud workloads.
-It focuses on maintaining confidentiality and integrity of data and systems
-while ensuring compliance and privacy. It provides a structured approach to risk
-management, threat defense, and identity control, enabling you to operate cloud
-workloads securely and at scale.
+The Security, Privacy, and Compliance pillar of the Google Cloud
+Well-Architected Framework provides design principles and recommendations for
+building a robust security posture by integrating security into every layer of
+the architecture of your cloud workloads. It helps you maintain the
+confidentiality and integrity of data and systems while ensuring compliance and
+privacy. It provides a structured approach to risk management, threat defense,
+and identity control, enabling you to operate cloud workloads securely and at
+scale.
 
 ## Workflow
 
@@ -52,67 +61,82 @@ security posture of the specified Google Cloud workload:
 
 ## Core principles
 
-The recommendations in the security pillar of the Well-Architected Framework are
-aligned with the following core principles:
+The recommendations in the security pillar of the Well-Architected Framework
+are aligned with the following core principles:
 
--  **Implement security by design**: Integrate cloud security and network
-   security considerations starting from the initial design phase of your
-   applications and infrastructure. Google Cloud provides architecture
-   blueprints and recommendations to help you apply this principle. Grounding
-   document:
-   https://docs.cloud.google.com/architecture/framework/security/implement-security-by-design.md.txt
+-   **Implement security by design**: Choose system components that help to
+    secure your workloads, build a layered security approach, and use hardened
+    and attested infrastructure and services. Google Cloud encrypts data at rest
+    and in transit by default; layer customer-managed or customer-supplied
+    encryption keys (CMEK or CSEK) in Cloud KMS, VPC Service Controls
+    perimeters, and Sensitive Data Protection for sensitive workloads. Grounding
+    document:
+    https://docs.cloud.google.com/architecture/framework/security/implement-security-by-design.md.txt
 
--  **Implement zero trust**: Use a _never trust, always verify_ approach, where
-   access to resources is granted based on continuous verification of trust.
-   Google Cloud supports this principle through products like Chrome Enterprise
-   Premium, Identity-Aware Proxy (IAP) and IAM Recommender. Grounding document:
-   https://docs.cloud.google.com/architecture/framework/security/implement-zero-trust.md.txt
+-   **Implement zero trust**: Apply a *never trust, always verify* approach.
+    Authenticate and authorize every user, device, and workload request
+    explicitly using identity, MFA, and device/location context; enforce least
+    privilege and separation of duties; segment networks and private service
+    paths; and continuously monitor network flows and audit logs.
+    Grounding document:
+    https://docs.cloud.google.com/architecture/framework/security/implement-zero-trust.md.txt
 
--  **Implement shift-left security**: Implement security controls early in the
-   software development lifecycle. Avoid security defects before system changes
-   are made. Detect and fix security bugs early, fast, and reliably after the
-   system changes are committed. Google Cloud supports this principle through
-   products like Cloud Build, Binary Authorization, and Artifact Registry.
-   Grounding document:
-   https://docs.cloud.google.com/architecture/framework/security/implement-shift-left-security.md.txt
+-   **Implement shift-left security**: Implement security controls early in the
+    software development lifecycle. Avoid security defects before system changes
+    are made. Detect and fix security bugs early, fast, and reliably after the
+    system changes are committed. Google Cloud supports this principle through
+    products like Cloud Build, Binary Authorization, and Artifact Registry.
+    Grounding document:
+    https://docs.cloud.google.com/architecture/framework/security/implement-shift-left-security.md.txt
 
--  **Implement preemptive cyber defense**: Adopt a proactive approach to
-   security by implementing robust fundamental measures like threat
-   intelligence. This approach helps you build a foundation for more effective
-   threat detection and response. Google Cloud's approach to layered security
-   controls aligns with this principle. Google Cloud supports this principle
-   through products like Security Command Center, Google Threat Intelligence,
-   and Google SecOps. Grounding document:
-   https://docs.cloud.google.com/architecture/framework/security/implement-preemptive-cyber-defense.md.txt
+-   **Implement preemptive cyber defense**: Apply the *Defender's Advantage*
+    framework for cyber defense (Intelligence, Detect and Respond, Validate,
+    Hunt, and Mission Control) based on your current cloud maturity, resource
+    topology, and specific threat landscape. Validate and improve your
+    defenses continuously. Grounding document:
+    https://docs.cloud.google.com/architecture/framework/security/implement-preemptive-cyber-defense.md.txt
 
--  **Use AI securely and responsibly**: Develop and deploy AI systems in a
-   responsible and secure manner. The recommendations for this principle are
-   aligned with guidance in the AI and ML perspective of the Well-Architected
-   Framework and in Google's Secure AI Framework (SAIF). Grounding document:
-   https://docs.cloud.google.com/architecture/framework/security/use-ai-securely-and-responsibly.md.txt
+-   **Use AI securely and responsibly**: Apply Google's Secure AI Framework
+    (SAIF) alongside AI governance principles (fairness, transparency,
+    accountability, privacy, and security).
+    -  **Use AI securely**: Define clear goals and requirements for AI usage,
+       keep data secure and prevent loss or mishandling, keep AI pipelines
+       secure and robust against tampering, deploy apps on secure systems using
+       secure tools and artifacts, and protect and monitor inputs.
+    -  **Use AI responsibly**: Use fairness indicators, use
+       explainability tools, track data lineage, establish clear
+       accountability, and implement differential privacy.
+    Grounding documents:
+    https://docs.cloud.google.com/architecture/framework/security/use-ai-securely-and-responsibly.md.txt
+    and
+    https://docs.cloud.google.com/architecture/framework/perspectives/ai-ml/security.md.txt
 
--  **Use AI for security**: Use AI capabilities to improve your existing
-   security systems and processes through Gemini in Security and overall
-   platform-security capabilities. Use AI as a tool to increase the automation
-   of remedial work and ensure security hygiene to make other systems more
-   secure. Google Cloud supports this principle through products like Google
-   Threat Intelligence and Google SecOps. Grounding document:
-   https://docs.cloud.google.com/architecture/framework/security/use-ai-for-security.md.txt
+-   **Use AI for security**: Enhance threat detection and response with AI,
+    simplify security for experts and non-experts, automate time-consuming
+    security tasks with AI, incorporate AI into risk management and governance
+    processes, and implement secure development practices for AI systems.
+    Grounding document:
+    https://docs.cloud.google.com/architecture/framework/security/use-ai-for-security.md.txt
 
--  **Meet regulatory, compliance, and privacy needs**: Adhere to
-   industry-specific regulations, compliance standards, and privacy
-   requirements. Google Cloud helps you meet these obligations through products
-   like Assured Workloads, Organization Policy Service, and our compliance
-   resource center. Grounding document:
-   https://docs.cloud.google.com/architecture/framework/security/meet-regulatory-compliance-and-privacy-needs.md.txt
+-   **Meet regulatory, compliance, and privacy needs**: Identify and mitigate
+    organizational risks, automate implementation of compliance requirements
+    and monitor compliance, manage operational and software sovereignty, and
+    control data residency, classify confidential data, and protect sensitive
+    data. Grounding document:
+    https://docs.cloud.google.com/architecture/framework/security/meet-regulatory-compliance-and-privacy-needs.md.txt
 
-- **Shared responsibilities and shared fate on Google Cloud**: Understand that
-  Google is responsible for the security _of_ the cloud and you're responsible
-  for the security of your workloads _in_ the cloud. Recognize how this division
-  of responsibilities varies based on the workload type. Learn what Google does
-  to help ensure that security _of_ the cloud. Take appropriate actions to help
-  ensure that your workloads are secure _in_ the cloud.
-  Grounding document: https://docs.cloud.google.com/architecture/framework/security/shared-responsibility-shared-fate.md.txt
+-   **Shared responsibilities and shared fate on Google Cloud**: Understand the
+    division between security *of* the cloud (owned by Google: physical security
+    of data centers, hardware, hypervisors, core networking, and storage, and
+    inherited controls like default encryption) and security *in* the cloud
+    (owned by you: data, access policies, and workload-specific configurations
+    shaped by your requirements and industry regulations), reinforced by
+    Google's active Shared Fate partnership (attested blueprints and Risk
+    Protection Program). Customer operational responsibility varies by service
+    model—it is greater in IaaS (such as patching guest OSs on Compute Engine
+    VMs) than in managed PaaS or serverless services (such as Cloud Run).
+    Grounding document:
+    https://docs.cloud.google.com/architecture/framework/security/shared-responsibility-shared-fate.md.txt
 
 ## Relevant Google Cloud products
 
@@ -125,20 +149,21 @@ relevant to security:
     federation.
   - **Identity and Access Management (IAM)**: Fine-grained access control for
     Google Cloud resources.
-  - **Identity-Aware Proxy (IAP)**: Secure access to applications without a VPN.
+  - **Identity-Aware Proxy (IAP)**: Secure access to applications and VMs
+    without public IP addresses or a VPN.
   - **Chrome Enterprise Premium**: Endpoint security and context-aware access.
-  - **IAM Recommender**: Provide policy intelligence.
+  - **IAM Recommender**: Policy intelligence to identify and remove
+    over-privileged access.
 
-- **Network security**
+- **Network and perimeter security**
 
   - **Google Cloud Armor**: DDoS protection and Web Application Firewall (WAF).
-  - **VPC Service Controls**: Define security perimeters to prevent data
-    exfiltration.
+  - **VPC Service Controls**: Security perimeters to prevent data exfiltration.
   - **Cloud Next-Generation Firewall (NGFW)**: Advanced threat protection for
     network traffic.
   - **Shared VPC**: Centralized network management across projects.
   - **Cloud Interconnect and IPsec VPN**: Secure, private connectivity.
-  -**Private Service Connect**: Provide private access to managed services
+  - **Private Service Connect**: Private access to managed services.
 
 - **Data security**
 
@@ -152,8 +177,9 @@ relevant to security:
   - **Google SecOps (Chronicle)**: Threat detection and security analytics.
   - **Security Command Center (SCC)**: Centralized vulnerability and threat
     management.
-  - **Cloud Logging and Cloud Monitoring**: Visibility into system activity.
-  - **BigQuery**: Storing exported logs for analysis.
+  - **Cloud Logging and Cloud Monitoring**: Visibility into administrative and
+    data-access activity and log-based alerts for unauthorized access events.
+  - **BigQuery**: Storing exported logs for long-term security analysis.
 
 - **Automation and supply chain**
 
@@ -356,4 +382,5 @@ security recommendations:
   - Are AI pipelines secured against tampering and data poisoning?
   - Is differential privacy or data masking used for training data where
     appropriate?
-  - Are Vertex Explainable AI and fairness indicators used for model governance?
+  - Are explainability techniques such as feature attributions used for model
+    governance?

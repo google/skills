@@ -187,7 +187,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Google Cloud Well-Architected Framework skill for the Operational Excellence pillar**](./skills/cloud/google-cloud-waf-operational-excellence)
   - [**Google Cloud Well-Architected Framework skill for the Performance Optimization pillar**](./skills/cloud/google-cloud-waf-performance-optimization)
   - [**Google Cloud Well-Architected Framework skill for the Reliability pillar**](./skills/cloud/google-cloud-waf-reliability)
-  - [**Google Cloud Well-Architected Framework skill for the Security pillar**](./skills/cloud/google-cloud-waf-security)
+  - [**Google Cloud Well-Architected Framework skill for the Security, Privacy, and Compliance pillar**](./skills/cloud/google-cloud-waf-security)
   - [**Google Cloud Well-Architected Framework skill for the Sustainability pillar**](./skills/cloud/google-cloud-waf-sustainability)
 - **Security and identity**
   - [**API Gateway Backend Security and Rate Limiting**](./skills/cloud/api-gateway-backend-security-and-rate-limiting)
