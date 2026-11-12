@@ -24,7 +24,7 @@ For self-contained project environments, it is best practice to keep this file i
 
 ```properties
 # googleads.properties
-developer_token=INSERT_DEVELOPER_TOKEN_HERE
+# developer_token is no longer required (developer tokens were sunset on September 9, 2026).
 client_id=INSERT_OAUTH2_CLIENT_ID_HERE
 client_secret=INSERT_OAUTH2_CLIENT_SECRET_HERE
 refresh_token=INSERT_OAUTH2_REFRESH_TOKEN_HERE

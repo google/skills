@@ -14,7 +14,7 @@ dotnet add package Google.Ads.GoogleAds
 
 ## Step 2: Configuration (Runtime Initialization)
 The preferred way to configure the .NET client library is to initialize a `GoogleAdsConfig` object at runtime. Gather your required credentials to include in your code:
-* Developer Token
+
 * OAuth2 Client ID
 * OAuth2 Client Secret
 * OAuth2 Refresh Token
@@ -52,7 +52,6 @@ class Program {
         
         GoogleAdsConfig config = new GoogleAdsConfig()
         {
-            DeveloperToken = "INSERT_DEVELOPER_TOKEN_HERE",
             OAuth2Mode = OAuth2Flow.APPLICATION,
             OAuth2ClientId = "INSERT_OAUTH2_CLIENT_ID_HERE",
             OAuth2ClientSecret = "INSERT_OAUTH2_CLIENT_SECRET_HERE",

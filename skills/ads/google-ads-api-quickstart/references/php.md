@@ -28,7 +28,7 @@ Create your configuration file named `google_ads_php.ini`. For self-contained pr
 ```ini
 ; google_ads_php.ini
 [GOOGLE_ADS]
-developerToken = "INSERT_DEVELOPER_TOKEN_HERE"
+; developerToken is no longer required (developer tokens were sunset on September 9, 2026).
 ; Required if authenticating with a manager account user to access a client account
 ; loginCustomerId = "INSERT_LOGIN_CUSTOMER_ID_HERE"
 

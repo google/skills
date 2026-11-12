@@ -4,7 +4,7 @@ description: Guides developers through downloading, configuring, and installing 
 compatibility: Python 3.12+, pipx
 metadata:
   author: google-ads-api-team
-  version: "1.0.0"
+  version: "1.1.0"
   category: GoogleAds
 ---
 # Google Ads API MCP Server Installation
@@ -29,9 +29,13 @@ are strictly required prerequisites for the installation.
 ---
 ## ⚠️ Prerequisites: Credentials Required
 > [!WARNING]
-> **Dependency Check:** The MCP server **requires** the same 5 authentication credentials as a standard integration.
+> **Dependency Check:** The MCP server **requires** a Google Cloud project with
+> Google Ads API access and the same OAuth credentials as a standard
+> integration. Developer tokens were sunset on September 9, 2026 and are not
+> used.
 >
-> If you **do not** have your Developer Token, Client ID, Client Secret, Refresh Token, and Customer IDs yet:
+> If you **do not** have your Google Cloud project ID, Client ID, Client
+> Secret, Refresh Token, and Customer IDs yet:
 > 1. **STOP** executing this skill.
 > 2. **Transition to** the **`google-ads-api-quickstart`** skill first to generate them, then return here.
 
@@ -39,9 +43,11 @@ are strictly required prerequisites for the installation.
 
 ## Step 1: Validate Your Google Ads API Credentials
 
-The Google Ads MCP Server requires the same five parameters as the standard client libraries. Before proceeding to installation, verify that you have these values secured and formatted correctly:
+The Google Ads MCP Server requires the same parameters as the standard client
+libraries. Before proceeding to installation, verify that you have these values
+secured and formatted correctly:
 
-1.  **Developer Token:** Your unique API access key from the **API Center** (Manager Account).
+1.  **Google Cloud Project ID:** The project in which the Google Ads API is enabled and that owns your OAuth client. Its access level (Test, Explorer, Basic, or Standard) decides which accounts the server can query; check it on the [Google Ads API Overview page](https://console.cloud.google.com/google/ads-apis/overview).
 2.  **OAuth2 Client ID & Client Secret:** Desktop Application credentials from the Google Cloud Console.
 3.  **OAuth2 Refresh Token:** The long-lived token generated via the OAuth consent flow.
 4.  **Client Customer ID:** The 10-digit target Google Ads account ID.
@@ -53,7 +59,8 @@ The Google Ads MCP Server requires the same five parameters as the standard clie
 
 ---
 
-*Once you have verified that all five parameters are present and formatted correctly, proceed to Step 2.*
+*Once you have verified that all parameters are present and formatted
+correctly, proceed to Step 2.*
 
 ## Step 2: Install Prerequisites (Python & pipx)
 
@@ -177,12 +184,11 @@ The Google Ads MCP Server reads your credentials via system environment variable
 
 | Environment Variable | Description | Format |
 |---|---|---|
-| `GOOGLE_ADS_DEVELOPER_TOKEN` | Your Google Ads Developer Token. | Alphanumeric |
+| `GOOGLE_PROJECT_ID` | Google Cloud Project ID that holds your Google Ads API access level (required). | Alphanumeric |
 | `GOOGLE_ADS_CLIENT_ID` | Your Google Cloud OAuth Client ID. | `*.apps.googleusercontent.com` |
 | `GOOGLE_ADS_CLIENT_SECRET` | Your Google Cloud OAuth Client Secret. | Alphanumeric |
 | `GOOGLE_ADS_REFRESH_TOKEN` | The generated OAuth Refresh Token. | Alphanumeric |
 | `GOOGLE_ADS_LOGIN_CUSTOMER_ID` | Manager Account ID (MCC). Required if using a manager hierarchy. | 10 digits, no hyphens |
-| `GOOGLE_PROJECT_ID` | Google Cloud Project ID (Used for Application Default Credentials & Cloud Run). | Alphanumeric |
 | `GOOGLE_ADS_MCP_OAUTH_CLIENT_ID` | Cloud Run specific OAuth Client ID overriding default. | `*.apps.googleusercontent.com` |
 | `GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET` | Cloud Run specific OAuth Client Secret overriding default. | Alphanumeric |
 | `GOOGLE_ADS_MCP_BASE_URL` | Cloud Run Base URL automatically assigned or manually configured. | URL |
@@ -194,7 +200,7 @@ If choosing Method B, append the following to your shell profile (`~/.bashrc`, `
 
 ```bash
 # Google Ads MCP Server Credentials
-export GOOGLE_ADS_DEVELOPER_TOKEN="your_developer_token_here"
+export GOOGLE_PROJECT_ID="your_project_id_here"
 export GOOGLE_ADS_CLIENT_ID="your_oauth_client_id_here"
 export GOOGLE_ADS_CLIENT_SECRET="your_oauth_client_secret_here"
 export GOOGLE_ADS_REFRESH_TOKEN="your_oauth_refresh_token_here"
@@ -202,8 +208,6 @@ export GOOGLE_ADS_REFRESH_TOKEN="your_oauth_refresh_token_here"
 # Required only for Manager Account hierarchies:
 export GOOGLE_ADS_LOGIN_CUSTOMER_ID="your_manager_account_id_here"
 
-# Required for Application Default Credentials (ADC) or Cloud Run deployments:
-export GOOGLE_PROJECT_ID="your_project_id_here"
 ```
 
 To protect credential security, **do not recommend hardcoding credentials inside the MCP server's source Python scripts.**
@@ -222,7 +226,10 @@ Connect the Google Ads MCP Server to your chosen AI coding environment using one
 > 1. [ ] **Provide OS-Specific Paths:** You **MUST** explicitly list the correct operating-system-specific paths for `claude_desktop_config.json` on **macOS** (`~/Library/Application Support/Claude/claude_desktop_config.json`) and **Windows** (`%APPDATA%\Claude\claude_desktop_config.json`). Do not omit macOS or Windows paths even if running on Linux.
 > 2. [ ] **Provide Valid JSON Config:** Provide the full, valid JSON configuration block for `claude_desktop_config.json`.
 > 3. [ ] **Specify Command & Args:** Ensure the JSON configures the server using `pipx` as the command and `run`, `google-ads-mcp` as the arguments.
-> 4. [ ] **Declare Auth Environment Variables:** Declare environment variables `GOOGLE_ADS_DEVELOPER_TOKEN`, `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, and `GOOGLE_ADS_REFRESH_TOKEN` within the configuration.
+> 4. [ ] **Declare Auth Environment Variables:** Declare environment variables
+>    `GOOGLE_PROJECT_ID`, `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`,
+>    and `GOOGLE_ADS_REFRESH_TOKEN` within the configuration. Do not include a
+>    developer token.
 
 Add the server entry to your Claude configuration file.
 
@@ -243,7 +250,7 @@ Add the server entry to your Claude configuration file.
             "google-ads-mcp"
           ],
           "env": {
-            "GOOGLE_ADS_DEVELOPER_TOKEN": "YOUR_DEVELOPER_TOKEN",
+            "GOOGLE_PROJECT_ID": "YOUR_PROJECT_ID",
             "GOOGLE_ADS_CLIENT_ID": "YOUR_OAUTH_CLIENT_ID",
             "GOOGLE_ADS_CLIENT_SECRET": "YOUR_OAUTH_CLIENT_SECRET",
             "GOOGLE_ADS_REFRESH_TOKEN": "YOUR_OAUTH_REFRESH_TOKEN",
@@ -253,7 +260,14 @@ Add the server entry to your Claude configuration file.
       }
     }
     ```
-    *(Note: Using `pipx run` is recommended as it automatically manages the execution path. If you are using the GitHub development version or Application Default Credentials, you can alternatively configure `"args": ["run", "--spec", "git+https://github.com/googleads/google-ads-mcp.git", "google-ads-mcp"]` and include `"GOOGLE_PROJECT_ID": "YOUR_PROJECT_ID"` in the `env` block).*
+    *(Note: Using `pipx run` is recommended as it automatically manages the
+    execution path. If you are using the GitHub development version, pass
+    `--spec` with `git+https://github.com/googleads/google-ads-mcp.git` between
+    `run` and `google-ads-mcp` in `args`. If you prefer Application Default
+    Credentials to an OAuth client ID and refresh token, replace the
+    `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, and
+    `GOOGLE_ADS_REFRESH_TOKEN` variables with
+    `GOOGLE_APPLICATION_CREDENTIALS` pointing to your ADC JSON file.)*
 
 ---
 
@@ -266,7 +280,7 @@ Add the server entry to your Claude configuration file.
     *   **Type:** `stdio`
     *   **Command:** `pipx run google-ads-mcp`
 4.  Under **Environment Variables**, add the required keys and values:
-    *   `GOOGLE_ADS_DEVELOPER_TOKEN`
+    *   `GOOGLE_PROJECT_ID`
     *   `GOOGLE_ADS_CLIENT_ID`
     *   `GOOGLE_ADS_CLIENT_SECRET`
     *   `GOOGLE_ADS_REFRESH_TOKEN`
@@ -279,7 +293,10 @@ Add the server entry to your Claude configuration file.
 
 When answering questions about connecting the Google Ads MCP server to Antigravity (IDE or CLI), you **MUST** explicitly explain the following architectural and configuration details:
 
-*   **Mandatory Environment Setup**: Instruct the user to configure and export standard environment variables (such as `GOOGLE_ADS_DEVELOPER_TOKEN`, `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, `GOOGLE_ADS_REFRESH_TOKEN`) in their terminal session or IDE environment.
+*   **Mandatory Environment Setup**: Instruct the user to configure and export
+    standard environment variables (such as `GOOGLE_PROJECT_ID`,
+    `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`,
+    `GOOGLE_ADS_REFRESH_TOKEN`) in their terminal session or IDE environment.
 *   **Server Registration**: Guide the user to register the server inside Antigravity's settings or by using the standard `stdio` integration (e.g., configuring the command `pipx run google-ads-mcp`).
 *   **Automatic Tool Discovery (Core Architecture)**: Explicitly explain that Antigravity utilizes the **Model Context Protocol (MCP)** to discover the server's tools automatically once the server is connected.
 *   **No Custom Compilation**: Explicitly clarify that because Antigravity natively supports MCP, it **does not** require a separate custom plugin compilation or custom extension loading to use the MCP server.
@@ -341,7 +358,7 @@ gcloud run deploy google-ads-mcp \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
-  --set-env-vars="GOOGLE_PROJECT_ID=YOUR_PROJECT_ID,GOOGLE_ADS_DEVELOPER_TOKEN=YOUR_DEVELOPER_TOKEN,GOOGLE_ADS_MCP_OAUTH_CLIENT_ID=YOUR_CLIENT_ID,GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET=YOUR_CLIENT_SECRET,GOOGLE_ADS_MCP_BASE_URL=YOUR_BASE_URL,FASTMCP_HOST=0.0.0.0"
+  --set-env-vars="GOOGLE_PROJECT_ID=YOUR_PROJECT_ID,GOOGLE_ADS_MCP_OAUTH_CLIENT_ID=YOUR_CLIENT_ID,GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET=YOUR_CLIENT_SECRET,GOOGLE_ADS_MCP_BASE_URL=YOUR_BASE_URL,FASTMCP_HOST=0.0.0.0"
 ```
 
 ### 4. Configure the MCP Client
@@ -407,7 +424,13 @@ A successful integration will trigger the following flow:
 ### 4. Troubleshooting
 If the assistant fails to retrieve the data or connect to the MCP server, check the following common failure points:
 
-*   **Authentication/Permission Errors (IDE Environment Gotcha)**: External IDEs (like Cursor or VS Code) often run in isolated environments or background processes that do not inherit shell RC files (e.g., `~/.bashrc` or `~/.zshrc`). Ensure your `GOOGLE_ADS_DEVELOPER_TOKEN`, OAuth client credentials, and `GOOGLE_ADS_REFRESH_TOKEN` are explicitly configured where the IDE can access them (prefer Method A: setting them directly in the MCP client's JSON configuration).
+*   **Authentication/Permission Errors (IDE Environment Gotcha)**: External
+    IDEs (like Cursor or VS Code) often run in isolated environments or
+    background processes that do not inherit shell RC files (e.g., `~/.bashrc`
+    or `~/.zshrc`). Ensure your `GOOGLE_PROJECT_ID`, OAuth client credentials,
+    and `GOOGLE_ADS_REFRESH_TOKEN` are explicitly configured where the IDE can
+    access them (prefer Method A: setting them directly in the MCP client's
+    JSON configuration).
 *   **"Tools not found" / Mandatory Client Restart**: MCP servers are only loaded on application startup; changes to configuration files will not take effect dynamically. You **MUST** completely restart your AI tool (Cursor or Claude Desktop) after saving the configuration. Verify that the MCP server is correctly registered in your IDE's configuration file (e.g., the `mcpServers` block in Cursor's `project.json` or Claude Desktop's config).
 *   **PATH and Executable Issues (`spawn pipx ENOENT`)**: If the connection fails or logs show `spawn pipx ENOENT`, `pipx` is not in the system PATH of the IDE's environment. Provide the absolute path to `pipx` in the "command" field of your config (e.g., `/usr/local/bin/pipx` or `~/.local/bin/pipx`).
 *   **Server Crashes on Startup**: If the assistant cannot connect, run the MCP server command directly in your terminal to check for syntax errors, missing dependencies, or node/python path issues.

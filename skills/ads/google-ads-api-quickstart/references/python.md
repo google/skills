@@ -42,7 +42,11 @@ Create a file named `google-ads.yaml`.
 
 The Python client library supports multiple methods for initializing the `GoogleAdsClient`:
 1. **YAML File (`load_from_storage`):** Resolves in order: (1) Explicit path passed to `load_from_storage('/path/to/google-ads.yaml')`, (2) `GOOGLE_ADS_CONFIGURATION_FILE_PATH` environment variable, or (3) `$HOME/google-ads.yaml` by default.
-2. **Environment Variables (`load_from_env`):** Reads uppercase `GOOGLE_ADS_` prefixed variables (e.g., `GOOGLE_ADS_DEVELOPER_TOKEN`, `GOOGLE_ADS_CLIENT_ID`). *(Note: If `GOOGLE_ADS_CONFIGURATION_FILE_PATH` is set, `load_from_env` will load from that YAML file instead).*
+2. **Environment Variables (`load_from_env`):** Reads uppercase `GOOGLE_ADS_`
+   prefixed variables (e.g., `GOOGLE_ADS_CLIENT_ID`,
+   `GOOGLE_ADS_REFRESH_TOKEN`). *(Note: If
+   `GOOGLE_ADS_CONFIGURATION_FILE_PATH` is set, `load_from_env` will load from
+   that YAML file instead).*
 3. **Dictionary (`load_from_dict`):** Accepts a Python dictionary of credentials directly.
 4. **YAML String (`load_from_string`):** Accepts a raw YAML string in memory.
 
@@ -52,7 +56,7 @@ The Python client library supports multiple methods for initializing the `Google
 Populate the file with your credentials:
 ```yaml
 # google-ads.yaml
-developer_token: INSERT_DEVELOPER_TOKEN_HERE
+# developer_token is no longer required (developer tokens were sunset on September 9, 2026).
 client_id: INSERT_OAUTH2_CLIENT_ID_HERE
 client_secret: INSERT_OAUTH2_CLIENT_SECRET_HERE
 refresh_token: INSERT_OAUTH2_REFRESH_TOKEN_HERE
@@ -109,7 +113,7 @@ if __name__ == '__main__':
     if os.path.exists(local_config):
         # Load explicitly from local workspace
         googleads_client = GoogleAdsClient.load_from_storage(local_config)
-    elif "GOOGLE_ADS_DEVELOPER_TOKEN" in os.environ:
+    elif "GOOGLE_ADS_CLIENT_ID" in os.environ:
         # Load from environment variables
         googleads_client = GoogleAdsClient.load_from_env()
     else:
@@ -158,6 +162,6 @@ Campaign found: ID = 987654321, Name = 'Display - Remarketing', Status = PAUSED
 | Error Symptom / Code | Root Cause | Solution |
 | :--- | :--- | :--- |
 | `FileNotFoundException` / `File not found` | The library cannot find `google-ads.yaml`. | Ensure the file is named exactly `google-ads.yaml` and is placed in the directory from which you are running the script, or in your `$HOME` directory. |
-| `DEVELOPER_TOKEN_NOT_APPROVED` | You are using an unapproved ("Pending") developer token against a production account (production calls require Explorer, Basic, or Standard Access). | Use a **Test Account** (which allows pending tokens) or wait for token approval. |
+| `CLOUD_PROJECT_NOT_APPROVED_FOR_PRODUCTION` (`ACTION_NOT_PERMITTED` in v24 and earlier) | The Google Cloud project that owns your OAuth client has only Test access and you are calling a production account. Legacy code that still sends a developer token reports this as `DEVELOPER_TOKEN_NOT_APPROVED`. | Use a **Test Account**, or apply for Explorer, Basic, or Standard access on the Google Ads API Overview page in the Google Cloud Console. |
 | `NOT_ADS_USER` | The OAuth2 user credentials used to generate the refresh token do not have access to the specified `-c/--customer_id`. | Re-authenticate the OAuth2 flow using a Google account that has access to the target Ads account. |
 | `ModuleNotFoundError: No module named 'google'` | Python cannot find the installed library. | You likely installed the library in a virtual environment but are running the script using the global python interpreter. Ensure you run `source .venv/bin/activate` first. |

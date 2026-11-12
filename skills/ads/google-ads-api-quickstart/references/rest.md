@@ -59,7 +59,7 @@ The Google Ads API REST interface provides a unified mechanism for retrieving re
 *   **Method:** `POST`
 *   **Headers:**
     *   `Content-Type: application/json`
-    *   `developer-token: <INSERT_DEVELOPER_TOKEN_HERE>`
+    *   *(The legacy `developer-token` header is not required; the API ignores it since developer tokens were sunset on September 9, 2026.)*
     *   `Authorization: Bearer <INSERT_OAUTH2_ACCESS_TOKEN_HERE>`
     *   `login-customer-id: <INSERT_LOGIN_CUSTOMER_ID_HERE>` *(Required only if authenticating through a manager account)*
 
@@ -73,7 +73,6 @@ CUSTOMER_ID="1234567890"
 
 curl --include --request POST "https://googleads.googleapis.com/vXX/customers/${CUSTOMER_ID}/googleAds:searchStream" \
   --header "Content-Type: application/json" \
-  --header "developer-token: INSERT_DEVELOPER_TOKEN_HERE" \
   --header "Authorization: Bearer INSERT_OAUTH2_ACCESS_TOKEN_HERE" \
   --header "login-customer-id: INSERT_LOGIN_CUSTOMER_ID_HERE" \
   --data '{

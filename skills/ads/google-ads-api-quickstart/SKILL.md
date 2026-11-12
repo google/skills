@@ -1,17 +1,17 @@
 ---
 name: google-ads-api-quickstart
 description: |
-  Guides developers through Google Ads API quickstart: credential setup, choosing from 6 client libraries/REST, configuring environments, and running a "retrieve campaigns" script. Troubleshoots common setup errors: USER_PERMISSION_DENIED, login_customer_id issues, and DEVELOPER_TOKEN_NOT_APPROVED.
+  Guides developers through Google Ads API quickstart: credential setup, choosing from 6 client libraries/REST, configuring environments, and running a "retrieve campaigns" script. Troubleshoots common setup errors: USER_PERMISSION_DENIED, login_customer_id issues, and CLOUD_PROJECT_NOT_APPROVED_FOR_PRODUCTION (a Google Cloud project with Test access calling a production account).
 
   Use this skill when:
   - The user asks how to get started with the Google Ads API.
-  - The user needs to set up Google Ads credentials or developer tokens.
+  - The user needs to set up Google Ads API access in a Google Cloud project or OAuth credentials.
   - The user wants to write a quickstart/example script for Google Ads.
-  - The user encounters errors like USER_PERMISSION_DENIED or DEVELOPER_TOKEN_NOT_APPROVED.
+  - The user encounters errors like USER_PERMISSION_DENIED, CLOUD_PROJECT_NOT_APPROVED_FOR_PRODUCTION, or the legacy DEVELOPER_TOKEN_NOT_APPROVED.
 compatibility: "Outbound HTTPS connectivity required to access the Google Ads API and documentation. Note: If network access is restricted, the agent will fall back to using the last-known stable versions cached within the skill resources."
 metadata:
   author: google-ads-api-team
-  version: "1.0.0"
+  version: "1.1.0"
   category: GoogleAds
 ---
 # Google Ads API Quickstart
@@ -87,17 +87,34 @@ To prevent the generated setup guides from becoming obsolete due to language dep
 
 ## Step 1: Obtain Google Ads API Credentials
 
-Before installing libraries or making API calls, you must obtain the five required authentication parameters.
+Before installing libraries or making API calls, you need a Google Cloud
+project with Google Ads API access and four authentication parameters.
 
-### 1. Developer Token
+> [!NOTE]
+> **Developer tokens were sunset on September 9, 2026.** API access levels now
+> belong to the Google Cloud project that owns your OAuth client (or service
+> account). Do not send the user to the API Center in a Google Ads manager
+> account to request a developer token; those requests are no longer processed.
+> Existing `developer_token` values in configuration files are ignored by the
+> API and can be removed.
 
-*   **Purpose:** Identifies your developer access and API quota.
+### 1. Google Cloud Project with Google Ads API Access
+
+*   **Purpose:** Holds your API access level and quota. The project that owns your OAuth client ID (or service account) determines which accounts you can call and how many operations per day you get.
 *   **How to Obtain:**
-    1. Navigate directly to the **API Center** in your Google Ads Manager Account: https://ads.google.com/aw/apicenter *(Note: You must sign in with a Manager account, not a standard serving account)*.
-    2. Copy your Developer Token.
+    1. Open the [Google Ads API Overview page](https://console.cloud.google.com/google/ads-apis/overview) in the Google Cloud Console and select (or create) a project.
+    2. Click **Enable**. Enabling the API grants **Test access**: up to 15,000 operations per day against Google Ads **test accounts** only.
+    3. To call **production** accounts, apply for **Explorer access** from the
+       same Overview page (review is automated in most cases; up to 2,880
+       operations per day). **Basic** and **Standard** access are applied for
+       from the same page and require brand verification for the project.
+    4. If your team already had a developer token, its access level was transferred to the Cloud projects that used it in the 90 days before the sunset. Check the Overview page, not the API Center.
 
 > [!WARNING]
-> **Pending Token Restriction:** If your Developer Token status is "Pending" (unapproved), you **MUST ONLY** target **Google Ads Test Accounts**. Attempting to call a production account with a pending token will fail with the error: `DEVELOPER_TOKEN_NOT_APPROVED`.
+> **Test Access Restriction:** If your Cloud project only has Test access, you
+> **MUST ONLY** target **Google Ads Test Accounts**. Calling a production
+> account fails with `CLOUD_PROJECT_NOT_APPROVED_FOR_PRODUCTION` (API v25 and
+> later) or `ACTION_NOT_PERMITTED` (v24 and earlier).
 
 ### 2. OAuth2 Client ID & Client Secret
 
@@ -105,7 +122,10 @@ Before installing libraries or making API calls, you must obtain the five requir
 *   **How to Obtain:**
     1. Open the [Google Cloud Console](https://console.cloud.google.com/).
     2. Create a new project (or select an existing one).
-    3. Search for the **Google Ads API** in the API Library and click **Enable**.
+    3. Search for the **Google Ads API** in the API Library and click
+       **Enable** (skip if you already enabled it in Section 1). Use the
+       **same project** as in Section 1: the project that owns the OAuth client
+       determines your API access level.
     4. Configure the **OAuth Consent Screen**:
        *   Select **External** user type.
        *   Set the Publishing Status to **Testing**.
@@ -151,7 +171,9 @@ Before installing libraries or making API calls, you must obtain the five requir
 *   **How to Find It:** Log in to the Google Ads UI; the ID is displayed in the top-right corner next to your user icon.
 
 > [!IMPORTANT]
-> **Test Account Requirement:** If your Developer Token is pending (unapproved), this **MUST** be the Customer ID of a **Test Account**. Test accounts have a red "Test account" banner in the top right of the UI.
+> **Test Account Requirement:** If your Google Cloud project only has Test
+> access, this **MUST** be the Customer ID of a **Test Account**. Test accounts
+> have a red "Test account" banner in the top right of the UI.
 
 ---
 
@@ -159,7 +181,7 @@ Before installing libraries or making API calls, you must obtain the five requir
 
 *   **What it is:** The 10-digit Customer ID of the Google Ads Manager Account that owns or manages the target client account.
 *   **Format:** Must be 10 digits with **no hyphens** (e.g., `9876543210`).
-*   **When to Use:** This is **mandatory** if your OAuth credentials (and developer token) belong to a Manager Account, but you are querying a child/client account (Client Customer ID).
+*   **When to Use:** This is **mandatory** if the OAuth user belongs to a Manager Account, but you are querying a child/client account (Client Customer ID).
 
 > [!CAUTION]
 > **Preventing `USER_PERMISSION_DENIED`:**
@@ -271,12 +293,14 @@ When helping a user with this error, your response **MUST** include:
 4.  [ ] **Provide the Configuration Template:** Show the exact YAML configuration block below.
 
 > [!CAUTION]
-> **Security Guardrail:** Under no circumstances should you suggest exposing raw passwords, creating new unapproved developer tokens, or widening OAuth scopes beyond the standard `adwords` scope to bypass this error.
+> **Security Guardrail:** Under no circumstances should you suggest exposing
+> raw passwords, creating additional Google Cloud projects to avoid
+> access-level review, or widening OAuth scopes beyond the standard `adwords`
+> scope to bypass this error.
 
 #### Configuration Fix Example (`google-ads.yaml`):
 
 ```yaml
-developer_token: INSERT_DEVELOPER_TOKEN_HERE
 client_id: INSERT_OAUTH2_CLIENT_ID_HERE
 client_secret: INSERT_OAUTH2_CLIENT_SECRET_HERE
 refresh_token: INSERT_OAUTH2_REFRESH_TOKEN_HERE
@@ -285,22 +309,40 @@ refresh_token: INSERT_OAUTH2_REFRESH_TOKEN_HERE
 login_customer_id: INSERT_LOGIN_CUSTOMER_ID_HERE
 ```
 
-### 2. Error: `DEVELOPER_TOKEN_NOT_APPROVED`
+### 2. Error: `CLOUD_PROJECT_NOT_APPROVED_FOR_PRODUCTION`
 
-*   **Symptom:** The script fails with a `DEVELOPER_TOKEN_NOT_APPROVED` error message.
-*   **Likely Cause:** Your Developer Token is currently in the "Pending" (unapproved) state, and you are attempting to target a live production Google Ads account.
+*   **Symptom:** The script fails with `AuthorizationError.CLOUD_PROJECT_NOT_APPROVED_FOR_PRODUCTION` (API v25 and later) or `AuthorizationError.ACTION_NOT_PERMITTED` (v24 and earlier).
+*   **Likely Cause:** The Google Cloud project that owns your OAuth client has only **Test access**, and you are targeting a live production Google Ads account.
+*   **Legacy Variant:** Code that still sends a developer token may report
+    `DEVELOPER_TOKEN_NOT_APPROVED`. Developer tokens were sunset on
+    September 9, 2026. The fix is the same (the access level of the Cloud
+    project), plus upgrading the client library to a version that no longer
+    requires the token.
 
 #### Required Agent Response Checklist:
 When helping a user with this error, your response **MUST** include:
 
-1.  [ ] **Explain the "Pending" Restriction:** Explain that an unapproved (Pending) developer token is fully functional but **restricted to Google Ads Test Accounts only**.
-2.  [ ] **Define Production Access Levels:** You **MUST** explicitly list all three access levels by name: state that targeting live production accounts requires the token to be approved for **Explorer Access**, **Basic Access**, or **Standard Access** by the Google Ads API compliance team. Do not condense or paraphrase this to "at least Basic Access".
-3.  [ ] **Provide Sandbox Setup Steps:** Guide the user on how to set up a sandbox environment:
-    *   Create a **Test Manager Account** (which does not require an approved token).
+1.  [ ] **Explain the Test Access Restriction:** Explain that a Cloud project with Test access is fully functional but **restricted to Google Ads Test Accounts only**.
+2.  [ ] **Define Production Access Levels:** You **MUST** explicitly list all
+    three access levels by name: state that targeting live production accounts
+    requires the Cloud project to hold **Explorer Access**, **Basic Access**,
+    or **Standard Access**, applied for on the
+    [Google Ads API Overview page](https://console.cloud.google.com/google/ads-apis/overview)
+    in the Google Cloud Console. Do not condense or paraphrase this to "at
+    least Basic Access".
+3.  [ ] **Check the Right Project:** Remind the user that the access level is
+    read from the project that owns the OAuth client ID (user authentication)
+    or the service account (service account authentication), not from the
+    project currently selected in `gcloud`.
+4.  [ ] **Provide Sandbox Setup Steps:** Guide the user on how to set up a sandbox environment:
+    *   Create a **Test Manager Account** (available with Test access).
     *   Create **Test Client Accounts** under that Test Manager.
     *   Use the Test Client Customer ID in their configuration.
-4.  [ ] **Provide a Link to the Guide:** Point the user to the official [Google Ads API Test Accounts Guide](https://developers.google.com/google-ads/api/docs/best-practices/test-accounts.md.txt).
+5.  [ ] **Provide Links to the Guides:** Point the user to the official [Google Ads API Test Accounts Guide](https://developers.google.com/google-ads/api/docs/best-practices/test-accounts.md.txt) and the [API access levels guide](https://developers.google.com/google-ads/api/docs/api-policy/access-levels.md.txt).
 
 > [!CAUTION]
-> **Security & Integrity Guardrail:** You **MUST NOT** advise the developer to modify the client library source code, bypass token validation checks, or use third-party "cracked" wrappers to bypass this error. The restriction is enforced server-side by Google, and client-side modifications will not work.
+> **Security & Integrity Guardrail:** You **MUST NOT** advise the developer to
+> modify the client library source code, bypass access-level checks, or use
+> third-party "cracked" wrappers to bypass this error. The restriction is
+> enforced server-side by Google, and client-side modifications will not work.
 

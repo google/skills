@@ -28,7 +28,7 @@ Create your configuration file named `google_ads_config.rb`. For self-contained 
 ```ruby
 # google_ads_config.rb
 Google::Ads::GoogleAds::Config.new do |c|
-  c.developer_token = 'INSERT_DEVELOPER_TOKEN_HERE'
+  # developer_token is no longer required (developer tokens were sunset on September 9, 2026).
   c.client_id = 'INSERT_OAUTH2_CLIENT_ID_HERE'
   c.client_secret = 'INSERT_OAUTH2_CLIENT_SECRET_HERE'
   c.refresh_token = 'INSERT_OAUTH2_REFRESH_TOKEN_HERE'
