@@ -107,7 +107,7 @@ This Cloud Build pipeline rewrites `.runAsServiceAccount` to `_RUN_AS_SA`, uploa
 
 ```yaml
 steps:
-  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+  - name: "gcr.io/google.com/cloudsdktool/google-cloud-cli:slim"
     entrypoint: "bash"
     args:
       - "-c"

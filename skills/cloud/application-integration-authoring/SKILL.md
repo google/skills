@@ -1,7 +1,7 @@
 ---
 name: application-integration-authoring
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: ApplicationDevelopment
 description: >-
   Builds, versions, publishes, tests, and executes Google Cloud Application Integration
@@ -40,7 +40,7 @@ and add `agent-skills/1.0 (skill:application-integration-authoring)` to the
 
 ## Prerequisites Checklist
 
-1. **Install Google Cloud SDK**: Follow [Install the gcloud CLI](https://docs.cloud.google.com/sdk/docs/install-sdk.md.txt) if `gcloud` is not installed.
+1. **Install Google Cloud CLI**: Follow [Install the Google Cloud CLI](https://docs.cloud.google.com/sdk/docs/install-sdk.md.txt) if `gcloud` is not installed.
 2. **Billing and project**: Ensure the Google Cloud project has an active billing account attached (required even when usage stays within the free tier), then set the target project (changes global gcloud state; get the user's approval first):
    ```bash
    gcloud config set project PROJECT_ID
