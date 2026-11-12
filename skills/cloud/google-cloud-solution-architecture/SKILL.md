@@ -1,7 +1,7 @@
 ---
 name: google-cloud-solution-architecture
 metadata:
-  version: "1.0.6"
+  version: "1.0.7"
   category: MultiProductSolutions
 description: >-
   Interactively discovers requirements and designs holistic, multi-product
@@ -51,9 +51,12 @@ The workflow consists of the following phases:
 *   **Iterative approval & task transitions**: For each deliverable in this
     workflow (technical decompositions, product recommendations, diagrams,
     architectural descriptions, and deployment scripts), explicitly present your
-    output to the user for approval. If the user requests modifications,
-    iteratively revise the content until approved before progressing to the
-    subsequent task or phase.
+    output to the user for approval unless the user explicitly asks for
+    multiple Phase 2 deliverables in the same prompt. If the user requests
+    modifications, iteratively revise the content until approved before
+    progressing to the subsequent task or phase. Never assume missing
+    requirements in Phase 1 or self-approve unrequested phases in a single turn,
+    even in autonomous agent modes; stop and wait for the user's response.
 
 *   **No autonomous execution of code and scripts**: Don't run any scripts or
     code that you generate without explicit, unambiguous permission from the
@@ -68,16 +71,19 @@ The workflow consists of the following phases:
     approved", or "architecture is confirmed"), don't repeat that phase or task.
     Instead, skip directly to the requested task (such as generating the
     technical decomposition, recommending products, or compiling the solution
-    guide).
+    guide). If the user explicitly requests multiple Phase 2 deliverables at
+    once (for example, both an architecture diagram and design recommendations),
+    provide all of the explicitly requested deliverables in the same response.
 
 ## Phase 1: Requirements discovery
 
 1.  Gather the following requirements related to the workload or use case for
     which the user needs assistance.
 
-    **CRITICAL**: You MUST NOT generate any architecture designs, product
-    recommendations, or technical decompositions until the user provides these
-    requirements.
+    **CRITICAL**: You MUST NOT assume default requirements or generate any
+    architecture designs, product recommendations, technical decompositions, or
+    deployment artifacts until the user provides these requirements. Ask your
+    clarifying questions and stop your turn to wait for the user's reply.
 
     *   **Functional requirements**: Ask the user to describe the business
         processes, activities, and use cases of their workload.

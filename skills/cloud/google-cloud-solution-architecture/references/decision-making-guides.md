@@ -1,3 +1,5 @@
+<!-- disableFinding(LINE_OVER_80) -->
+
 # Decision-making guides
 
 | Topic | Document | Description |
@@ -46,14 +48,13 @@
 | GKE: Cluster mode | https://docs.cloud.google.com/kubernetes-engine/docs/concepts/choose-cluster-mode.md.txt | Compares GKE Autopilot and Standard modes to help you decide which level of operational control and management is best for your cluster. |
 | GKE: Multi-cluster load balancing API | https://docs.cloud.google.com/kubernetes-engine/docs/concepts/choose-mc-lb-api.md.txt | Compares Multi-Cluster Gateway versus Multi-Cluster Ingress to help you choose the correct multi-cluster load balancing approach for GKE. |
 | GKE: Predefined ComputeClasses for Autopilot Pods | https://docs.cloud.google.com/kubernetes-engine/docs/how-to/autopilot-compute-classes.md.txt | Explains GKE Autopilot ComputeClasses (Balanced, Scale-Out, Performance) to help you choose the appropriate hardware profile for your containers. |
-| Google Cloud Observability: Instrumentation strategy | https://docs.cloud.google.com/stackdriver/docs/instrumentation/choose-approach.md.txt | Guides you through the process of choosing a telemetry instrumentation strategy (such as OpenTelemetry vs. legacy agents) for Google Cloud Observability. |
+| Google Cloud Observability: Instrumentation strategy | https://docs.cloud.google.com/stackdriver/docs/instrumentation/choose-approach.md.txt | Guides you through the process of choosing a telemetry instrumentation strategy (such as Google-Built OpenTelemetry Collector, Ops Agent, or direct OpenTelemetry export) for Google Cloud Observability. |
 | Load balancing | https://docs.cloud.google.com/load-balancing/docs/choosing-load-balancer.md.txt | Helps you choose the appropriate Google Cloud load balancer based on client location, protocol, and proxy requirements. |
 | Looker: Hosting | https://docs.cloud.google.com/looker/docs/choosing-hosting-option.md.txt | Provides a comprehensive guide to selecting the optimal hosting model (Looker-hosted vs. customer-hosted) based on your requirements |
 | Model inference on GKE: Load balancing strategy | https://docs.cloud.google.com/kubernetes-engine/docs/concepts/machine-learning/choose-lb-strategy.md.txt | Provides guidance on load balancing strategies for AI/ML inference workloads on Google Kubernetes Engine. |
 | Network Connectivity | https://docs.cloud.google.com/network-connectivity/docs/how-to/choose-product.md.txt | Provides guidance to help you choose appropriate hybrid connectivity options: Cloud Interconnect, Cloud VPN, and Network Connectivity Center. |
 | Pub/Sub vs. Cloud Managed Service for Apache Kafka | https://docs.cloud.google.com/pubsub/docs/choose-pubsub-kafka.md.txt | Compares serverless global Pub/Sub versus Google Cloud's Managed Service for Apache Kafka. |
 | Pub/Sub vs. Cloud Tasks | https://docs.cloud.google.com/pubsub/docs/choosing-pubsub-or-cloud-tasks.md.txt | Describes the fundamental differences (implicit vs. explicit invocation) between Pub/Sub and Cloud Tasks. |
-| Pub/Sub vs. Pub/Sub Lite | https://docs.cloud.google.com/pubsub/docs/choosing-pubsub-or-lite.md.txt | Helps you choose between standard Pub/Sub and Pub/Sub Lite based on budget, operations, and scale requirements. |
 | Secret Manager: Replication policy | https://docs.cloud.google.com/secret-manager/docs/choosing-replication.md.txt | Compares automatic replication versus user-managed replication policies in Secret Manager to help you decide how to secure and distribute secrets. |
 | Security Command Center: Security sources | https://docs.cloud.google.com/security-command-center/docs/concepts-security-sources.md.txt | Guides you on choosing and configuring security sources (built-in, Google-provided, and third-party) to integrate with Security Command Center. |
 | Storage for AI and ML | https://docs.cloud.google.com/ai-hypercomputer/docs/storage.md.txt | Introduces and compares storage services in Google Cloud that can best help you optimize GPU or TPU performance and provides recommendations on the ideal service for specific AI and ML use cases. |

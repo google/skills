@@ -1,34 +1,32 @@
 # Product-specific best practices guides
 
-| Product | Line hints |
-|---------|------------|
-| [Best practices covering multiple products](#multiple-products) | Lines 31-34 |
-| [AI Hypercomputer](#ai-hypercomputer) | Lines 35-38 |
-| [AlloyDB](#alloydb) | Lines 39-46 |
-| [Backup and Disaster Recovery (DR) Service](#backup-and-disaster-recovery-dr-service) | Lines 47-55 |
-| [BigQuery](#bigquery) | Lines 56-70 |
-| [Cloud Armor](#cloud-armor) | Lines 71-74 |
-| [Cloud Load Balancing](#cloud-load-balancing) | Lines 75-78 |
-| [Cloud Run](#cloud-run) | Lines 79-91 |
-| [Cloud Service Mesh](#cloud-service-mesh) | Lines 92-102 |
-| [Cloud SQL](#cloud-sql) | Lines 103-116 |
-| [Cloud Storage](#cloud-storage) | Lines 117-123 |
-| [Compute Engine](#compute-engine) | Lines 124-142 |
-| [Gemini Enterprise Agent Platform](#gemini-enterprise-agent-platform) | Lines 143-151 |
-| [Google Kubernetes Engine (GKE)](#google-kubernetes-engine-gke) | Lines 152-176 |
-| [Identity and Access Management (IAM)](#identity-and-access-management-iam) | Lines 177-186 |
-| [Managed Service for Apache Spark](#managed-service-for-apache-spark) | Lines 187-191 |
-| [Memorystore](#memorystore) | Lines 192-200 |
-| [Migration](#migration) | Lines 201-205 |
-| [Network Connectivity](#network-connectivity) | Lines 206-211 |
-| [Observability in Google Cloud](#observability-in-google-cloud) | Lines 212-220 |
-| [Pub/Sub](#pub-sub) | Lines 221-226 |
-| [Security Command Center](#security-command-center) | Lines 227-231 |
-| [Security](#security) | Lines 232-249 |
-| [Spanner](#spanner) | Lines 250-264 |
-| [VPC Service Controls](#vpc-service-controls) | Lines 265-268 |
+- [Best practices covering multiple products](#best-practices-covering-multiple-products) (Lines 29-32)
+- [AI Hypercomputer](#ai-hypercomputer) (Lines 33-36)
+- [AlloyDB](#alloydb) (Lines 37-44)
+- [Backup and Disaster Recovery (DR) Service](#backup-and-disaster-recovery-dr-service) (Lines 45-51)
+- [BigQuery](#bigquery) (Lines 52-67)
+- [Cloud Armor](#cloud-armor) (Lines 68-71)
+- [Cloud Load Balancing](#cloud-load-balancing) (Lines 72-75)
+- [Cloud Run](#cloud-run) (Lines 76-90)
+- [Cloud Service Mesh](#cloud-service-mesh) (Lines 91-101)
+- [Cloud SQL](#cloud-sql) (Lines 102-115)
+- [Cloud Storage](#cloud-storage) (Lines 116-122)
+- [Compute Engine](#compute-engine) (Lines 123-144)
+- [Gemini Enterprise Agent Platform](#gemini-enterprise-agent-platform) (Lines 145-156)
+- [Google Kubernetes Engine (GKE)](#google-kubernetes-engine-gke) (Lines 157-185)
+- [Identity and Access Management (IAM)](#identity-and-access-management-iam) (Lines 186-198)
+- [Managed Service for Apache Spark](#managed-service-for-apache-spark) (Lines 199-204)
+- [Memorystore](#memorystore) (Lines 205-211)
+- [Migration](#migration) (Lines 212-216)
+- [Network Connectivity](#network-connectivity) (Lines 217-223)
+- [Observability in Google Cloud](#observability-in-google-cloud) (Lines 224-232)
+- [Pub/Sub](#pub-sub) (Lines 233-238)
+- [Security Command Center](#security-command-center) (Lines 239-243)
+- [Security](#security) (Lines 244-262)
+- [Spanner](#spanner) (Lines 263-281)
+- [VPC Service Controls](#vpc-service-controls) (Lines 282-285)
 
-## <a id="multiple-products"></a>Best practices covering multiple products
+## <a id="best-practices-covering-multiple-products"></a>Best practices covering multiple products
 
 - https://docs.cloud.google.com/workload-manager/docs/evaluate/best-practices-general.md.txt
 
@@ -46,11 +44,9 @@
 
 ## <a id="backup-and-disaster-recovery-dr-service"></a>Backup and Disaster Recovery (DR) Service
 
-- https://docs.cloud.google.com/backup-disaster-recovery/docs/concepts/backup-plan-policy-best-practices.md.txt
 - https://docs.cloud.google.com/backup-disaster-recovery/docs/concepts/best-practices-cyber-resilience.md.txt
 - https://docs.cloud.google.com/backup-disaster-recovery/docs/concepts/best-practices-ransomware.md.txt
 - https://docs.cloud.google.com/backup-disaster-recovery/docs/concepts/cloud_best_practices.md.txt
-- https://docs.cloud.google.com/backup-disaster-recovery/docs/concepts/policy-specific-best-practices.md.txt
 - https://docs.cloud.google.com/backup-disaster-recovery/docs/create-plan/schedule-best-practices-at-a-glance.md.txt
 
 ## <a id="bigquery"></a>BigQuery
@@ -66,6 +62,7 @@
 - https://docs.cloud.google.com/bigquery/docs/best-practices-spatial-analysis.md.txt
 - https://docs.cloud.google.com/bigquery/docs/best-practices-storage.md.txt
 - https://docs.cloud.google.com/bigquery/docs/graph-query-best-practices.md.txt
+- https://docs.cloud.google.com/bigquery/docs/querying-partitioned-tables.md.txt
 - https://docs.cloud.google.com/bigquery/docs/write-api-best-practices.md.txt
 
 ## <a id="cloud-armor"></a>Cloud Armor
@@ -86,8 +83,10 @@
 - https://docs.cloud.google.com/run/docs/configuring/workerpools/workerpools-cost-optimization.md.txt
 - https://docs.cloud.google.com/run/docs/jobs-cost-optimization.md.txt
 - https://docs.cloud.google.com/run/docs/jobs-retries.md.txt
+- https://docs.cloud.google.com/run/docs/securing/multi-tenant.md.txt
 - https://docs.cloud.google.com/run/docs/tips/functions-best-practices.md.txt
 - https://docs.cloud.google.com/run/docs/tips/services-cost-optimization.md.txt
+- https://docs.cloud.google.com/run/docs/triggering/websockets.md.txt
 
 ## <a id="cloud-service-mesh"></a>Cloud Service Mesh
 
@@ -124,11 +123,12 @@
 ## <a id="compute-engine"></a>Compute Engine
 
 - https://docs.cloud.google.com/compute/docs/api/best-practices.md.txt
+- https://docs.cloud.google.com/compute/docs/connect/ssh-best-practices.md.txt
 - https://docs.cloud.google.com/compute/docs/connect/ssh-best-practices/auditing.md.txt
 - https://docs.cloud.google.com/compute/docs/connect/ssh-best-practices/credentials.md.txt
-- https://docs.cloud.google.com/compute/docs/connect/ssh-best-practices.md.txt
 - https://docs.cloud.google.com/compute/docs/connect/ssh-best-practices/login-access.md.txt
 - https://docs.cloud.google.com/compute/docs/connect/ssh-best-practices/network-access.md.txt
+- https://docs.cloud.google.com/compute/docs/connect/ssh-best-practices/post-quantum-ssh.md.txt
 - https://docs.cloud.google.com/compute/docs/disks/set-persistent-device-name-in-linux-vm.md.txt
 - https://docs.cloud.google.com/compute/docs/disks/snapshot-best-practices.md.txt
 - https://docs.cloud.google.com/compute/docs/images/image-families-best-practices.md.txt
@@ -137,41 +137,50 @@
 - https://docs.cloud.google.com/compute/docs/instances/best-practices-shared-reservations.md.txt
 - https://docs.cloud.google.com/compute/docs/instances/sql-server/best-practices.md.txt
 - https://docs.cloud.google.com/compute/docs/instances/windows/best-practices.md.txt
+- https://docs.cloud.google.com/compute/docs/instances/windows/ms-licensing.md.txt
 - https://docs.cloud.google.com/compute/docs/instances/windows/windows-best-practices.md.txt
 - https://docs.cloud.google.com/compute/docs/nodes/sole-tenant-best-practices.md.txt
+- https://docs.cloud.google.com/compute/docs/tutorials/robustsystems.md.txt
 
 ## <a id="gemini-enterprise-agent-platform"></a>Gemini Enterprise Agent Platform
 
 - https://docs.cloud.google.com/gemini-enterprise-agent-platform/govern/policies/best-practices.md.txt
 - https://docs.cloud.google.com/gemini-enterprise-agent-platform/machine-learning/tabular-data/bp-tabular.md.txt
+- https://docs.cloud.google.com/gemini-enterprise-agent-platform/machine-learning/training/code-requirements.md.txt
 - https://docs.cloud.google.com/gemini-enterprise-agent-platform/machine-learning/training/neural-architecture-search/suggested-workflow.md.txt
+- https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/capabilities/design-multimodal-prompts.md.txt
 - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/capabilities/gemini-image-generation-best-practices.md.txt
 - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/live-api/best-practices.md.txt
+- https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/text-to-speech/prompting-guide.md.txt
 - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/video/best-practice.md.txt
 
 ## <a id="google-kubernetes-engine-gke"></a>Google Kubernetes Engine (GKE)
 
+- https://docs.cloud.google.com/kubernetes-engine/docs/best-practices.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/batch-platform-on-gke.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/computeclasses.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/cost-optimization.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/enterprise-multitenancy.md.txt
-- https://docs.cloud.google.com/kubernetes-engine/docs/best-practices.md.txt
+- https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/machine-learning/inference.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/machine-learning/inference/autoscaling-tpu.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/machine-learning/inference/autoscaling.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/machine-learning/inference/batch-inference.md.txt
-- https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/machine-learning/inference.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/machine-learning/inference/llm-optimization.md.txt
+- https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/network-observability.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/networking.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/optimize-ai-utilization.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/rbac.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/run-hpc.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/scalability.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/upgrading-clusters.md.txt
+- https://docs.cloud.google.com/kubernetes-engine/docs/concepts/about-ip-addressing.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/concepts/best-practices-continuous-integration-delivery-kubernetes.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/concepts/database-options.md.txt
+- https://docs.cloud.google.com/kubernetes-engine/docs/concepts/kube-dns.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/concepts/planning-large-clusters.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/concepts/planning-large-workloads.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/concepts/planning-scalability.md.txt
+- https://docs.cloud.google.com/kubernetes-engine/docs/concepts/service-load-balancer.md.txt
 - https://docs.cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster.md.txt
 
 ## <a id="identity-and-access-management-iam"></a>Identity and Access Management (IAM)
@@ -183,17 +192,19 @@
 - https://docs.cloud.google.com/iam/docs/best-practices-workforce-identity-federation.md.txt
 - https://docs.cloud.google.com/iam/docs/groups-best-practices.md.txt
 - https://docs.cloud.google.com/iam/docs/pam-best-practices.md.txt
+- https://docs.cloud.google.com/iam/docs/retry-strategy.md.txt
+- https://docs.cloud.google.com/iam/docs/use-workload-identity-federation-to-let-customers-access-their-cloud-resources.md.txt
+- https://docs.cloud.google.com/iam/docs/using-iam-securely.md.txt
 
 ## <a id="managed-service-for-apache-spark"></a>Managed Service for Apache Spark
 
 - https://docs.cloud.google.com/managed-spark/docs/concepts/security-best-practices.md.txt
 - https://docs.cloud.google.com/managed-spark/docs/guides/best-practices.md.txt
+- https://docs.cloud.google.com/managed-spark/docs/guides/maximize-cluster-job-flexibility.md.txt
 
 ## <a id="memorystore"></a>Memorystore
 
 - https://docs.cloud.google.com/memorystore/docs/cluster/general-best-practices.md.txt
-- https://docs.cloud.google.com/memorystore/docs/memcached/best-practices.md.txt
-- https://docs.cloud.google.com/memorystore/docs/memcached/memory-management-best-practices.md.txt
 - https://docs.cloud.google.com/memorystore/docs/redis/general-best-practices.md.txt
 - https://docs.cloud.google.com/memorystore/docs/redis/memory-management-best-practices.md.txt
 - https://docs.cloud.google.com/memorystore/docs/valkey/general-best-practices.md.txt
@@ -206,6 +217,7 @@
 ## <a id="network-connectivity"></a>Network Connectivity
 
 - https://docs.cloud.google.com/network-connectivity/docs/interconnect/concepts/best-practices.md.txt
+- https://docs.cloud.google.com/network-connectivity/docs/network-connectivity-center/concepts/asn-requirements.md.txt
 - https://docs.cloud.google.com/network-connectivity/docs/router/concepts/best-practices.md.txt
 - https://docs.cloud.google.com/network-connectivity/docs/vpn/concepts/best-practices.md.txt
 
@@ -234,13 +246,14 @@
 - https://docs.cloud.google.com/docs/security/best-practices-continuous-access-to-google-cloud.md.txt
 - https://docs.cloud.google.com/docs/security/bps-for-protecting-against-cryptocurrency-attacks.md.txt
 - https://docs.cloud.google.com/docs/security/bps-for-protecting-developer-credentials.md.txt
+- https://docs.cloud.google.com/docs/security/data-loss-prevention/revoking-user-access.md.txt
 - https://docs.cloud.google.com/docs/security/genai-security-bps.md.txt
 - https://docs.cloud.google.com/docs/security/gke-security-bps.md.txt
 - https://docs.cloud.google.com/docs/security/mitigating-ransomware-attacks.md.txt
 - https://docs.cloud.google.com/docs/security/owasp-top-ten-mitigation.md.txt
+- https://docs.cloud.google.com/docs/security/security-best-practices-catalog.md.txt
 - https://docs.cloud.google.com/docs/security/security-best-practices-catalog/agents-applications.md.txt
 - https://docs.cloud.google.com/docs/security/security-best-practices-catalog/data-management.md.txt
-- https://docs.cloud.google.com/docs/security/security-best-practices-catalog.md.txt
 - https://docs.cloud.google.com/docs/security/security-best-practices-catalog/infrastructure.md.txt
 - https://docs.cloud.google.com/docs/security/security-best-practices-catalog/recommended-iam-groups.md.txt
 - https://docs.cloud.google.com/docs/security/security-best-practices-catalog/secure-enterprise-foundations.md.txt
@@ -255,9 +268,13 @@
 - https://docs.cloud.google.com/spanner/docs/graph/algorithm-best-practices.md.txt
 - https://docs.cloud.google.com/spanner/docs/graph/best-practices-designing-schema.md.txt
 - https://docs.cloud.google.com/spanner/docs/graph/best-practices-tuning-queries.md.txt
+- https://docs.cloud.google.com/spanner/docs/graph/manage-schemaless-data.md.txt
+- https://docs.cloud.google.com/spanner/docs/index-geo-partitioning.md.txt
+- https://docs.cloud.google.com/spanner/docs/queues/queues-using.md.txt
 - https://docs.cloud.google.com/spanner/docs/schema-design.md.txt
 - https://docs.cloud.google.com/spanner/docs/schema-updates-best-practices.md.txt
 - https://docs.cloud.google.com/spanner/docs/secure-agent-interactions-mcp.md.txt
+- https://docs.cloud.google.com/spanner/docs/sessions.md.txt
 - https://docs.cloud.google.com/spanner/docs/sql-best-practices.md.txt
 - https://docs.cloud.google.com/spanner/docs/vector-index-best-practices.md.txt
 - https://docs.cloud.google.com/spanner/docs/vector-search-best-practices.md.txt

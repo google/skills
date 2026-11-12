@@ -1,20 +1,22 @@
+<!-- disableFinding(LINE_OVER_80) -->
+
 # Architecture guides
 
 | Technology category | Brief description | Line hints |
 |---------------------|-------------------|------------|
-| [Fundamentals](#fundamentals) | Design guides, reference architectures, and best practices for foundational cloud architectures, landing zones, and deployment archetypes. | Lines 19-46 |
-| [AI and ML](#ai-ml) | Design guides, reference architectures, and best practices for AI, MLOps, generative AI, and agentic workflows. | Lines 47-95 |
-| [Application development](#application-development) | Design guides, reference architectures, and best practices for building, deploying, and running applications in the cloud. | Lines 96-125 |
-| [Security, privacy, and compliance](#security-privacy-and-compliance) | Design guides, reference architectures, and best practices for security, privacy, and compliance. | Lines 126-195 |
-| [Reliability and disaster recovery](#reliability-and-disaster-recovery) | Design guides, reference architectures, and best practices for reliability and disaster recovery. | Lines 196-217 |
-| [Data and analytics](#data-and-analytics) | Design guides, reference architectures, and best practices for data warehousing, data mesh, data analytics, and data streaming. | Lines 218-233 |
-| [Databases](#databases) | Design guides, reference architectures, and best practices for planning and implementing databases for cloud workloads. | Lines 234-254 |
-| [Migration](#migration) | Methodologies, assessment frameworks, and guides for migrating VMs, databases, and applications to Google Cloud. | Lines 255-281 |
-| [Networking](#networking) | Design guides, reference architectures, and best practices for planning and implementing networking for cloud workloads. | Lines 282-302 |
-| [Hybrid, multi-cloud, and distributed cloud](#hybrid-multi-cloud-and-distributed-cloud) | Design guides, reference architectures, and best practices for hybrid, multi-cloud, and distributed cloud environments. | Lines 303-324 |
-| [Financial services](#financial-services) | Design guides, reference architectures, and best practices for financial services workloads. | Lines 325-328 |
-| [Monitoring and logging](#monitoring-and-logging) | Best practices and operational patterns for observability, log streaming, and infrastructure monitoring. | Lines 329-341 |
-| [Storage](#storage) | Design guides, reference architectures, and best practices to help you plan and implement storage for cloud workloads. | Lines 342-348 |
+| [Fundamentals](#fundamentals) | Design guides, reference architectures, and best practices for foundational cloud architectures, landing zones, and deployment archetypes. | Lines 21-48 |
+| [AI and ML](#ai-ml) | Design guides, reference architectures, and best practices for AI, MLOps, generative AI, and agentic workflows. | Lines 49-96 |
+| [Application development](#application-development) | Design guides, reference architectures, and best practices for building, deploying, and running applications in the cloud. | Lines 97-126 |
+| [Security, privacy, and compliance](#security-privacy-and-compliance) | Design guides, reference architectures, and best practices for security, privacy, and compliance. | Lines 127-196 |
+| [Reliability and disaster recovery](#reliability-and-disaster-recovery) | Design guides, reference architectures, and best practices for reliability and disaster recovery. | Lines 197-218 |
+| [Data and analytics](#data-and-analytics) | Design guides, reference architectures, and best practices for data warehousing, data mesh, data analytics, and data streaming. | Lines 219-234 |
+| [Databases](#databases) | Design guides, reference architectures, and best practices for planning and implementing databases for cloud workloads. | Lines 235-255 |
+| [Migration](#migration) | Methodologies, assessment frameworks, and guides for migrating VMs, databases, and applications to Google Cloud. | Lines 256-282 |
+| [Networking](#networking) | Design guides, reference architectures, and best practices for planning and implementing networking for cloud workloads. | Lines 283-303 |
+| [Hybrid, multi-cloud, and distributed cloud](#hybrid-multi-cloud-and-distributed-cloud) | Design guides, reference architectures, and best practices for hybrid, multi-cloud, and distributed cloud environments. | Lines 304-325 |
+| [Financial services](#financial-services) | Design guides, reference architectures, and best practices for financial services workloads. | Lines 326-329 |
+| [Monitoring and logging](#monitoring-and-logging) | Best practices and operational patterns for observability, log streaming, and infrastructure monitoring. | Lines 330-342 |
+| [Storage](#storage) | Design guides, reference architectures, and best practices to help you plan and implement storage for cloud workloads. | Lines 343-349 |
 
 ## <a id="fundamentals"></a>Fundamentals
 
@@ -341,6 +343,6 @@
 ## <a id="storage"></a>Storage
 
 - [Configuring SaaS data protection for Google Workspace data with Spin.AI](https://docs.cloud.google.com/architecture/partners/backing-up-workspace-data-with-spinone.md.txt): How to configure SpinOne - All-in-One SaaS Data Protection with Cloud Storage.
-- [Design an optimal storage strategy for your cloud workload](https://docs.cloud.google.com/architecture/storage-advisor.md.txt): Provides guidance to help you design a storage strategy that&#39;s aligned with the requirements of your cloud workload.
+- [Design an optimal storage strategy for your cloud workload](https://docs.cloud.google.com/architecture/storage-advisor.md.txt): Provides guidance to help you assess the storage requirements of your cloud workload, understand the available storage options in Google Cloud, and design a storage strategy that provides optimal technical and business value.
 - [Google Workspace Backup with Afi.ai](https://docs.cloud.google.com/architecture/partners/google-workspace-backup-with-afi-ai.md.txt): Describes how to set up an automated Google Workspace backup using Afi.ai.
 - [Parallel file systems for HPC workloads](https://docs.cloud.google.com/architecture/parallel-file-systems-for-hpc.md.txt): Describes the storage options in Google Cloud for high performance computing (HPC) workloads, and provides guidance for when you should use parallel file systems like Managed Lustre for HPC workloads.
