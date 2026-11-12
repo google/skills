@@ -1,7 +1,7 @@
 ---
 name: google-cloud-filestore-nfs-browser
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: Storage
 description: >-
   Inspects, searches, and reads files and POSIX metadata on Filestore (NFS)
@@ -32,21 +32,11 @@ client packages (`nfs-common`), root privileges, or manual VPC network mounting.
 4.  Run inspection actions using the self-contained runner
     `scripts/nfs_browser.py` included within this skill package.
 
-## Attribution
+## Usage Attribution
 
-Tag every Cloud Filestore command or API request provided or executed. Prefix
-`gcloud` commands with the metrics environment targeting this skill:
-
-```bash
-CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-nfs-browser)" \
-gcloud filestore instances list ...
-```
-
-On direct HTTP calls to the REST API, append the `User-Agent`:
-
-```
-User-Agent: gcs-skills/1.0 (skill:google-cloud-filestore-nfs-browser)
-```
+**MUST READ**: Before executing any `gcloud`, REST API, or MCP command, you
+MUST read and follow the instructions in
+[Usage Attribution](references/attribution.md).
 
 ## Conceptual & Informational Queries (CRITICAL)
 
@@ -68,18 +58,19 @@ Bridge?", "Explain Cloud Run NFS volume mounts"):
 
 ## Handling "No-Command" Constraints (CRITICAL)
 
-If the user prompt contains constraints like "Do not execute commands", "without
-executing", or "read-only":
+If the user prompt contains constraints like "Do not execute commands", "don't
+run any commands", "without executing", or "read-only":
 
-*   **Rule**: **Strictly avoid executing any shell or `gcloud` commands**
-    (including read-only discovery or list commands) to respect user-specified
-    execution boundaries and prevent unauthorized environment inspection.
+*   **Rule**: **Strictly NEVER invoke the `run_command` tool** for any reason
+    (do NOT run `gcloud`, `python3`, `ls`, or any local/remote shell command,
+    including read-only directory listings or discovery checks).
 *   **Discovery**:
     1.  Check if mock definitions or instance parameters are provided directly
         in the user's prompt, conversation history, or local documentation
         files.
-    2.  Explain the required steps, output the exact commands the user should
-        run with proper attribution, and explain what the commands do.
+    2.  Read [Usage Attribution](references/attribution.md), explain the
+        required steps, output the exact terminal commands with proper
+        attribution, and explain what the commands do.
     3.  Do not attempt to read or search `EVAL.*` configuration files during
         evaluations as access to eval suites is restricted.
 
@@ -111,9 +102,21 @@ first to avoid querying or targeting unrelated projects in multi-project
 environments:
 
 ```bash
-CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-nfs-browser)" \
 gcloud filestore instances list --project={project_id}
 ```
+
+*   **Always Include Instance, Project & Path**: Every `scripts/nfs_browser.py`
+    command and written response MUST explicitly include
+    `--project={project_id}`, `--instance={instance_id}`, and `--path={path}`,
+    naming the target Filestore instance ID (`{instance_id}`), project
+    (`{project_id}`), and path (`{path}`) explicitly in the explanation.
+*   **Fast Fallback When Live Access or Engine Flag Is Unavailable**: If a
+    `gcloud` check returns `PERMISSION_DENIED` or `NOT_FOUND`, or if neither
+    `--bridge-url` nor `--jump-host-vm` is configured, stop retrying immediately
+    (do NOT read `scripts/*.py` source files to debug flags) and provide the
+    exact `scripts/nfs_browser.py` command with `--project={project_id}`,
+    `--instance={instance_id}`, `--path={path}`, and `--bridge-url` /
+    `--jump-host-vm` placeholders.
 
 ### 2. Directory Tree Exploration (`tree`)
 
@@ -255,6 +258,7 @@ python3 scripts/nfs_browser.py stat \
 For progressive disclosure of deeper topics, consult the `references/`
 directory:
 
+-   [Usage Attribution](references/attribution.md)
 -   [Multi-Engine Architecture & Execution Flow](references/architecture.md)
 -   [Serverless NFS Bridge Setup Guide](references/nfs-bridge-setup.md)
 -   [GCE Jump Host IAP SSH Guide](references/iap-jump-host.md)

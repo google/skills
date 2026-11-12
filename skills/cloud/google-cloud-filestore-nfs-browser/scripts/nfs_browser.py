@@ -22,9 +22,9 @@ from formatters import format_read_output
 from formatters import format_search_output
 from formatters import format_stat_output
 from formatters import format_tree_output
+from jump_host_engine import METRICS_ENV as USER_AGENT
 from jump_host_engine import SSHJumpHostEngine
 
-USER_AGENT = "gcs-skills/1.0 (skill:google-cloud-filestore-nfs-browser)"
 BRIDGE_HTTP_TIMEOUT_SECONDS = 30
 
 DEFAULT_DEPTH = 2
@@ -35,10 +35,15 @@ DEFAULT_MAX_RESULTS = 25
 def get_auth_token() -> Optional[str]:
   """Retrieves Google Cloud identity token for Cloud Run authentication."""
   try:
+    env = {
+        **os.environ,
+        "CLOUDSDK_METRICS_REQUEST_ATTRIBUTION": USER_AGENT,
+    }
     return subprocess.check_output(
         ["gcloud", "auth", "print-identity-token"],
         stderr=subprocess.DEVNULL,
         text=True,
+        env=env,
     ).strip()
   except Exception:
     return None

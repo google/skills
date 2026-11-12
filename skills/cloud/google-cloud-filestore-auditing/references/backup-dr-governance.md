@@ -73,7 +73,6 @@ To discover all backups across all regions in a project, run `gcloud filestore
 backups list` without regional restrictions:
 
 ```bash
-CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-auditing)" \
 gcloud filestore backups list --project="{project_id}" --format="json"
 ```
 
@@ -90,7 +89,6 @@ filestore.list_backups({"parent": "projects/{project_id}/locations/-"})
 
 ```
 GET https://file.googleapis.com/v1/projects/{project_id}/locations/-/backups
-User-Agent: gcs-skills/1.0 (skill:google-cloud-filestore-auditing)
 ```
 
 --------------------------------------------------------------------------------
@@ -118,7 +116,6 @@ correct location flags based on instance tier:
 Zonal instances require `--instance-zone`:
 
 ```bash
-CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-auditing)" \
 gcloud filestore backups create {instance_name}-backup-$(date +%Y%m%d) \
     --project={project_id} \
     --instance={instance_name} \
@@ -130,7 +127,6 @@ gcloud filestore backups create {instance_name}-backup-$(date +%Y%m%d) \
 *Example*:
 
 ```bash
-CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-auditing)" \
 gcloud filestore backups create nfs-prod-backup-20260903 \
     --project=prod-storage \
     --instance=nfs-prod \
@@ -144,7 +140,6 @@ gcloud filestore backups create nfs-prod-backup-20260903 \
 Regional instances require `--instance-location`:
 
 ```bash
-CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-auditing)" \
 gcloud filestore backups create {instance_name}-backup-$(date +%Y%m%d) \
     --project={project_id} \
     --instance={instance_name} \

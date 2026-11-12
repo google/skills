@@ -1,7 +1,7 @@
 ---
 name: google-cloud-filestore-autoscale
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: Storage
 description: >-
   Inspects Filestore capacity and utilization on Google Cloud, evaluates storage
@@ -45,23 +45,11 @@ must possess the following IAM roles on the target project(s):
 4.  Evaluate against configured up/down capacity thresholds.
 5.  Scale target instances and apply attribution tags.
 
-## Attribution
+## Usage Attribution
 
-Tag every Cloud Filestore command or API request provided or executed.
-Prefix `gcloud` commands with the correct metrics environment targeting this skill:
-
-```bash
-CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-autoscale)" \
-gcloud filestore instances update <INSTANCE_ID> \
-    --project=<PROJECT_ID> \
-    --zone=<ZONE_OR_REGION> \
-    --file-share=name=<FILE_SHARE_NAME>,capacity=<TARGET_CAPACITY>
-```
-On direct HTTP calls to the REST API, append the `User-Agent`:
-
-```
-User-Agent: gcs-skills/1.0 (skill:google-cloud-filestore-autoscale)
-```
+**MUST READ**: Before executing any `gcloud`, REST API, or MCP command, you
+MUST read and follow the instructions in
+[Usage Attribution](references/attribution.md).
 
 ## Conceptual & Informational Queries (CRITICAL)
 
@@ -79,9 +67,12 @@ If the user prompt contains constraints like "Do not execute commands", "without
     shell, `gcloud`, or code search (`cs`) commands (including read-only
     list/describe commands).
 *   **Discovery**:
-    1.  If the user prompt already provides the instance's tier, capacity, and
-        utilization or free space, evaluate the instance directly using those
-        provided values without searching for additional files.
+    1.  Whenever outputting or recommending a `gcloud` command (including when
+        evaluating instance values provided directly in the user prompt), read
+        [Usage Attribution](references/attribution.md) first so the command
+        includes the required attribution prefix; do not search for additional
+        unrelated files when instance tier, capacity, and utilization are
+        already in the prompt.
     2.  Otherwise, check if Filestore MCP tools (`list_instances`,
         `get_instance`) are available and use them (these are API calls, not
         command executions).
@@ -91,8 +82,8 @@ If the user prompt contains constraints like "Do not execute commands", "without
         searches or attempt to read evaluation config files such as `EVAL.yaml`
         or `EVAL.txtpb` during evaluation runs as access is restricted).
     4.  If no data can be found, explain the required steps and formulas, and
-        output the exact commands the user should run, without executing them
-        yourself.
+        output the attributed `gcloud` terminal commands for the user to confirm
+        and run, without executing them yourself.
 *   **Mandatory User Confirmation Requirement**: Even when the user prompt asks not to execute commands or asks only for command syntax/recommendations, your response MUST STILL end with a clear question prompting the user for confirmation before executing any capacity resizing commands (e.g., *"Would you like me to proceed with scaling `[instance]` from [A] TiB to [B] TiB? Please confirm to execute."*).
 
 ## Tier & Capacity Limits Matrix
@@ -155,9 +146,10 @@ The skill must categorize each evaluated instance into one of 5 definitive verdi
     2.5 TiB for Large Band [10-100 TiB],
     as specified in `references/instance-tiers-specs.md`), not exceeding the
     maximum capacity. Always explicitly state the calculated target capacity in
-    TiB (for example, for a 1 TiB [1024 GiB] Basic instance increased by +10%,
-    explicitly state `1.1 TiB` alongside its 1 GiB step-aligned equivalent `1126
-    GiB` / `1127 GiB`). Suggest target capacity, provide the attributed `gcloud`
+    **both TiB and GiB** (for example, for a 1 TiB [1024 GiB] Basic instance
+    increased by +10%, explicitly state `1.1 TiB` alongside its 1 GiB
+    step-aligned equivalent `1126 GiB` / `1127 GiB`). Suggest target capacity,
+    provide the attributed `gcloud`
     update command, and MUST conclude the response with a clear question
     prompting the user for confirmation to execute (e.g., *"Would you like me to
     proceed with scaling `[instance]` from [A] TiB to [B] TiB? Please confirm to
@@ -208,7 +200,7 @@ Example standard output table:
 ```markdown
 | Instance | Service Tier | Provisioned Capacity | Used Bytes | Free Space % | Autoscale Needed | Proposed Action |
 |---|---|---|---|---|---|---|
-| `[instance-name]` | REGIONAL | 2048 GiB | 900 GiB | 56.05% | Yes (Scale Down) | Scale down to 1792 GiB. `CLOUDSDK_METRICS_ENVIRONMENT=... gcloud filestore instances update ...` |
+| `[instance-name]` | REGIONAL | 2048 GiB | 900 GiB | 56.05% | Yes (Scale Down) | Scale down to 1792 GiB. `gcloud filestore instances update ...` |
 ```
 
 ### 3. Execution & Confirmation Workflow
@@ -243,6 +235,7 @@ max_threshold / up_increment):
 
 For progressive disclosure of deeper topics, consult the `references/` directory:
 
+- [Usage Attribution](references/attribution.md)
 - [Instance Tiers & Specs](references/instance-tiers-specs.md)
 - [Monitoring Metrics Formulas](references/monitoring-metrics.md)
 - [Troubleshooting & Errors](references/troubleshooting-errors.md)

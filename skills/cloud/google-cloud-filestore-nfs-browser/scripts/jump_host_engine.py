@@ -3,12 +3,38 @@
 import base64
 import json
 import os
+import re
 import subprocess
 from typing import Any, Dict, Optional
 
-METRICS_ENV = (
-    "gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-nfs-browser)"
+_DEFAULT_METRICS_ENV = (
+    "agent-skills/1.0 (skill:google-cloud-filestore-nfs-browser)"
 )
+
+
+def _load_attribution(
+    fallback: str = _DEFAULT_METRICS_ENV, attr_path: Optional[str] = None
+) -> str:
+  """Loads the attribution token from references/attribution.md."""
+  path = attr_path or os.path.join(
+      os.path.dirname(os.path.abspath(__file__)),
+      "..",
+      "references",
+      "attribution.md",
+  )
+  try:
+    with open(path, encoding="utf-8") as f:
+      match = re.search(
+          r'CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="([^"]+)"', f.read()
+      )
+      if match:
+        return match.group(1)
+  except OSError:
+    pass
+  return fallback
+
+
+METRICS_ENV = _load_attribution()
 
 BINARY_CHECK_BYTES = 1024
 MAX_SEARCH_FILE_SIZE_BYTES = 50 * 1024 * 1024
@@ -184,7 +210,7 @@ class SSHJumpHostEngine:
   def _exec(self, script: str) -> Dict[str, Any]:
     """Executes a Python script remotely via SSH and parses JSON output."""
     env = os.environ.copy()
-    env["CLOUDSDK_METRICS_ENVIRONMENT"] = METRICS_ENV
+    env["CLOUDSDK_METRICS_REQUEST_ATTRIBUTION"] = METRICS_ENV
     cmd = [
         "gcloud",
         "compute",

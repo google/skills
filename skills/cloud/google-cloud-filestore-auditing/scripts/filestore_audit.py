@@ -18,16 +18,41 @@ import subprocess
 import sys
 from typing import Any, Dict, List, Optional, Tuple
 
-METRICS_ENV = (
-    "gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-auditing)"
+_DEFAULT_METRICS_ENV = (
+    "agent-skills/1.0 (skill:google-cloud-filestore-auditing)"
 )
 DEFAULT_STALE_BACKUP_DAYS = 7
+
+
+def _load_attribution(
+    fallback: str = _DEFAULT_METRICS_ENV, attr_path: Optional[str] = None
+) -> str:
+  """Loads the attribution token from references/attribution.md."""
+  path = attr_path or os.path.join(
+      os.path.dirname(os.path.abspath(__file__)),
+      "..",
+      "references",
+      "attribution.md",
+  )
+  try:
+    with open(path, encoding="utf-8") as f:
+      match = re.search(
+          r'CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="([^"]+)"', f.read()
+      )
+      if match:
+        return match.group(1)
+  except OSError:
+    pass
+  return fallback
+
+
+METRICS_ENV = _load_attribution()
 
 
 def run_command(cmd: List[str]) -> Tuple[int, str, str]:
   """Executes a subprocess command with attribution and returns (returncode, stdout, stderr)."""
   env = os.environ.copy()
-  env["CLOUDSDK_METRICS_ENVIRONMENT"] = METRICS_ENV
+  env["CLOUDSDK_METRICS_REQUEST_ATTRIBUTION"] = METRICS_ENV
   try:
     proc = subprocess.run(
         cmd, capture_output=True, text=True, check=False, env=env
@@ -560,7 +585,7 @@ def _render_remediation_actions(report: Dict[str, Any]) -> List[str]:
         else f"--instance-zone={i['location']}"
     )
     lines.append(
-        f'CLOUDSDK_METRICS_ENVIRONMENT="{METRICS_ENV}" \\\n'
+        f'CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="{METRICS_ENV}" \\\n'
         f"gcloud filestore backups create {i['instance_id']}-backup-$(date"
         " +%Y%m%d) \\\n"
         f"    --project={report['project_id']} \\\n"

@@ -21,6 +21,15 @@ FILE_SHARE_NAME="$6"
 
 SERVICE_NAME="filestore-nfs-bridge"
 IMAGE_TAG="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:latest"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ATTRIBUTION_FILE="${SCRIPT_DIR}/../references/attribution.md"
+ATTRIBUTION_TAG=""
+if [[ -f "${ATTRIBUTION_FILE}" ]]; then
+  ATTRIBUTION_TAG=$(sed -n 's/.*CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="\([^"]*\)".*/\1/p' "${ATTRIBUTION_FILE}" | head -n 1)
+fi
+if [[ -z "${ATTRIBUTION_TAG}" ]]; then
+  ATTRIBUTION_TAG="agent-skills/1.0 (skill:google-cloud-filestore-nfs-browser)"
+fi
 
 echo "============================================================"
 echo " Deploying Filestore NFS Bridge to Cloud Run"
@@ -31,13 +40,14 @@ echo "============================================================"
 
 # 1. Build image using Cloud Build
 echo "==> Building container image via Cloud Build..."
+CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="${ATTRIBUTION_TAG}" \
 gcloud builds submit "$(dirname "$0")/bridge_server" \
   --project="${PROJECT_ID}" \
   --tag="${IMAGE_TAG}"
 
 # 2. Deploy to Cloud Run with Direct VPC Egress & NFS Volume Mount
 echo "==> Deploying Cloud Run service with Direct VPC Egress..."
-CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-nfs-browser)" \
+CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="${ATTRIBUTION_TAG}" \
 gcloud run deploy "${SERVICE_NAME}" \
   --project="${PROJECT_ID}" \
   --region="${REGION}" \
@@ -54,7 +64,8 @@ gcloud run deploy "${SERVICE_NAME}" \
   --memory=512Mi
 
 # 3. Retrieve and print Service URL
-SERVICE_URL=$(gcloud run services describe "${SERVICE_NAME}" \
+SERVICE_URL=$(CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="${ATTRIBUTION_TAG}" \
+  gcloud run services describe "${SERVICE_NAME}" \
   --project="${PROJECT_ID}" \
   --region="${REGION}" \
   --format="value(status.url)")

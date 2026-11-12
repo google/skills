@@ -113,7 +113,6 @@ To update export options on an existing instance, provide the export
 configuration via `--flags-file` or the direct flags:
 
 ```bash
-CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-auditing)" \
 gcloud filestore instances update [INSTANCE_ID] \
     --project=[PROJECT_ID] \
     --zone=[ZONE] \

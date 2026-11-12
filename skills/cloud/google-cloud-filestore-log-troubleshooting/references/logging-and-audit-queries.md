@@ -40,7 +40,6 @@ AND timestamp >= "{RFC3339_TIMESTAMP_24H_AGO}"
 ### CLI Command (`gcloud`):
 
 ```bash
-CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-log-troubleshooting)" \
 gcloud logging read \
   'logName="projects/{project_id}/logs/cloudaudit.googleapis.com%2Factivity" AND protoPayload.serviceName="file.googleapis.com" AND protoPayload.resourceName=~".*{instance_id}.*"' \
   --project="{project_id}" \
@@ -85,7 +84,6 @@ AND timestamp >= "{RFC3339_TIMESTAMP_3H_AGO}"
 ### CLI Command (`gcloud`):
 
 ```bash
-CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-log-troubleshooting)" \
 gcloud logging read \
   'resource.type="k8s_container" AND resource.labels.container_name="gcp-filestore-driver" AND severity>=ERROR' \
   --project="{project_id}" \
@@ -120,7 +118,6 @@ AND timestamp >= "{RFC3339_TIMESTAMP_6H_AGO}"
 ### CLI Command (`gcloud`):
 
 ```bash
-CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-log-troubleshooting)" \
 gcloud logging read \
   'resource.type="gce_instance" AND textPayload=~"mount\.nfs"' \
   --project="{project_id}" \

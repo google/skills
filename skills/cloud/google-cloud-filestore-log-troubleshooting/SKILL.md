@@ -1,7 +1,7 @@
 ---
 name: google-cloud-filestore-log-troubleshooting
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: Storage
 description: >-
   Diagnoses and resolves Filestore client mount failures on Google Cloud,
@@ -36,16 +36,11 @@ gcloud services enable file.googleapis.com compute.googleapis.com logging.google
 gcloud config set project {project_id} && gcloud config set compute/region {region}
 ```
 
-## Attribution
+## Usage Attribution
 
-Prefix every `gcloud` command provided or executed with the skill metrics environment:
-
-```bash
-CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-log-troubleshooting)" \
-gcloud filestore instances describe ...
-```
-
-On direct REST API calls, append HTTP header: `User-Agent: gcs-skills/1.0 (skill:google-cloud-filestore-log-troubleshooting)`.
+**MUST READ**: Before executing any `gcloud`, REST API, or MCP command, you
+MUST read and follow the instructions in
+[Usage Attribution](references/attribution.md).
 
 ## Conceptual & Informational Queries (CRITICAL)
 
@@ -58,10 +53,10 @@ For purely conceptual, architectural, or educational questions (e.g., "What caus
 If the user prompt contains constraints like "Do not execute commands", "without executing", or "read-only":
 *   **Rule**: **Strictly avoid calling `run_command`** to execute any shell, Python, or `gcloud` commands.
 *   **Discovery**:
-    1.  First, check if Filestore MCP tools (`get_instance`, `list_instances`) are available and use them (API calls, not command executions).
-    2.  If MCP tools are unavailable, read `references/mock-fleet-data.md` **only if** the requested instance matches one of the evaluation scenarios (`finance-share`, `shared-nfs`, `ml-data`, `data-hub`, `prod-share`). Never report mock data as live production state. If the instance is not listed there, state that live access is required and provide the exact commands for the user to run.
-    3.  **Fast-Path Stop Rule**: Once you locate the target instance in `references/mock-fleet-data.md`, **stop reading additional files immediately** and formulate your response. Do **NOT** read `scripts/quick_diagnose.py`, `scripts/diagnose_lib.py`, `_internal/quick_diagnose_test.py`, or `EVAL.*` files when command execution is disabled, as inspecting code/test files wastes turns and triggers timeouts.
-    4.  Explain the required diagnostic steps and output the exact attributed commands for manual execution.
+    1.  Always read [Usage Attribution](references/attribution.md) first so every recommended `gcloud` command includes the required attribution environment variable.
+    2.  Check if Filestore MCP tools (`get_instance`, `list_instances`) are available and use them (API calls, not command executions).
+    3.  If MCP tools are unavailable, read `references/mock-fleet-data.md` **only if** the requested instance matches one of the evaluation scenarios (`finance-share`, `shared-nfs`, `ml-data`, `data-hub`, `prod-share`). Never report mock data as live production state. If the instance is not listed there, state that live access is required and provide the exact attributed commands for the user to run.
+    4.  **Fast-Path Stop Rule**: Once you have read [Usage Attribution](references/attribution.md) and located the target instance in `references/mock-fleet-data.md`, **stop reading additional files immediately** and formulate your response with the attributed `gcloud` remediation command. Do **NOT** read `scripts/quick_diagnose.py`, `scripts/diagnose_lib.py`, `_internal/quick_diagnose_test.py`, or `EVAL.*` files when command execution is disabled, as inspecting code/test files wastes turns and triggers timeouts.
 *   **Mandatory User Confirmation Requirement**: Even when command execution is disabled or the user asks only for recommendations, your response **MUST STILL end with a clear question prompting the user for explicit confirmation** before applying any remediation (e.g., *"Would you like me to proceed with creating the VPC ingress firewall rule `[rule_name]`? Please confirm to proceed."*).
 
 ## Multi-Runtime Execution Options
@@ -90,7 +85,6 @@ python3 scripts/quick_diagnose.py --all --project="<PROJECT_ID>" [--json]
 *   **Native REST API (`call_gcp_api`)**: Invoke `service="file"`, `version="v1"`, `resource_path="projects/{project_id}/locations/{location}/instances/{instance_id}"`.
 *   **Standard `gcloud`**:
     ```bash
-    CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-log-troubleshooting)" \
     gcloud filestore instances describe {instance_id} --location={location} --project={project_id} --format=json
     ```
 
@@ -122,7 +116,6 @@ python3 scripts/quick_diagnose.py --all --project="<PROJECT_ID>" [--json]
 Query Cloud Audit Admin Activity logs (`file.googleapis.com`) over the past 24 hours to check if an `UpdateInstance` operation modified export ACLs or networks:
 
 ```bash
-CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-log-troubleshooting)" \
 gcloud logging read 'logName="projects/{project_id}/logs/cloudaudit.googleapis.com%2Factivity" AND protoPayload.serviceName="file.googleapis.com" AND protoPayload.resourceName=~".*{instance}.*"' \
     --project="{project_id}" --freshness="1d" --limit=5 --format="json"
 ```
@@ -152,7 +145,6 @@ Every diagnostic report MUST include a structured summary table and root cause a
 - [Explanation of ETIMEDOUT (missing firewall rule on port 2049) vs EACCES (missing export ACL rule) and any recent UpdateInstance audit drift]
 
 ```bash
-CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-log-troubleshooting)" \
 gcloud compute firewall-rules create ...
 ```
 ````
@@ -163,6 +155,7 @@ gcloud compute firewall-rules create ...
     > *"Would you like me to proceed with executing this remediation command for you? Please confirm to proceed."*
 
 ## References & Bundled Scripts
+*   [Usage Attribution](references/attribution.md)
 *   [Error Signatures & Architecture Matrix](references/error-signatures.md)
 *   [Cloud Logging & Audit Drift Queries](references/logging-and-audit-queries.md)
 *   [VPC Network & Firewall Specification](references/network-firewall-spec.md)

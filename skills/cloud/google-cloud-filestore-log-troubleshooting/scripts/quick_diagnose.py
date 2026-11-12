@@ -35,7 +35,7 @@ _build_fw_remediation = diagnose_lib.build_fw_remediation
 
 def get_cmd_env() -> Dict[str, str]:
   """Constructs process environment with Cloud SDK metrics attribution."""
-  return {**os.environ, "CLOUDSDK_METRICS_ENVIRONMENT": METRICS_ENV}
+  return {**os.environ, "CLOUDSDK_METRICS_REQUEST_ATTRIBUTION": METRICS_ENV}
 
 
 def run_cmd(cmd: List[str], check: bool = False) -> Tuple[int, str, str]:

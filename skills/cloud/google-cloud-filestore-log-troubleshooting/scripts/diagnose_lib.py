@@ -7,12 +7,38 @@ merging, instance health evaluation, and report formatting.
 
 import ipaddress
 import json
+import os
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
-METRICS_ENV = (
-    "gcs-skills gcs-skills/1.0"
-    " (skill:google-cloud-filestore-log-troubleshooting)"
+_DEFAULT_METRICS_ENV = (
+    "agent-skills/1.0 (skill:google-cloud-filestore-log-troubleshooting)"
 )
+
+
+def _load_attribution(
+    fallback: str = _DEFAULT_METRICS_ENV, attr_path: Optional[str] = None
+) -> str:
+  """Loads the attribution token from references/attribution.md."""
+  path = attr_path or os.path.join(
+      os.path.dirname(os.path.abspath(__file__)),
+      "..",
+      "references",
+      "attribution.md",
+  )
+  try:
+    with open(path, encoding="utf-8") as f:
+      match = re.search(
+          r'CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="([^"]+)"', f.read()
+      )
+      if match:
+        return match.group(1)
+  except OSError:
+    pass
+  return fallback
+
+
+METRICS_ENV = _load_attribution()
 
 
 def resolve_network_info(
@@ -197,7 +223,7 @@ def build_acl_remediation(
           "PATCH_FILE=$(mktemp /tmp/filestore-export-patch.XXXXXX.json)\n"
           "cat << 'EOF' >"
           f' "${{PATCH_FILE}}"\n{json.dumps(payload, indent=2)}\nEOF\n'
-          f'CLOUDSDK_METRICS_ENVIRONMENT="{METRICS_ENV}" \\\n'
+          f'CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="{METRICS_ENV}" \\\n'
           f"gcloud filestore instances update {instance} \\\n"
           f"    --location={location} --project={project} \\\n"
           '    --flags-file="${PATCH_FILE}"\nrm -f "${PATCH_FILE}"'
@@ -230,8 +256,8 @@ def build_fw_remediation(info: Dict[str, Any], cidr: str) -> Dict[str, Any]:
       ),
       "exec_args": fw_args,
       "cmd": (
-          f'CLOUDSDK_METRICS_ENVIRONMENT="{METRICS_ENV}" \\\ngcloud compute'
-          f" firewall-rules create {rule_name} \\\n   "
+          f'CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="{METRICS_ENV}" \\\n'
+          f"gcloud compute firewall-rules create {rule_name} \\\n   "
           f' --network="{info["vpc"]}" --direction=INGRESS --priority=1000 \\\n'
           "    --action=ALLOW --rules=tcp:2049,udp:2049,tcp:111,udp:111 \\\n  "
           f'  --source-ranges="{cidr}" --project="{info["host_proj"]}"'

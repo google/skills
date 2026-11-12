@@ -15,7 +15,6 @@ Filestore instances via the NFS Browser skill.
     Filestore network:
 
     ```bash
-    CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-nfs-browser)" \
     gcloud compute firewall-rules create allow-filestore-nfs \
       --network={vpc_network} \
       --allow=tcp:2049,udp:2049 \

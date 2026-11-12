@@ -149,6 +149,26 @@ class SSHJumpHostEngineTest(unittest.TestCase):
 
 class CLITest(unittest.TestCase):
 
+  def test_attribution_constants(self):
+    self.assertEqual(
+        nfs_browser.USER_AGENT,
+        "agent-skills/1.0 (skill:google-cloud-filestore-nfs-browser)",
+    )
+    self.assertEqual(
+        jump_host_engine.METRICS_ENV,
+        "agent-skills/1.0 (skill:google-cloud-filestore-nfs-browser)",
+    )
+    self.assertEqual(
+        jump_host_engine._load_attribution(fallback="UNUSED"),
+        "agent-skills/1.0 (skill:google-cloud-filestore-nfs-browser)",
+    )
+    self.assertEqual(
+        jump_host_engine._load_attribution(
+            fallback="fallback-token", attr_path="/nonexistent/attribution.md"
+        ),
+        "fallback-token",
+    )
+
   @mock.patch("nfs_browser.HTTPBridgeEngine.tree")
   def test_cli_tree_with_bridge(self, mock_tree):
     mock_tree.return_value = {"entries": [], "path": "/"}

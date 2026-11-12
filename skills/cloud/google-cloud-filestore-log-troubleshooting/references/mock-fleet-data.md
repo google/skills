@@ -48,10 +48,9 @@ automated evaluation suites, AutoCloud, or read-only customer environments).
     `2049` or `111` from `10.128.0.0/20`
 *   **Diagnostic Verdict**: `ETIMEDOUT` due to missing VPC ingress firewall rule
     on TCP port 2049.
-*   **Remediation Command**:
+*   **Remediation Command** (must be prefixed with the attribution variable from [Usage Attribution](attribution.md)):
 
     ```bash
-    CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-log-troubleshooting)" \
     gcloud compute firewall-rules create allow-prod-vpc-filestore-nfs \
         --network="prod-vpc" \
         --direction=INGRESS \
@@ -131,10 +130,9 @@ automated evaluation suites, AutoCloud, or read-only customer environments).
 *   **VPC Firewall Status**: Port 2049 is blocked by missing ingress firewall
     rule on `prod-vpc`.
 *   **Diagnostic Verdict**: `ETIMEDOUT` on TCP port 2049.
-*   **Remediation Command**:
+*   **Remediation Command** (must be prefixed with the attribution variable from [Usage Attribution](attribution.md)):
 
     ```bash
-    CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-log-troubleshooting)" \
     gcloud compute firewall-rules create allow-data-hub-nfs \
         --network="prod-vpc" \
         --direction=INGRESS \

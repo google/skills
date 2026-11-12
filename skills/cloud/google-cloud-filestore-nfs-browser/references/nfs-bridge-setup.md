@@ -58,7 +58,6 @@ gcloud builds submit scripts/bridge_server \
   --tag=gcr.io/my-project/filestore-bridge:latest
 
 # 3. Deploy to Cloud Run with Direct VPC Egress & NFS Mount
-CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-nfs-browser)" \
 gcloud run deploy filestore-nfs-bridge \
   --project=my-project \
   --region=us-central1 \

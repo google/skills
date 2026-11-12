@@ -134,10 +134,9 @@ centralized **Host Project**:
 
 --------------------------------------------------------------------------------
 
-## 4. Attributed Ingress Firewall Rule Remediation
+## 4. Ingress Firewall Rule Remediation
 
 ```bash
-CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-filestore-log-troubleshooting)" \
 gcloud compute firewall-rules create allow-{network_name}-filestore-nfs \
     --network="{network_name}" \
     --direction=INGRESS \
