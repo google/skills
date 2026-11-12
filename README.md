@@ -51,6 +51,7 @@ This command gives you an option to also remove obsolete skills.
 - **AI/ML**
   - [**Agent Access Audit**](./skills/cloud/agent-platform-access-audit)
   - [**Agent Platform Alert Configuration**](./skills/cloud/agent-platform-alert-configuration)
+  - [**Agent Platform Autorater Customization**](./skills/cloud/agent-platform-autorater-customization)
   - [**Agent Platform Endpoint Management**](./skills/cloud/agent-platform-endpoint-management)
   - [**Agent Platform Eval Flywheel Skill**](./skills/cloud/agent-platform-eval-flywheel)
   - [**Agent Platform GenAI Inference Skill**](./skills/cloud/agent-platform-inference)
