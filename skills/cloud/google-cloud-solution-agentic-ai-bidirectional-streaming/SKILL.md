@@ -1,7 +1,7 @@
 ---
 name: google-cloud-solution-agentic-ai-bidirectional-streaming
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: MultiProductSolutions
 description: >-
   Guides agents to interactively discover customer requirements
@@ -115,8 +115,8 @@ phases:
    - [Host AI agents on Cloud Run](https://docs.cloud.google.com/run/docs/ai-agents.md.txt)
    - [Triggering Cloud Run with WebSockets](https://docs.cloud.google.com/run/docs/triggering/websockets.md.txt)
    - [Start and Manage a Gemini Live API Session](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/live-api/start-manage-session.md.txt)
-   - [ADK Streaming Tools](https://adk.dev/streaming/streaming-tools/)
-   - [ADK Streaming Configuration](https://adk.dev/streaming/configuration/)
+   - [ADK Streaming Tools](https://adk.dev/live/tools/)
+   - [ADK Streaming Configuration](https://adk.dev/live/configuration/)
    - [Codelab: Way Back Home Level 4 instructions](https://codelabs.developers.google.com/way-back-home-level-4/instructions#0)
      (and
      [solution code](https://github.com/gca-americas/way-back-home/tree/main/level_4))

@@ -112,7 +112,7 @@ Cloud Architecture Framework.]
 
 *   **Monitoring and logging**: [E.g., Cloud Logging, Cloud Monitoring,
     Dashboards]
-*   **Infrastructure as Code (IaC)**: [E.g., Terraform, Deployment Manager]
+*   **Infrastructure as Code (IaC)**: [E.g., Terraform, Infrastructure Manager]
 
 ### 5.4. Cost optimization
 

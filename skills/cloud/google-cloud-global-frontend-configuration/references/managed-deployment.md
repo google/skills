@@ -10,16 +10,25 @@ This reference document details how to deploy finalized global external Applicat
 Before executing any deployment, you MUST verify that your acting identity has the necessary permissions. Failing to do so will result in half-provisioned infrastructure and orphaned resources.
 
 1.  **Identity Identification:** Find the active identity using `gcloud config get-value account`.
-2.  **Permission Validation:** Check for the following permissions on the target project:
+2.  **Permission & Role Validation:** Check for the following permissions and
+    roles on the target project:
     *   `resourcemanager.projects.get` (Read project metadata)
-    *   `compute.admin` (Full access to Cloud Load Balancing, Cloud CDN, and Cloud Armor WAF)
+    *   `roles/compute.admin` (Full access to Cloud Load Balancing, Cloud CDN,
+        and Cloud Armor WAF)
     *   *If using Terraform (via Infrastructure Manager):*
-        *   `config.admin` (Infrastructure Manager Administrator)
-        *   `iam.serviceAccounts.actAs` (Permission to act as the deployment service account)
-3.  **Service Account Pre-check:** Infrastructure Manager runs deployments using a dedicated service account. You must verify that:
-    *   The service account exists in the project.
-    *   The service account has at least `editor` or `owner` role, or granular admin roles (e.g., `compute.admin`, `storage.admin`).
-    *   If no custom service account is provided, identify the default service account: `service-{project_number}@gcp-sa-inframanager.iam.gserviceaccount.com`.
+        *   `roles/config.admin` (Infrastructure Manager Administrator)
+        *   `iam.serviceAccounts.actAs` (Permission to act as the deployment
+            service account, e.g., `roles/iam.serviceAccountUser`)
+3.  **Service Account Pre-check:** Infrastructure Manager runs deployments using
+    a user-managed service account. You must verify that:
+    *   A user-managed service account exists in the project (create one if none
+        is provided; do not pass the Google-managed service agent
+        `service-{project_number}@gcp-sa-config.iam.gserviceaccount.com` to
+        `--service-account`).
+    *   The service account has `roles/config.agent` (Infra Manager Agent) plus
+        resource-provisioning roles (`roles/editor` or `roles/owner`, or
+        granular admin roles such as `roles/compute.admin` and
+        `roles/storage.admin`).
 
 ---
 
@@ -51,7 +60,8 @@ Infrastructure Manager is Google's managed service for deploying Terraform confi
 #### Option B: If using gcloud CLI Script
 If the user chose the gcloud script format:
 
-1.  **Permissions Check:** Ensure the active identity has `compute.admin` and `storage.admin` (if using Google Cloud Storage bucket).
+1.  **Permissions Check:** Ensure the active identity has `roles/compute.admin`
+    and `roles/storage.admin` (if using Google Cloud Storage bucket).
 2.  **Execution:** Instruct the user to save the generated script as `deploy.sh` and execute it:
     ```bash
     chmod +x deploy.sh

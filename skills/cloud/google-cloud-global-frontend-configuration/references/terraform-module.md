@@ -76,14 +76,14 @@ module "security_policy_api" {
       action        = "deny(403)"
       priority      = 9000
       description   = "OWASP SQLi protection"
-      expression    = "evaluatePreconfiguredExpr('sqli-v33-stable')"
+      expression    = "evaluatePreconfiguredWaf('sqli-v422-stable')"
       src_ip_ranges = ["*"]
     },
     {
       action        = "deny(403)"
       priority      = 9001
       description   = "OWASP XSS protection"
-      expression    = "evaluatePreconfiguredExpr('xss-v33-stable')"
+      expression    = "evaluatePreconfiguredWaf('xss-v422-stable')"
       src_ip_ranges = ["*"]
     }
   ]

@@ -178,6 +178,6 @@ commands to validate the deployed environment.]
 * [Host AI agents on Cloud Run](https://docs.cloud.google.com/run/docs/ai-agents)
 * [Triggering Cloud Run with WebSockets](https://docs.cloud.google.com/run/docs/triggering/websockets)
 * [Start and Manage a Gemini Live API Session](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/live-api/start-manage-session)
-* [ADK Streaming Tools](https://adk.dev/streaming/streaming-tools/)
-* [ADK Streaming Configuration](https://adk.dev/streaming/configuration/)
+* [ADK Streaming Tools](https://adk.dev/live/tools/)
+* [ADK Streaming Configuration](https://adk.dev/live/configuration/)
 * [Codelab: Way Back Home Level 4 instructions](https://codelabs.developers.google.com/way-back-home-level-4/instructions#0)

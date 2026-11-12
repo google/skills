@@ -75,10 +75,12 @@ features for each component in the confirmed technical decomposition:
     *   Pros: Fully managed runtime that supports built-in memory/sessions
         (Agent Platform Sessions), secure code execution sandbox, and native
         connection to remote MCP servers (like those hosted on Cloud Run).
-    *   Cons: Limited to the supported languages (see the supported
-        [Language](https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest/Shared.Types/Language)
-        list) and doesn't host custom Model Context Protocol (MCP) servers
-        directly (they must be hosted externally on Cloud Run or GKE).
+    *   Cons: Doesn't host custom Model Context Protocol (MCP) servers directly
+        (they must be hosted externally on Cloud Run or GKE) and higher-level
+        SDK and CLI deployment templates are limited to
+        [Supported languages and frameworks](https://docs.cloud.google.com/gemini-enterprise-agent-platform/build/runtime#supported-languages-and-frameworks).
+        Custom agents in any language must be containerized to conform to the
+        runtime contract.
 *   Alternative product 1: Cloud Run
     *   Pros: Serves custom container instances scaling to zero; highly
         performant when hosting custom language engines, local API layers,
@@ -131,11 +133,12 @@ An agent sends queries through this connector to securely access resources in
 the Virtual Private Cloud (VPC) network used for storage resources in this
 architecture.
 
-*   Recommended primary product: Serverless VPC Access connector
-*   Alternative product 1: Direct VPC egress
-    *   Pros: Lower latency, lower resource cost, and avoids throughput
-        scaling bottlenecks.
-    *   Cons: Requires specific routing and subnet configurations.
+*   Recommended primary product: Direct VPC egress
+*   Alternative product 1: Serverless VPC Access connector
+    *   Pros: Uses fewer IP addresses and avoids Direct VPC cold-start
+        delays when paired with Cloud NAT.
+    *   Cons: Higher latency, lower throughput, and incurs additional
+        Compute Engine VM charges.
 
 ## <a id="agent-memory"></a>Agent memory
 

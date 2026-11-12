@@ -33,7 +33,7 @@ All `gcloud` commands must be ordered in this exact sequence in your output scri
 | Workload Type | CDN Flags | WAF Policy & Rules |
 | :--- | :--- | :--- |
 | **Static Images / Objects** | `--enable-cdn`<br>`--cache-mode=CACHE_ALL_STATIC`<br>`--default-ttl=2592000`<br>`--client-ttl=86400`<br>`--max-ttl=31536000` | None (Rate Limiting unsupported on CLOUD_ARMOR_EDGE) |
-| **Cacheable API**| `--enable-cdn`<br>`--cache-mode=USE_ORIGIN_HEADERS` | Rate limit (100 RPM) + OWASP rules (SQLi, XSS, LFI)<br>`--action=deny-403`<br>`--expression="evaluatePreconfiguredExpr('sqli-v33-stable') \|\| evaluatePreconfiguredExpr('xss-v33-stable')"` |
+| **Cacheable API**| `--enable-cdn`<br>`--cache-mode=USE_ORIGIN_HEADERS` | Rate limit (100 RPM) + OWASP rules (SQLi, XSS, LFI)<br>`--action=deny-403`<br>`--expression="evaluatePreconfiguredWaf('sqli-v422-stable') \|\| evaluatePreconfiguredWaf('xss-v422-stable')"` |
 | **Uncacheable API / Transactions**| `--no-enable-cdn` | Strict Rate limit (30 RPM) + OWASP rules + Bot Management/Threat Intel |
 | **Dynamic Web (SSR)** | `--enable-cdn`<br>`--cache-mode=USE_ORIGIN_HEADERS` | Rate limit (120 RPM) + OWASP rules (SQLi, XSS, CSRF) |
 
@@ -44,7 +44,7 @@ All `gcloud` commands must be ordered in this exact sequence in your output scri
 ### 1. Google Cloud Storage Buckets
 ```bash
 gcloud compute backend-buckets create "${ARCHITECTURE_NAME}-bucket-backend" \
-    --bucket-name="{bucket_name}" \
+    --gcs-bucket-name="{bucket_name}" \
     --enable-cdn \
     --cache-mode="{cache_mode}" \
     --default-ttl="{default_ttl}" \
@@ -56,15 +56,17 @@ gcloud compute backend-buckets create "${ARCHITECTURE_NAME}-bucket-backend" \
 ```bash
 # Create Serverless NEG
 gcloud compute network-endpoint-groups create "${ARCHITECTURE_NAME}-neg" \
-    --reference-neg-template \
     --network-endpoint-type=serverless \
     --region="{region}" \
     --cloud-run-service="{service_name}"
 
-# Create Backend Service
+# Create Backend Service and Attach Security Policy
 gcloud compute backend-services create "${ARCHITECTURE_NAME}-backend" \
     --global \
-    --protocol=HTTP \
+    --load-balancing-scheme=EXTERNAL_MANAGED \
+    --protocol=HTTP
+gcloud compute backend-services update "${ARCHITECTURE_NAME}-backend" \
+    --global \
     --security-policy="{security_policy_name}"
 
 # Add NEG to Backend
@@ -76,10 +78,13 @@ gcloud compute backend-services add-backend "${ARCHITECTURE_NAME}-backend" \
 
 ### 3. Compute Engine MIGs
 ```bash
-# Create Backend Service
+# Create Backend Service and Attach Security Policy
 gcloud compute backend-services create "${ARCHITECTURE_NAME}-backend" \
     --global \
-    --protocol=HTTP \
+    --load-balancing-scheme=EXTERNAL_MANAGED \
+    --protocol=HTTP
+gcloud compute backend-services update "${ARCHITECTURE_NAME}-backend" \
+    --global \
     --security-policy="{security_policy_name}"
 
 # Add MIG to Backend
@@ -91,10 +96,13 @@ gcloud compute backend-services add-backend "${ARCHITECTURE_NAME}-backend" \
 
 ### 4. GKE Clusters
 ```bash
-# Create Backend Service
+# Create Backend Service and Attach Security Policy
 gcloud compute backend-services create "${ARCHITECTURE_NAME}-backend" \
     --global \
-    --protocol=HTTP \
+    --load-balancing-scheme=EXTERNAL_MANAGED \
+    --protocol=HTTP
+gcloud compute backend-services update "${ARCHITECTURE_NAME}-backend" \
+    --global \
     --security-policy="{security_policy_name}"
 
 # Add GKE NEG to Backend
@@ -112,21 +120,24 @@ gcloud compute network-endpoint-groups create "${ARCHITECTURE_NAME}-neg" \
     --network-endpoint-type=internet-fqdn-port
 
 # Add Endpoint
-gcloud compute network-endpoints add "${ARCHITECTURE_NAME}-neg" \
+gcloud compute network-endpoint-groups update "${ARCHITECTURE_NAME}-neg" \
     --global \
-    --fqdn="{domain_name}" \
-    --port=443
+    --add-endpoint="fqdn={domain_name},port=443"
 
-# Create Backend Service
+# Create Backend Service and Attach Security Policy
 gcloud compute backend-services create "${ARCHITECTURE_NAME}-backend" \
     --global \
-    --protocol=HTTPS \
+    --load-balancing-scheme=EXTERNAL_MANAGED \
+    --protocol=HTTPS
+gcloud compute backend-services update "${ARCHITECTURE_NAME}-backend" \
+    --global \
     --security-policy="{security_policy_name}"
 
 # Add NEG to Backend
 gcloud compute backend-services add-backend "${ARCHITECTURE_NAME}-backend" \
     --global \
-    --network-endpoint-group="${ARCHITECTURE_NAME}-neg"
+    --network-endpoint-group="${ARCHITECTURE_NAME}-neg" \
+    --global-network-endpoint-group
 ```
 
 ---

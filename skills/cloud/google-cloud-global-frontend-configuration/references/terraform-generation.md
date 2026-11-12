@@ -38,7 +38,7 @@ To prevent validation and deployment errors, always adhere to the following Goog
 
 | Workload Type | `enable_cdn` | `cdn_policy.cache_mode` | `default_ttl` | `max_ttl` | Cache Key Policy | WAF Protection (Cloud Armor) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Static Images / Objects** | `true` | `CACHE_ALL_STATIC` | `2592000` (30d) | `31536000` (365d) | Host + Protocol + Path (Ignore Query Strings) | None (Rate Limiting unsupported on CLOUD_ARMOR_EDGE) |
+| **Static Images / Objects** | `true` | `CACHE_ALL_STATIC` | `2592000` (30d) | `31536000` (365d) | Backend Services: Host + Protocol + Path (Ignore Query Strings); Backend Buckets: Object Path (Protocol & Host omitted; `cache_key_policy` unsupported) | None (Rate Limiting unsupported on CLOUD_ARMOR_EDGE) |
 | **Cacheable API**| `true` | `USE_ORIGIN_HEADERS` | Omitted (Managed by Origin) | Omitted | **Include Query Strings** | OWASP (SQLi/XSS/LFI) + Rate Limit (100 RPM) |
 | **Uncacheable API / Transactions**| `false`| N/A | N/A | N/A | N/A | OWASP (SQLi/XSS/RCE/Session Fixation) + Strict Rate Limit (30 RPM) + Bot Management |
 | **Dynamic Web (SSR)** | `true` | `USE_ORIGIN_HEADERS` | Omitted (Managed by Origin) | Omitted | Host + Protocol + Path (Bypass on session cookie) | OWASP (SQLi/XSS/CSRF/Shellshock) + Rate Limit (120 RPM) |

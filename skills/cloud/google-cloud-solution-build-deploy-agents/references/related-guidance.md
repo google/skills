@@ -51,8 +51,9 @@ architecture and deployment:
 -   [Well-Architected Framework: Sustainability pillar](https://docs.cloud.google.com/architecture/framework/sustainability/printable.md.txt):
     Provides recommendations to design, build, and manage workloads in Google
     Cloud that are energy-efficient and carbon-aware.
--   [Gemini Enterprise Agent Platform Language support](https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest/Shared.Types/Language):
-    Details the supported languages for Gemini Enterprise Agent Platform.
+-   [Agent Runtime supported languages and frameworks](https://docs.cloud.google.com/gemini-enterprise-agent-platform/build/runtime.md.txt#supported-languages-and-frameworks):
+    Details the supported languages, frameworks, and container runtime contract
+    for Agent Runtime.
 -   [Agent Gateway overview](https://docs.cloud.google.com/gemini-enterprise-agent-platform/govern/gateways/agent-gateway-overview.md.txt):
     An overview of Agent Gateway, which is the networking component of the
     Gemini Enterprise Agent Platform ecosystem.
