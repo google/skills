@@ -154,6 +154,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Cloud Build Basics**](./skills/cloud/cloud-build-basics)
   - [**Cloud Operator**](./skills/cloud/cloud-operator)
   - [**Developer Device Platform**](./skills/cloud/developer-device-platform-basics)
+  - [**Developer Device Platform: Device Run**](./skills/cloud/developer-device-platform-device-run)
   - [**gcloud CLI Skill for AI Agents**](./skills/cloud/gcloud)
   - [**Google Agents CLI Onboarding**](./skills/cloud/google-agents-cli-onboarding)
   - [**Google Developer Knowledge**](./skills/developers/retrieving-developer-knowledge)
