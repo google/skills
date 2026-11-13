@@ -1,10 +1,10 @@
 ---
 name: cloud-monitoring-alert-configuration
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: CloudObservabilityAndMonitoring
   support_tier: team
-  tags: [cloud-monitoring, alerting, terraform, promql, observability]
+  tags: "cloud-monitoring, alerting, terraform, promql, observability"
   comment: >-
     Consolidated from Cloud Monitoring alerting policy best practices across
     Cloud Run, Google Kubernetes Engine, Compute Engine, and Vertex AI Agent
