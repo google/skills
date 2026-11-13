@@ -89,6 +89,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Compute Engine Future Reservations & Calendar-Mode Feasibility**](./skills/cloud/compute-future-reservations)
   - [**Compute Engine On-Demand Reservations**](./skills/cloud/compute-on-demand-reservations)
   - [**Compute Engine Spot Capacity Advice**](./skills/cloud/compute-spot-capacity-advice)
+  - [**Compute Engine VM Creation**](./skills/cloud/compute-vm-creation)
   - [**Designing and Deploying GCP Infrastructure with Application Design Center**](./skills/cloud/application-design-center-design-deploy)
   - [**Filestore Auditing Skill**](./skills/cloud/google-cloud-filestore-auditing)
   - [**Filestore Autoscale**](./skills/cloud/google-cloud-filestore-autoscale)
