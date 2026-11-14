@@ -159,6 +159,8 @@ This command gives you an option to also remove obsolete skills.
   - [**gcloud CLI Skill for AI Agents**](./skills/cloud/gcloud)
   - [**Google Agents CLI Onboarding**](./skills/cloud/google-agents-cli-onboarding)
   - [**Google Developer Knowledge**](./skills/developers/retrieving-developer-knowledge)
+  - [**Set up the operator agent**](./skills/cloud/cloud-operator-setup)
+  - [**Share existing Google Cloud context with the operator agent**](./skills/cloud/cloud-operator-share-context)
 - **Application development**
   - [**API Gateway OpenAPI Spec Authoring**](./skills/cloud/api-gateway-openapi-spec-authoring)
   - [**Application Integration Authoring**](./skills/cloud/application-integration-authoring)

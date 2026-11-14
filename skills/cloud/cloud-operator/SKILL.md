@@ -1,7 +1,7 @@
 ---
 name: cloud-operator
 metadata:
-  version: "1.0.3"
+  version: "1.1.0"
   category: CloudInfrastructureAndServices
 description: >-
   Google Cloud (GCP) assistant and operator via the autocloud MCP server. Use
@@ -38,8 +38,8 @@ call goes to the user's own operator agent in that project.
 
 At the start of each conversation, before the first call:
 
-1. **If you know the project** (the user named one, or your memory has their
-   operator project), use it. Use the agent from your memory only if it was
+1. **If you know the project** (the user named one, or local memory has their
+   operator project), use it. Use the agent from local memory only if it was
    saved for that same project; otherwise leave out `agentId`. Tell the user in
    one line, for example "Using project `acme-ops` with your operator agent."
 2. **If you don't know the project**, ask whether they have a Cloud Operator
@@ -48,15 +48,30 @@ At the start of each conversation, before the first call:
      default gcloud project, but don't use it without asking). If they want an
      agent other than their own, take its ID, or the `agents/{agent_id}` part
      of a link they paste, and pass `locations/global/agents/{agent_id}`.
-   - **They want to set one up:** ask for the project ID, and walk them through
-     it one step at a time: open
+   - **They want to set one up:** if the `cloud-operator-setup` skill is
+     available, use it (it creates and checks their agent and offers to share
+     their existing Google Cloud context), then return to their request.
+     Otherwise, ask for the project ID and walk them through it one step at a
+     time: open
      `https://console.cloud.google.com/autocloud/home?project={project_id}`,
      click **Create operator agent**, then click **Get started** when it says
      the agent is ready. Then make the first call yourself (below).
    - **Not now:** answer with the other available tools and skills, and don't
      ask again in this conversation.
-3. **After the first call that works**, save the project in your memory for
+3. **After the first call that works**, save the project in local memory for
    next time, and the agent too if it isn't their own. Don't save a "not now".
+4. **Once, after answering that first request:** if the
+   `cloud-operator-share-context` skill is available, local memory has no
+   "Cloud Operator context: shared on" or "declined on" note, and
+   `cloud-operator-setup` hasn't already offered in this conversation, offer to
+   scan local memory, agent instruction files, skills and workflows, and the
+   repository's GCP docs for context the user or their team already have about
+   operating in Google Cloud — environments, projects, product preferences,
+   best practices, architecture guidance, runbooks — and share it with the
+   operator's memory. Say that they can also ask for it later. If they agree,
+   use the `cloud-operator-share-context` skill. If they decline, note "Cloud
+   Operator context: declined on {date}" in local memory. If they don't
+   answer, note nothing, so that you offer again in a later conversation.
 
 **First call after creating an agent, or when the user asks to check Cloud
 Operator:** call `ask_cloud_operator` yourself (don't ask the user to run it)
@@ -123,11 +138,12 @@ Make one call per logical request. If a call fails, see
   tokens, API keys, and private keys with `<REDACTED>` (for `.env`/`*.tfvars`,
   keep the variable names), and tell the user you did.
 
-  Other than a preference the user asked you to pass on, don't add
-  instructions of your own about the operator's memory or tools: the service's
-  safety filter can reject instruction-like text, and a rejected call can leave
-  a stuck session.
-- `agentId`: omit unless the user or your memory names one (short ID,
+  Other than a preference the user asked you to pass on, or notes they agreed
+  to share (the `cloud-operator-share-context` skill), don't add instructions
+  of your own about the operator's memory or tools: the service's safety filter
+  can reject instruction-like text, and a rejected call can leave a stuck
+  session.
+- `agentId`: omit unless the user or local memory names one (short ID,
   `locations/{location}/agents/{agent_id}`, or a full resource name). A full
   resource name (`projects/{project}/locations/...`) is valid only when
   `{project}` is the call's `project`; when targeting a different project, omit
@@ -226,7 +242,7 @@ credential: if signing in again doesn't fix it, check the project (below).
 
 | Error | Likely cause | What to do |
 |---|---|---|
-| "personal operator agent … has not been initialized yet" | The user has no operator agent in that project | Walk them through creating one ([Project and agent](#project-and-agent)), then retry. |
+| "personal operator agent … has not been initialized yet" | The user has no operator agent in that project | Offer to set one up (`cloud-operator-setup` if available, or [Project and agent](#project-and-agent)), then retry. |
 | "agent … is not ready to serve yet" | The agent was just created | Wait about a minute and retry, up to 3 times. |
 | "Permission denied on resource project {project_id}" | The project ID is wrong, or the project doesn't exist | Check the project ID with the user. |
 | "The caller does not have permission", or a permission error in the Console when creating the agent | The account can't use Cloud Operator in that project | Their admin grants `roles/geminicloudassist.user` on the project. Meanwhile, offer to handle the request with the other available skills. |
