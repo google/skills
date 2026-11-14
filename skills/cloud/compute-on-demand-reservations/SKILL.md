@@ -1,7 +1,7 @@
 ---
 name: compute-on-demand-reservations
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   category: Compute
 description: >-
   Inspects, verifies, and manages Google Compute Engine (GCE) On-Demand reservations
@@ -9,7 +9,7 @@ description: >-
   reservation capacity, determining whether reserved VMs are available or exhausted,
   verifying reservation targeting (automatic versus specific reservation), or sharing
   reservations across projects. Don't use for Spot capacity advice (use
-  compute-spot-capacity-advice) or future calendar bookings (use compute-future-reservations).
+  gcloud compute advice capacity --provisioning-model=SPOT) or future calendar bookings (use compute-future-reservations).
 ---
 
 # Compute Engine On-Demand Reservations
@@ -53,7 +53,7 @@ Before querying or managing On-Demand reservations, ensure the environment meets
 ```bash
 gcloud compute reservations list \
   --project={project_id} \
-  [--zones={zone}] \
+  [--filter="zone:({zone})"] \
   [--format="table(name,zone.basename(),specificReservation.instanceProperties.machineType.basename(),specificReservation.assuredCount,specificReservation.inUseCount,specificReservation.count,specificReservationRequired,shareSettings.shareType,status)"]
 ```
 
@@ -87,14 +87,20 @@ gcloud compute reservations create {reservation_name} \
 
 ### 4. Update or Resize an Existing Reservation
 
-Resizing capacity (`--vm-count`) and modifying shared consumer projects are mutable in place after obtaining explicit human approval (`--share-with` and `--add-share-with` accept up to 100 consumer project IDs or project numbers in the same organization excluding the host project itself, while `--remove-share-with` strictly requires numeric **project numbers**). Hardware attributes (`machineType`, `minCpuPlatform`, `accelerator`, `localSsd`, `zone`, and `specificReservationRequired`) are immutable after creation and require recreating the reservation.
+Resizing capacity (`--vm-count`) and modifying shared consumer projects are
+mutable in place after obtaining explicit human approval (`--share-with`,
+`--add-share-with`, and `--remove-share-with` accept up to 100 consumer project
+IDs or project numbers in the same organization excluding the host project
+itself). Hardware attributes (`machineType`, `minCpuPlatform`, `accelerator`,
+`localSsd`, `zone`, and `specificReservationRequired`) are immutable after
+creation and require recreating the reservation.
 
 ```bash
 gcloud compute reservations update {reservation_name} \
   --project={project_id} \
   --zone={zone} \
   [--vm-count={new_vm_count}] \
-  [--add-share-with={project_ids_or_numbers} | --remove-share-with={project_numbers}]
+  [--add-share-with={project_ids_or_numbers} | --remove-share-with={project_ids_or_numbers}]
 ```
 
 ### 5. Delete an Unused On-Demand Reservation (Resource Teardown)
@@ -215,5 +221,10 @@ Shared reservations allow multiple projects within the same Google Cloud organiz
 * **Missing Reservation Advisory**: When no matching or available reservation exists in the target zone:
   * Inform the user that instances launch against unreserved on-demand capacity (subject to stock availability).
   * If guaranteed capacity is required, advise creating a new reservation using `gcloud compute reservations create`.
-  * If the workload is interruptible or fault-tolerant, suggest evaluating Spot VMs using `compute-spot-capacity-advice`.
-* **Negative Guardrail (No Spot Telemetry for On-Demand)**: Do not use Spot capacity advice (`gcloud beta compute advice capacity --provisioning-model=SPOT`) or emit obtainability scores when inspecting or verifying standard On-Demand reservations. On-Demand reservation checks must inspect concrete reservation status and counts via `gcloud compute reservations list` and `describe`.
+  * If the workload is interruptible or fault-tolerant, suggest evaluating Spot
+    VMs using `gcloud compute advice capacity --provisioning-model=SPOT`.
+* **Negative Guardrail (No Spot Telemetry for On-Demand)**: Do not use Spot
+  capacity advice (`gcloud compute advice capacity --provisioning-model=SPOT`)
+  or emit obtainability scores when inspecting or verifying standard On-Demand
+  reservations. On-Demand reservation checks must inspect concrete reservation
+  status and counts via `gcloud compute reservations list` and `describe`.

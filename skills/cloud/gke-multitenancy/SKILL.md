@@ -8,7 +8,7 @@ description: >-
   for single-tenant cluster configuration or general deployment instructions
   (use gke-basics or gke-app-onboarding instead).
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: Containers
 ---
 
@@ -200,4 +200,5 @@ gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
   --enable-cost-allocation
 ```
 
-View in Cloud Billing > GKE Cost Allocation.
+View in the Cloud Billing Reports page or query the Cloud Billing detailed usage
+cost export in BigQuery.

@@ -1,7 +1,7 @@
 ---
 name: gke-workload-identity
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: Security
 description: >-
   Configures and diagnoses Workload Identity Federation for GKE authentication failures for Pods
@@ -154,8 +154,9 @@ gcloud container node-pools describe "{node_pool}" --cluster "{cluster}" \
     the GKE metadata server; this is the usual cause of "runs as the node
     default service account". Remediation: enable
     `--workload-metadata=GKE_METADATA` on the node pool (propose to a human;
-    recreates nodes). This is a **node-pool configuration** problem — not a KSA
-    annotation or IAM binding problem — so do not change KSA annotations or IAM
+    immediately affects running workloads and might disrupt workloads using the
+    node service account). This is a **node-pool configuration** problem — not a
+    KSA annotation or IAM binding problem — so do not change KSA annotations or
     bindings to fix it. When the symptom is "runs as the node default service
     account", say so explicitly: the root cause is the node pool's
     `workloadMetadataConfig.mode`, and the KSA annotation and IAM bindings are
@@ -375,7 +376,7 @@ This skill is derived from public Google Cloud documentation:
     — node-pool `--workload-metadata=GKE_METADATA`, the direct-binding
     `principal://...` identifier, and the legacy
     `serviceAccount:PROJECT_ID.svc.id.goog[NAMESPACE/KSA_NAME]` member format.
--   [Search IAM policies (Cloud Asset Inventory)](https://cloud.google.com/asset-inventory/docs/searching-iam-policies)
+-   [Search IAM policies (Cloud Asset Inventory)](https://docs.cloud.google.com/asset-inventory/docs/search-allow-policies)
     — `gcloud asset search-all-iam-policies` for auditing a principal's
     bindings.
 -   [View GKE logs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/view-logs.md.txt)
