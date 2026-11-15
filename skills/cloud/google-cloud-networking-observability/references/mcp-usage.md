@@ -65,7 +65,7 @@ diagnostics.
 
 ## Cloud Monitoring MCP
 
-The GcpMon MCP server provides access to Cloud Monitoring metrics and
+The Cloud Monitoring MCP server provides access to Cloud Monitoring metrics and
 time-series data.
 
 ### Key Tools

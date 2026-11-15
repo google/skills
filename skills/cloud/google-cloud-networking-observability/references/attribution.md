@@ -1,8 +1,9 @@
 # Usage Attribution
 
-Tag every command you execute directly in the terminal while using this skill,
-so usage can be attributed. The tag identifies only the skill and its version;
-it carries no user data.
+**MUST READ**: Before executing any `gcloud`, REST API, or MCP command with
+this skill, follow these usage attribution instructions. Tag every command you
+execute directly in the terminal so usage can be attributed. The tag identifies
+only the skill and its version; it carries no user data.
 
 -   **`gcloud` CLI Commands**: Prefix every `gcloud` invocation, whatever the
     subcommand, with the metrics environment variable. Set it inline on each

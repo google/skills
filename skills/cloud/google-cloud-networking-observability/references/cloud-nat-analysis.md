@@ -1,96 +1,94 @@
 # Cloud NAT Analysis Reference
 
-Use Cloud NAT logs (`compute.googleapis.com/nat_flows`) to audit traffic going
-through NAT gateways or troubleshoot port exhaustion.
+Use Cloud Router control-plane inspection, Cloud NAT logs
+(`compute.googleapis.com/nat_flows`), and Cloud Monitoring metrics to discover
+NAT gateways, audit internal-to-external IP/port mappings, count allocated
+connections, or troubleshoot port exhaustion.
 
-## 🤖 Agent / Gemini CLI Instructions (MCP)
+## 1. Gateway Discovery & Live Control-Plane Mappings
 
-You should use [Cloud Logging MCP](mcp-usage.md#cloud-logging-mcp) for
-exploratory analysis or [BigQuery MCP](mcp-usage.md#bigquery-mcp) for
-high-volume trends. Fallback to the CLI if the MCP tools are not available.
+Because Cloud NAT configurations (`nats[]`) live on the Compute `Router`
+resource, discover all NAT gateways, routers, regions, and logging settings
+across the project in **one command**:
 
-### 1. View Logs ([Cloud Logging MCP](mcp-usage.md#cloud-logging-mcp))
-
-**Tool**: `list_log_entries`
-
-**Filter**:
-
-```text
-resource.type="nat_gateway"
-logName="projects/{project_id}/logs/compute.googleapis.com%2Fnat_flows"
+```bash
+gcloud compute routers list --project={project_id} --filter="nats:*" \
+  --format="json(name,region.basename(),network.basename(),nats)"
 ```
 
-Filter for dropped packets (potential port exhaustion):
+Inspect runtime NAT status or currently allocated VM IP:port ranges directly
+from the router control plane (works even when Cloud NAT logging is disabled):
 
-```text
-jsonPayload.allocation_status="DROPPED"
+```bash
+gcloud compute routers get-status {router_name} --region={region} --project={project_id} --format=json
+gcloud compute routers get-nat-mapping-info {router_name} --region={region} --project={project_id} --format=json
 ```
 
-### 2. Aggregate Trends ([BigQuery MCP](mcp-usage.md#bigquery-mcp))
+*Note*: `get-nat-mapping-info` shows active VM-level port-range allocations;
+historical per-connection 7-tuples (`dest_ip`, exact `nat_port`, and
+`allocation_status`) require `compute.googleapis.com/nat_flows` logs. (Egress
+VPC Flow Logs only record `nat_gateway_details.{gateway_name,router_name,type}`,
+not the external `nat_ip`/`nat_port`.)
 
-**Tool**: `execute_sql_readonly`
+## 2. Cloud NAT Logs (`compute.googleapis.com/nat_flows`)
 
-**SQL Pattern**:
+-   **Resource**: `resource.type="nat_gateway"`,
+    `resource.labels.{gateway_name, router_id, region, project_id}`.
+-   **JSON Fields** (`jsonPayload` in Cloud Logging / `json_payload` in BigQuery
+    `_AllLogs`):
+    -   `connection`: `src_ip`, `src_port` (internal VM IP/port), `nat_ip`,
+        `nat_port` (allocated external NAT IP/port), `dest_ip`, `dest_port`,
+        `protocol`.
+    -   `allocation_status`: `"OK"` (allocated) or `"DROPPED"` (port exhaustion).
+    -   `endpoint`: `vm_name`, `project_id`, `region`, `zone`.
+    -   `gateway_identifiers`: `gateway_name`, `router_name`, `region`.
 
-```sql
+**Cloud Logging (`list_log_entries` MCP or `gcloud logging read`)** — latest
+mapping entry (append `AND jsonPayload.allocation_status="DROPPED"` for drops):
+
+```bash
+gcloud logging read 'resource.type="nat_gateway" AND logName="projects/{project_id}/logs/compute.googleapis.com%2Fnat_flows" AND timestamp>="{start_time}"' \
+  --project={project_id} --limit=1 --order=desc --format=json --quiet
+```
+
+**BigQuery (`execute_sql_readonly` MCP or `bq query`)** — connection counts:
+
+```bash
+bq query --use_legacy_sql=false --format=json --project_id={project_id} '
 SELECT
-JSON_VALUE(json_payload.connection.src_ip) AS internal_ip, COUNT(*) AS
-drop_count FROM `{project_id}.{dataset_id}._AllLogs` WHERE log_name LIKE
-'%nat_flows%' AND JSON_VALUE(json_payload.allocation_status) = 'DROPPED' GROUP BY
-1 ORDER BY drop_count DESC LIMIT 10
-```
-
-### 3. CLI Fallback
-
-If MCP tools are unavailable, use the following `gcloud` and `bq` commands:
-
-**View Logs (gcloud)**
-
-```bash
-gcloud logging read 'resource.type="nat_gateway" AND logName="projects/{project_id}/logs/compute.googleapis.com%2Fnat_flows"' --project {project_id} --limit 10 --format json --quiet
-```
-
-To filter for dropped packets:
-
-```bash
-gcloud logging read 'resource.type="nat_gateway" AND logName="projects/{project_id}/logs/compute.googleapis.com%2Fnat_flows" AND jsonPayload.allocation_status="DROPPED"' --project {project_id} --limit 10 --format json --quiet
-```
-
-**Aggregate Trends (bq)**
-
-```bash
-bq query --use_legacy_sql=false --format=json --project_id {project_id} '
-SELECT
+  JSON_VALUE(json_payload.endpoint.vm_name) AS vm_name,
   JSON_VALUE(json_payload.connection.src_ip) AS internal_ip,
-  COUNT(*) AS drop_count
+  JSON_VALUE(json_payload.connection.nat_ip) AS external_nat_ip,
+  JSON_VALUE(json_payload.allocation_status) AS allocation_status,
+  COUNT(*) AS connection_count
 FROM `{project_id}.{dataset_id}._AllLogs`
 WHERE
-  log_name LIKE "%nat_flows%"
-  AND JSON_VALUE(json_payload.allocation_status) = "DROPPED"
-GROUP BY 1
-ORDER BY drop_count DESC
-LIMIT 10
+  log_name LIKE "%/logs/compute.googleapis.com%2Fnat_flows"
+  AND timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)
+GROUP BY 1, 2, 3, 4
+ORDER BY connection_count DESC
+LIMIT 20
 '
 ```
 
-### gcloud
+## 3. Cloud NAT Monitoring Metrics (`list_timeseries` MCP or REST `curl`)
 
-To get the status of the router used by the NAT gateway:
+-   **Allocated New Connections**:
+    `compute.googleapis.com/nat/new_connections_count` (`gce_instance`, `DELTA`
+    INT64; labels: `nat_gateway_name`, `router_id`) or
+    `router.googleapis.com/nat/new_connections_count` (`nat_gateway`, `DELTA`
+    INT64). Sum over window with `ALIGN_SUM` + `REDUCE_SUM`.
+-   **Dropped Packets & Allocation Failures**:
+    `router.googleapis.com/nat/dropped_sent_packets_count` (`nat_gateway`,
+    `DELTA` INT64, `metric.labels.reason`: `OUT_OF_RESOURCES`,
+    `ENDPOINT_INDEPENDENCE_CONFLICT`),
+    `compute.googleapis.com/nat/dropped_sent_packets_count` (`gce_instance`), and
+    `router.googleapis.com/nat/nat_allocation_failed` (`nat_gateway`, `GAUGE`
+    BOOL).
+-   **Active Connections & Port Usage**:
+    `compute.googleapis.com/nat/open_connections` and
+    `compute.googleapis.com/nat/port_usage` (`gce_instance`, `GAUGE` INT64).
 
-```bash
-gcloud compute
-routers get-status {router_name} --region {region} --quiet
-```
+## Reference Documentation
 
-## Key Fields
-
--   `jsonPayload.connection.nat_ip` / `nat_port`: NAT exit point.
--   `jsonPayload.connection.src_ip` / `src_port`: Source VM.
--   `jsonPayload.allocation_status`: `DROPPED` indicates failure to allocate a
-    NAT port.
-
-## Scenarios
-
--   **Audit Traffic**: Link internal sources to external destinations.
--   **Port Exhaustion**: Use `jsonPayload.allocation_status="DROPPED"` to
-    identify impacted VMs.
+-   [Cloud NAT logs and metrics](https://docs.cloud.google.com/nat/docs/monitoring.md.txt)

@@ -1,151 +1,89 @@
 ---
 name: google-cloud-networking-observability
 metadata:
-  version: "1.0.6"
+  version: "1.0.7"
   category: Compute
 description: >-
-  Investigates Google Cloud networking issues by analyzing GCP logs, metrics, and diagnostics. Use when investigating dropped network traffic, packet drops, drop reasons, VPC Flow Logs (including Private Service Connect / PSC, serverless / App Engine Direct VPC, and cost estimation), NAT, firewall, or threat logs, querying latency and throughput metrics, or running Connectivity Tests for path diagnostics. Don't use for generic VM management or non-observability tasks.
+  Investigates Google Cloud networking issues by analyzing GCP logs, metrics, and diagnostics. Use when investigating dropped network traffic, packet drops, drop reasons, VPC Flow Logs (including Private Service Connect / PSC, serverless / App Engine Direct VPC, and cost estimation), Cloud NAT, firewall or threat logs, VPN metrics/tunnels, or Connectivity Tests for path diagnostics. Don't use for generic VM management or non-observability tasks.
 ---
 
 # Google Cloud Networking Observability Expert
 
-## Attribution
+## Usage Attribution
 
-For all `gcloud` CLI, REST API, and MCP attribution requirements when executing
-commands with this skill, follow the instructions in
+**MUST READ**: Before executing any `gcloud`, REST API, or MCP command, you
+MUST read and follow the instructions in
 [Usage Attribution](references/attribution.md).
 
 ## 🛑 Core Directive: Results First
 
-1.  **Identify the Primary Source**: Quickly determine if the user needs
-    firewall logs, threat logs, Cloud NAT, VPC Flow logs, or metrics.
-2.  **Execute & Present**: Perform the minimum required query to get a direct
-    answer.
-3.  **Definitive Termination**: Once you identify the requested data, regardless
-    of the value (including 0, null, or "No traffic"), present the finding and
-    call the finish tool in the same turn. Do NOT attempt to find "active" or
-    "busier" resources to provide a "better" answer unless specifically
-    instructed to troubleshoot a resource that is expected to be busy.
-
-## Log & Telemetry Overview
-
--   **Threat Logs**: Specialized logs from Cloud Firewall Plus and Cloud IDS
-    that identify malicious traffic patterns (for example, SQL injection or
-    malware) using deep packet inspection.
--   **VPC Flow Logs**: Capture sample IP traffic to and from network interfaces.
-    Use for traffic analysis, volume trends, top talkers, dropped traffic, and
-    packet loss.
--   **Firewall Logs**: Record connection attempts matched by firewall rules. Use
-    to identify "DENY" events or verify "ALLOW" rules.
--   **Cloud NAT Logs**: Audit NAT translations. Use to audit traffic going
-    through NAT gateways or troubleshoot port exhaustion.
--   **Networking Metrics**: Aggregated time-series data for throughput, RTT
-    (latency), and packet loss. Use for historical trends and performance
-    monitoring.
--   **Connectivity Tests**: Static analysis tool for path diagnostics. Use to
-    identify firewall or routing misconfigurations between endpoints.
+1. **Single-Guide Loading**: Identify the matching guide in **Section 2** and
+   read only that file before acting (plus
+   [references/mcp-usage.md](references/mcp-usage.md) when MCP tools are
+   available in your environment).
+2. **Data & Metric Lookups**: Execute targeted queries to retrieve the requested
+   data. Once obtained (including `0`, `null`, or `"No traffic"`), present it
+   and stop immediately. Never query a second source (e.g., comparing BigQuery
+   and Monitoring) to double-check a conclusive answer.
+3. **Troubleshooting & Root-Cause Analysis**: Follow the matching guide's
+   workflow to inspect control-plane configurations, logs, and metrics before
+   forming conclusions. Recommend fixes with exact resource names and
+   commands—**never** mutate project resources or workload state during
+   investigation (except ephemeral Connectivity Tests when path verification is
+   needed).
 
 ## Procedures
 
-### 0. Log Source Preference
+### 1. Environment & Source Rules
 
--   **ALWAYS** check for BigQuery linked datasets (for example,
-    `big_query_linked_dataset`, `_AllLogs`) before using Cloud Logging for
-    high-volume analysis or aggregations. This is the preferred method for
-    finding trends or top-blocking rules.
--   **Schema & Sample Discovery**: Before writing complex aggregations or filter
-    queries in BigQuery or Cloud Logging, first inspect a single sample log
-    record (`LIMIT 1` with `--format=json` in `bq query`, or `--limit=1` in
-    `gcloud logging read`) to verify the exact payload schema and field paths.
--   **Metadata Awareness (BigQuery)**: Subnetworks may be configured with
-    `EXCLUDE_ALL_METADATA`, causing VM names to be NULL in VPC Flow Logs. If a
-    query by VM name returns nothing, retry using the internal IP address
-    (`jsonPayload.connection.src_ip`).
+- **Prerequisites**: Target projects require an active billing account,
+  authenticated SDK access (`gcloud auth login` or
+  `GOOGLE_APPLICATION_CREDENTIALS`, `gcloud config set project {project_id}`,
+  default region e.g. `us-central1` via
+  `gcloud config set compute/region {region}`; see
+  [Google Cloud CLI installation](https://docs.cloud.google.com/sdk/docs/install-sdk.md.txt)
+  and [locations](https://docs.cloud.google.com/about/locations) — never install
+  tools without explicit user approval), enabled APIs (`compute.googleapis.com`,
+  `logging.googleapis.com`, `monitoring.googleapis.com`,
+  `bigquery.googleapis.com`, `networkmanagement.googleapis.com`), and read roles
+  (`roles/compute.networkViewer`, `roles/logging.viewer`,
+  `roles/monitoring.viewer`, `roles/bigquery.jobUser`,
+  `roles/bigquery.dataViewer`, or `roles/networkmanagement.admin` for
+  Connectivity Tests).
+- **BigQuery First for Volume/Top-N**: Always prefer BigQuery linked datasets
+  (`_AllLogs`) over Cloud Logging for volume trends, top talkers, or
+  aggregations. Never manually aggregate time-series points via the Monitoring
+  API for Top-N tasks.
+- **Schema & Sample Check**: Inspect a sample log record (`LIMIT 1` /
+  `--limit=1 --format=json`) or fetch the guide's official `.md.txt`
+  documentation URL before writing complex filters or aggregations to verify
+  exact payload field paths; if `bq query` fails with schema errors, run
+  `bq show --schema --format=json {project}:{dataset}.{table}` and
+  `bq query --use_legacy_sql=false --dry_run`.
+- **Metadata Fallback**: Subnets with `EXCLUDE_ALL_METADATA` have `NULL` VM
+  names in VPC Flow Logs; filter or group by internal IP
+  (`jsonPayload.connection.src_ip`) instead.
+- **Tool Priority**: Prefer MCP servers
+  ([references/mcp-usage.md](references/mcp-usage.md)) when declared in your
+  tools; otherwise use `gcloud`/`bq`. Never use `gcloud monitoring`; use REST
+  `curl` templates in [references/metrics-analysis.md](references/metrics-analysis.md).
 
-### 1. Tool Selection & Discovery
+### 2. Analysis Guides (Read Only the Single Matching Guide)
 
--   **MCP Servers First**: Use
-    [Cloud Monitoring MCP](references/mcp-usage.md#cloud-monitoring-mcp),
-    [BigQuery MCP](references/mcp-usage.md#bigquery-mcp), or
-    [Cloud Logging MCP](references/mcp-usage.md#cloud-logging-mcp).
--   **Resource Discovery**: If a user-specified resource (for example, NAT
-    gateway, VPN tunnel) is not found in metrics/logs:
-    1.  Use `run_shell_command` with `gcloud` to list resources in the project.
-    2.  Search [Cloud Logging MCP](references/mcp-usage.md#cloud-logging-mcp)
-        for the resource name to find correct labels.
--   **CLI Fallback**: Use `gcloud` or `bq` only if MCP servers are unavailable.
-    DO NOT use gcloud monitoring; it is restricted. Immediately use the curl
-    templates in [metrics-analysis.md](references/metrics-analysis.md).
-
-### 2. Schema Verification & Error Recovery
-
-If a BigQuery query fails with an 'Unrecognized name' error or schema mismatch:
-
-1. **Validate Schema**: Run `bq show --schema --format=json
-{project_id}:{dataset_id}.{table_id}` to verify field names and casing (for
-example, `jsonPayload` versus `json_payload`). 2. **Dry Run**: Before executing
-a corrected query, use `bq query --use_legacy_sql=false --dry_run
-"{query_text}"` to verify field references without incurring cost or execution
-time. 3. **Retry**: Apply identified fixes to the original query and execute.
-
-### 3. Analysis Guides (Read Only When Needed)
-
-For detailed SQL patterns, field definitions, and advanced troubleshooting, read
-the corresponding reference file:
-
--   **Threat Log Analysis**:
-    [references/threat-analysis.md](references/threat-analysis.md)
--   **VPC Flow Analysis**:
-    [references/vpc-flow-analysis.md](references/vpc-flow-analysis.md)
--   **VPC Flow Logs Cost Estimation**:
-    [references/vpc-flow-logs-cost-estimation.md](references/vpc-flow-logs-cost-estimation.md)
--   **Cloud NAT Analysis**:
-    [references/cloud-nat-analysis.md](references/cloud-nat-analysis.md)
--   **Firewall Rule Analysis**:
-    [references/firewall-analysis.md](references/firewall-analysis.md)
--   **Networking Metrics**:
-    [references/metrics-analysis.md](references/metrics-analysis.md)
--   **Connectivity Test Analysis**:
-    [references/connectivity-tests.md](references/connectivity-tests.md)
-
-> **CRITICAL**: If the user asks for **Cost Estimation**, you MUST strictly use
-> `references/vpc-flow-logs-cost-estimation.md`. Do NOT read or use
-> `references/vpc-flow-analysis.md` for cost estimation tasks.
+| Symptom or Task | Reference Guide |
+| :--- | :--- |
+| **VPC Flow Logs**: traffic volume, top talkers, latency, packet drops and loss rates, Private Service Connect (PSC / PSC-I), serverless workloads | [references/vpc-flow-analysis.md](references/vpc-flow-analysis.md) |
+| **VPC Flow Logs Cost Estimation** | [references/vpc-flow-logs-cost-estimation.md](references/vpc-flow-logs-cost-estimation.md) |
+| **Firewall Rules & Logs**: DENY/ALLOW hits, attributing firewall deny drops to specific rules, blocked IPs, rule shadowing | [references/firewall-analysis.md](references/firewall-analysis.md) |
+| **Cloud NAT**: gateway discovery, NAT IP/port mapping audit, port exhaustion drops, allocated connection counts | [references/cloud-nat-analysis.md](references/cloud-nat-analysis.md) |
+| **Threat Logs**: Cloud IDS / Firewall Plus high-severity alerts and top attackers | [references/threat-analysis.md](references/threat-analysis.md) |
+| **Metrics & VPN**: internal/external RTT, VM throughput, packet loss, or Cloud VPN (`vpn_gateway` health, traffic, drops) | [references/metrics-analysis.md](references/metrics-analysis.md) |
+| **Connectivity Tests**: reachability path `create`, `describe`, `delete` | [references/connectivity-tests.md](references/connectivity-tests.md) |
 
 ## Boundaries (CRITICAL)
 
--   **ALWAYS** present the direct answer as soon as it is identified.
--   **NEVER** run more than 2 exploratory queries before showing results.
--   **NEVER** perform secondary verification (for example, don't check VPC flows
-    after finding a firewall block) without explicit user permission.
--   **ALWAYS** print the generated SQL for review before execution.
--   **ALWAYS** include a link to the Flow Analyzer in the
-    [Google Cloud Console](https://console.cloud.google.com/net-intelligence/flow-analyzer).
--   **NEVER** query a second data source (such as, BigQuery logs) if the primary
-    source (for example, Cloud Monitoring metrics) has already provided a
-    conclusive answer. **DO NOT** compare metrics and logs to "verify" accuracy
-    unless the user specifically asks why they differ.
--   **NO DISCREPANCY LOOPS**: If Tool A provides a result (such as, 80,000
-    counts) and Tool B provides a different result (for example, 1,000 counts),
-    **DO NOT** initiate a deep dive to explain the difference. Present the
-    result from the primary tool and STOP.
--   **ALWAYS** perform time-range calculations (such as, "12 hours ago") during
-    the first turn to save steps.
--   **Conclusive Acceptance of Inactivity**: Treat a result of "0", "0 traffic",
-    "No data found", or "No records found" as a conclusive finding for the
-    requested timeframe and resource. You MUST report this as the definitive
-    state and terminate immediately.
--   **Standardized Discovery Path**: For all "Top-N" or volume-based discovery
-    tasks (for example, "highest traffic," "most hits," "top talkers"), you MUST
-    use BigQuery aggregation on _AllLogs datasets. Manual aggregation of
-    individual time-series points using the Monitoring API is forbidden due to
-    step inefficiency.
--   **Ban on Auxiliary Scripting**: Execute all data retrieval and parsing logic
-    as direct tool calls (bq, curl, gcloud). Do NOT write or execute local shell
-    scripts (.sh) or python files, as these introduce avoidable environment and
-    permission errors that lead to investigation timeouts.
--   **Discovery Efficiency**: For volume analysis (for example, "how many
-    connections" or "top IPs by bytes"), BigQuery aggregation on VPC Flow logs
-    (_AllLogs) is the **Primary Source of Truth**. If BigQuery data is
-    available, it is conclusive. Do NOT query Monitoring API to "double check"
-    BigQuery counts.
+- **Print SQL**: Always print generated SQL in the response.
+- **Flow Analyzer Link**: For VPC Flow Log tasks, include
+  [Google Cloud Console Flow Analyzer](https://console.cloud.google.com/net-intelligence/flow-analyzer).
+- **First-Turn Time Math**: Compute relative time ranges (e.g., "12 hours ago")
+  in the first turn.
