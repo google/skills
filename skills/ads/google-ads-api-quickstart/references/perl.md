@@ -38,6 +38,7 @@ use strict;
 use warnings;
 use Google::Ads::GoogleAds::Client;
 use Google::Ads::GoogleAds::Utils::SearchStreamHandler;
+use Google::Ads::GoogleAds::V26::Services::GoogleAdsService::SearchGoogleAdsStreamRequest;
 
 my $customer_id = $ARGV[0];
 $customer_id =~ s/-//g;
@@ -59,13 +60,17 @@ $client->configure_from_environment_variables();
 
 my $query = "SELECT campaign.id, campaign.name, campaign.status FROM campaign ORDER BY campaign.id";
 
-my $search_stream_handler = Google::Ads::GoogleAds::Utils::SearchStreamHandler->new({
-    client => $client,
-    customer_id => $customer_id,
+my $google_ads_service = $client->GoogleAdsService();
+my $search_stream_request = Google::Ads::GoogleAds::V26::Services::GoogleAdsService::SearchGoogleAdsStreamRequest->new({
+    customerId => $customer_id,
     query => $query
 });
+my $search_stream_handler = Google::Ads::GoogleAds::Utils::SearchStreamHandler->new({
+    service => $google_ads_service,
+    request => $search_stream_request
+});
 
-$search_stream_handler->process(sub {
+$search_stream_handler->process_contents(sub {
     my $row = shift;
     printf "Campaign found: ID = %s, Name = '%s', Status = %s\n",
         $row->{campaign}{id},

@@ -47,6 +47,7 @@ require __DIR__ . '/vendor/autoload.php';
 
 use Google\Ads\GoogleAds\Lib\VXX\GoogleAdsClientBuilder;
 use Google\Ads\GoogleAds\Lib\OAuth2TokenBuilder;
+use Google\Ads\GoogleAds\VXX\Services\SearchGoogleAdsStreamRequest;
 use Google\ApiCore\ApiException;
 
 // Check command line arguments
@@ -86,7 +87,7 @@ $googleAdsServiceClient = $googleAdsClient->getGoogleAdsServiceClient();
 $query = "SELECT campaign.id, campaign.name, campaign.status FROM campaign ORDER BY campaign.id";
 
 try {
-    $stream = $googleAdsServiceClient->searchStream($customerId, $query);
+    $stream = $googleAdsServiceClient->searchStream(SearchGoogleAdsStreamRequest::build($customerId, $query));
     foreach ($stream->readAll() as $response) {
         foreach ($response->getResults() as $row) {
             printf("Campaign found: ID = %d, Name = '%s', Status = %s\n",

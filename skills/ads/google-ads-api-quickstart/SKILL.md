@@ -11,7 +11,7 @@ description: |
 compatibility: "Outbound HTTPS connectivity required to access the Google Ads API and documentation. Note: If network access is restricted, the agent will fall back to using the last-known stable versions cached within the skill resources."
 metadata:
   author: google-ads-api-team
-  version: "1.1.0"
+  version: "1.1.1"
   category: GoogleAds
 ---
 # Google Ads API Quickstart
@@ -60,8 +60,8 @@ To ensure the integration is secure, stable, and up-to-date, you **MUST** resolv
 
 > [!TIP]
 > **Offline Fallback:** If the URLs are unreachable or the scrape fails, do not halt execution. Fall back to these last-known stable versions:
-> *   **Google Ads API Major Version (`RESOLVED_API_VERSION`):** `v24`
-> *   **Java Client Library Version (`RESOLVED_LIBRARY_VERSION`):** `34.0.0`
+> *   **Google Ads API Major Version (`RESOLVED_API_VERSION`):** `v26`
+> *   **Java Client Library Version (`RESOLVED_LIBRARY_VERSION`):** `48.0.0`
 
 ### B. Dynamic Language Runtime Version Resolution
 To prevent the generated setup guides from becoming obsolete due to language deprecation cycles, you **MUST** resolve language requirements dynamically.
@@ -236,7 +236,7 @@ If you need to set up the Google Ads API environment for Ruby, do not guess the 
 Instead, read the detailed setup guide:
 
 *   [Google Ads API Ruby Setup Reference](references/ruby.md)
-*(Gem: `google-ads-ruby`)*
+*(Gem: `google-ads-googleads`)*
 
 #### Perl
 If you need to set up the Google Ads API environment for Perl, do not guess the configuration.

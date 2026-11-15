@@ -75,7 +75,10 @@ Create a file named `GetCampaigns.java`.
 > Before passing the Client Customer ID to the API, you **must** normalize it by stripping all hyphens (e.g., converting `123-456-7890` to `1234567890`). Failing to do so will cause API validation errors.
 >
 > **Rule 2: Resolve Package Versions (`vXX`)**
-> The imports below contain a placeholder `vXX`. You **must** replace `vXX` with the specific API version you are targeting (matching the library version installed in Step 1). For example, if using library v33.0.0, the API version is likely `v24` (packages will be `com.google.ads.googleads.v24.services...`).
+> The imports below contain a placeholder `vXX`. You **must** replace `vXX` with
+> the specific API version you are targeting (matching the library version
+> installed in Step 1). For example, if using library v48.0.0, the API version
+> is `v26` (packages will be `com.google.ads.googleads.v26.services...`).
 
 ```java
 import com.google.ads.googleads.lib.GoogleAdsClient;
