@@ -67,7 +67,7 @@ def api_get(url: str, token: str) -> Dict[str, Any]:
   headers = {
       "Authorization": f"Bearer {token}",
       "User-Agent": (
-          "google-skills/1.0 (skill:cloud-monitoring-alert-configuration;"
+          "agent-skills/1.0 (skill:cloud-monitoring-alert-configuration;"
           " script:discover_metric_schema)"
       ),
   }

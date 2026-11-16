@@ -24,9 +24,8 @@ units (for example, `us` versus `ms`), resource grouping labels, and documented 
 values before writing HCL. **When responding to these requests, you MUST**:
 
 1.  **Run schema & metric discovery commands**: Run `python3
-    scripts/discover_metric_schema.py` and `gcloud monitoring metric-descriptors
-    list` when configuring alerts for custom or unsupported resources, and
-    include the exact commands in your response.
+    scripts/discover_metric_schema.py` when configuring alerts for custom or
+    unsupported resources, and include the exact commands in your response.
 2.  **Run PromQL validation commands**: Run `python3 scripts/lint_promql.py`
     and/or `python3 scripts/discover_metric_schema.py --promql` (and `grep`/`diff`
     for HCL review) when generating, fixing, validating, or deduplicating
@@ -92,14 +91,7 @@ its available metrics, metric types, units, and label enum values:
         --metric-prefix="<metric_prefix_or_domain>"
     ```
 
-2.  **List Metric Descriptors with the `gcloud` CLI**:
-
-    ```bash
-    gcloud monitoring metric-descriptors list \
-        --filter="resource.type=\"<monitored_resource_type>\""
-    ```
-
-3.  **Map to PromQL**: Cloud Monitoring automatically translates Google
+2.  **Map to PromQL**: Cloud Monitoring automatically translates Google
     Cloud metric types (`<domain>/<path>`) into Prometheus format by replacing
     dots (`.`) with underscores (`_`), replacing the **first slash (`/`) after
     the domain with a colon (`:`)**, and replacing remaining slashes with
@@ -433,10 +425,10 @@ regarding notification channel configuration.
     prompt the user to ask if they would like to configure notification channels
     if none were provided.**
 6.  **Run & Include CLI Commands for Reproducibility**: Always run the `python3
-    scripts/discover_metric_schema.py`, `gcloud monitoring metric-descriptors
-    list`, and `python3 scripts/lint_promql.py "<promql_expression>"` commands
-    to discover schemas and validate PromQL expressions, and include the exact
-    commands in your response so users can reproduce your validation.
+    scripts/discover_metric_schema.py` and `python3 scripts/lint_promql.py
+    "<promql_expression>"` commands to discover schemas and validate PromQL
+    expressions, and include the exact commands in your response so users can
+    reproduce your validation.
 7.  **Fleet-Wide Aggregation (`sum by` / `group_by_fields`)**: For fleet-wide
     scaling or multi-instance alerts, **always** include explicit grouping: use
     `sum by (service, instance_id)` (or `sum by (service)`) in PromQL queries,
