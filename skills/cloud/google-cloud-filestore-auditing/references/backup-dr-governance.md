@@ -81,7 +81,7 @@ flag is unsupported and causes command failure).*
 
 ### MCP Tool Discovery
 
-```json
+```python
 filestore.list_backups({"parent": "projects/{project_id}/locations/-"})
 ```
 
