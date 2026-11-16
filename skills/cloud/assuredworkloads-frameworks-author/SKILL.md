@@ -2,7 +2,7 @@
 name: assuredworkloads-frameworks-author
 metadata:
   category: SecurityAndCompliance
-  version: "1.2.3"
+  version: "1.2.4"
 description: >-
   Authors custom cloud controls and customized frameworks for Assured Workloads when built-in resources cannot satisfy core requirements.
   Use when creating or synthesizing custom data boundary resources.
@@ -44,12 +44,8 @@ If the user chooses to proceed with in-place creation, you must check these prer
      and controls. IMPORTANT: For direct natural language intent creating
      custom resources, you MUST FIRST verify if any built-in or custom
      resources already satisfy this requirement. You must do this by explicitly
-     reading `../assuredworkloads-frameworks-navigator/SKILL.md` and executing
-     its
-     `../assuredworkloads-frameworks-navigator/scripts/db_resources_loader.py`
-     and
-     `../assuredworkloads-frameworks-navigator/scripts/db_output_match_analyzer.py`
-     scripts (or invoking it via a subagent tool) to check existing coverage.
+     using the `assuredworkloads-frameworks-navigator` skill (or invoking it via
+     a subagent tool) to check existing coverage.
      You must **only** suggest creating new cloud controls if this analysis
      confirms that the existing built-in frameworks do not satisfy the user's
      requirements. If the available built-in frameworks fully satisfy the
