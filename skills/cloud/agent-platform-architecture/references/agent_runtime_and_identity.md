@@ -49,10 +49,10 @@ Governance**, and **Day-2 Lifecycle Operations**.
 Always verify the target model's supported regions in official documentation
 (`https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/{model_version}.md.txt`):
 
--   **Global Endpoint Models (such as `gemini-2.5-pro` via `global`)**:
+-   **Global Endpoint Models (such as `gemini-4-argon` via `global`)**:
     -   When targeting the `global`, `us`, or `eu` endpoint rather than a
         standalone regional endpoint, instantiate
-        `Gemini(model="gemini-2.5-pro", client_kwargs={"location": "global",
+        `Gemini(model="gemini-4-argon", client_kwargs={"location": "global",
         "http_options": {"api_transport": "rest"}})` and set
         `GOOGLE_CLOUD_LOCATION="global"`, `VERTEXAI_LOCATION="global"`, and
         `GOOGLE_GENAI_API_TRANSPORT="rest"` in `deploymentSpec.env` (using REST
@@ -63,7 +63,7 @@ Always verify the target model's supported regions in official documentation
         `us-aiplatform.googleapis.com`, `us-aiplatform.mtls.googleapis.com`, and
         `aiplatform.us.rep.googleapis.com` are registered in the `googleapis`
         Agent Registry service with `protocol_binding = "HTTP_JSON"`.
--   **Regional Models (such as `gemini-2.5-flash` in `us-central1`)**:
+-   **Regional Models (such as `gemini-3.8-flash` in `us-central1`)**:
     -   Set `location="us-central1"` in `client_kwargs` and
         `deploymentSpec.env`, and include
         `us-central1-aiplatform.googleapis.com`,

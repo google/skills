@@ -227,7 +227,7 @@ base Google API FQDNs plus the 9th telemetry mTLS endpoint:
     `https://telemetry.googleapis.com` so OpenTelemetry and Cloud Logging
     exporters do not drop on container startup.
 -   **Global and Multi-Region Foundation Models**: When using models via the
-    `global` endpoint (such as `gemini-2.5-pro` with
+    `global` endpoint (such as `gemini-4-argon` with
     `GOOGLE_CLOUD_LOCATION="global"`) or cross-region `us-central1` models,
     include `https://us-aiplatform.googleapis.com`,
     `https://us-aiplatform.mtls.googleapis.com`,
