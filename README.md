@@ -123,6 +123,7 @@ This command gives you an option to also remove obsolete skills.
   - [**GKE Workload Troubleshooting Skill**](./skills/cloud/gke-workload-troubleshooting)
   - [**Google Cloud global external Application Load Balancer Configuration Skill**](./skills/cloud/google-cloud-global-frontend-configuration)
   - [**Google Cloud Networking Observability Expert**](./skills/cloud/google-cloud-networking-observability)
+  - [**Triage GKE capacity constraints for a Pending workload**](./skills/cloud/gke-capacity-triage)
   - [**Troubleshoot GKE TPU reservation stockouts caused by leaked node pool capacity**](./skills/cloud/gke-ai-troubleshooting-tpu-reservation-stockout)
   - [**Troubleshoot GKE TPU slice creation blocked by an unstable MIG**](./skills/cloud/gke-ai-troubleshooting-tpu-slice-mig-stuck-updating)
   - [**Troubleshoot GKE TPU VMs stuck in Compute Engine repair (`REPAIRING`)**](./skills/cloud/gke-ai-troubleshooting-tpu-vm-repair-stuck)
