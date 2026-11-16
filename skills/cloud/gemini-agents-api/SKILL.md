@@ -1,7 +1,7 @@
 ---
 name: gemini-agents-api
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: AiAndMachineLearning
 description: Manages custom Agent resources on Gemini Enterprise Agent Platform. Use when the user wants to programmatically create, configure, list, update, or delete stateful, server-managed Agent resources (including mounting files, skills, and tools) before executing conversations.
 ---
@@ -68,7 +68,7 @@ curl -X POST "https://aiplatform.googleapis.com/v1beta1/projects/${PROJECT_ID}/l
   -H "Content-Type: application/json; charset=utf-8" \
   -d '{
     "id": "my-custom-agent",
-    "base_agent": "antigravity-preview-05-2026",
+    "base_agent": "antigravity-preview-09-2026",
     "description": "A professional agent configured with remote tools and mounted Cloud Storage directories.",
     "system_instruction": "You are a helpful, domain-expert assistant.",
     "tools": [
@@ -189,7 +189,7 @@ Once the container is ready, `"done": true` is set, and the completed `Agent` re
   "response": {
     "@type": "type.googleapis.com/google.cloud.aiplatform.v1beta1.Agent",
     "name": "projects/your-project-id/locations/global/agents/my-custom-agent",
-    "base_agent": "antigravity-preview-05-2026",
+    "base_agent": "antigravity-preview-09-2026",
     "description": "A professional agent configured with remote tools and mounted Cloud Storage directories.",
     "system_instruction": "You are a helpful, domain-expert assistant."
   }
@@ -217,7 +217,7 @@ Returns the complete configured state of the custom Agent resource:
 ```json
 {
   "name": "projects/your-project-id/locations/global/agents/my-custom-agent",
-  "base_agent": "antigravity-preview-05-2026",
+  "base_agent": "antigravity-preview-09-2026",
   "description": "A professional agent configured with remote tools and mounted Cloud Storage directories.",
   "system_instruction": "You are a helpful, domain-expert assistant.",
   "tools": [
@@ -267,13 +267,13 @@ Returns a JSON list of all configured custom Agents under the target project:
   "agents": [
     {
       "name": "projects/your-project-id/locations/global/agents/my-custom-agent",
-      "base_agent": "antigravity-preview-05-2026",
+      "base_agent": "antigravity-preview-09-2026",
       "description": "A professional agent configured with remote tools and mounted Cloud Storage directories.",
       "system_instruction": "You are a helpful, domain-expert assistant."
     },
     {
       "name": "projects/your-project-id/locations/global/agents/my-telecom-agent",
-      "base_agent": "antigravity-preview-05-2026",
+      "base_agent": "antigravity-preview-09-2026",
       "description": "A highly specialized telecom support agent.",
       "system_instruction": "You are a professional telecom support agent. Follow system policies carefully."
     }
@@ -359,5 +359,7 @@ interaction = client.interactions.create(
 }
 ```
 
-Refer to the **`gemini-interactions-api`** skill guide (`../gemini-interactions-api/SKILL.md`) for full instructions, Python and TS/JS code blocks, and streaming setups to run conversations with your provisioned agents.
+Refer to the **`gemini-interactions-api`** skill for full instructions, Python
+and TS/JS code blocks, and streaming setups to run conversations with your
+provisioned agents.
 
