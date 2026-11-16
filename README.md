@@ -120,6 +120,7 @@ This command gives you an option to also remove obsolete skills.
   - [**GKE Storage**](./skills/cloud/gke-storage)
   - [**GKE Storage Troubleshooting Skill**](./skills/cloud/gke-storage-troubleshooting)
   - [**GKE TPU Dynamic Slices Monitoring & Management**](./skills/cloud/gke-ai-troubleshooting-tpu-dynamic-slices-monitoring)
+  - [**GKE unprotected StatefulSet skill**](./skills/cloud/gke-unprotected-statefulset)
   - [**GKE Upgrades & Maintenance**](./skills/cloud/gke-upgrades)
   - [**GKE Workload Scaling**](./skills/cloud/gke-workload-scaling)
   - [**GKE Workload Scaling Troubleshooting Skill**](./skills/cloud/gke-workload-scaling-troubleshooting)
