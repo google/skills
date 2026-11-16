@@ -1,7 +1,7 @@
 ---
 name: iam-helper-for-troubleshooting
 metadata:
-  version: "1.0.3"
+  version: "1.0.4"
   category: Security
 description: >-
   Diagnoses, remediates, and manages Identity and Access Management (IAM)

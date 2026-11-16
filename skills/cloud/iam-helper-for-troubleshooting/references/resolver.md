@@ -106,23 +106,25 @@ If one or more IAM v2 deny policies block access, then do the following:
 
         *   Update the deny rule definition file to add
             `principal://goog/subject/PRINCIPAL_EMAIL` under
-            `denialRule.exceptionPrincipals`, then run the following command:
+            `denyRule.exceptionPrincipals`, then run the following command:
 
         ```bash
-        gcloud iam deny-policies update POLICY_ID \
+        gcloud iam policies update POLICY_ID \
             --attachment-point=ATTACHMENT_POINT \
-            --rules-file=policy.json
+            --kind=denypolicies \
+            --policy-file=policy.json
         ```
     *   **Option B: Remove the permission from the deny rule.**
 
         *   Update the deny rule definition file to remove `IAM_PERMISSION` from
-            `denialRule.deniedPermissions` (or add it under
-            `denialRule.exceptionPermissions`), then run the following command:
+            `denyRule.deniedPermissions` (or add it under
+            `denyRule.exceptionPermissions`), then run the following command:
 
         ```bash
-        gcloud iam deny-policies update POLICY_ID \
+        gcloud iam policies update POLICY_ID \
             --attachment-point=ATTACHMENT_POINT \
-            --rules-file=policy.json
+            --kind=denypolicies \
+            --policy-file=policy.json
         ```
     *   **Option C: Exclude the resource from the deny policy scope.**
 
@@ -131,9 +133,10 @@ If one or more IAM v2 deny policies block access, then do the following:
             target `RESOURCE_URI` is excluded), then run the following command:
 
         ```bash
-        gcloud iam deny-policies update POLICY_ID \
+        gcloud iam policies update POLICY_ID \
             --attachment-point=ATTACHMENT_POINT \
-            --rules-file=policy.json
+            --kind=denypolicies \
+            --policy-file=policy.json
         ```
 2.  If human approval is granted for the chosen option, apply the policy update.
 3.  Wait 60 seconds for policy changes to propagate.
@@ -158,7 +161,7 @@ Boundary policy, then do the following:
         gcloud iam principal-access-boundary-policies update PAB_POLICY_ID \
             --location=global \
             --organization=ORGANIZATION_ID \
-            --rules-file=pab_policy.json
+            --add-details-rules=description="Allow target resource",effect=ALLOW,resources=//cloudresourcemanager.googleapis.com/projects/PROJECT_ID
         ```
     *   **Option B: Modify Principal Sets.** Update the PAB binding or modify
         user group membership so the principal is no longer subject to the
@@ -166,7 +169,7 @@ Boundary policy, then do the following:
         run the following command:
 
         ```bash
-        gcloud iam principal-access-boundary-policy-bindings delete BINDING_ID \
+        gcloud iam policy-bindings delete BINDING_ID \
             --location=global \
             --organization=ORGANIZATION_ID
         ```
