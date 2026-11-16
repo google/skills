@@ -1,7 +1,7 @@
 ---
 name: agent-platform-prompt-management
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: AiAndMachineLearning
 description: >-
   Manages and orchestrates prompts in Agent Platform. Use when you need to create,
@@ -59,24 +59,35 @@ accidental mutation or permanent deletion of prompt resources:
         name one, ASK before building the card. Do not carry over the model that
         appears in the examples here or in `references/create.md`.
     *   **Gold Standard Example** — for a user who said "create a prompt called
-        Customer Support Greeting for gemini-2.5-pro with the template Hello
+        Customer Support Greeting for gemini-4-argon with the template Hello
         {{user_name}}, how can I help...":
 
         > I will create a prompt in Agent Platform with the following
         > parameters. Please confirm this information before I proceed:
         >
         > *   **Display Name**: `Customer Support Greeting`
-        > *   **Target Model**: `gemini-2.5-pro`
+        > *   **Target Model**: `gemini-4-argon`
         > *   **Template Text**: "Hello {{user_name}}, how can I help..."
         >
         > ```python
-        > vertexai.init(project="<PROJECT_ID>", location="<LOCATION_ID>")
-        > prompt = Prompt(
-        >     prompt_data=["Hello {user_name}, how can I help..."],
-        >     model_name="gemini-2.5-pro",
-        >     prompt_name="Customer Support Greeting",
+        > import vertexai
+        > from google.genai import types as genai_types
+        > from vertexai import types
+        > client = vertexai.Client(project="<PROJECT_ID>", location="<LOCATION_ID>")
+        > prompt = types.Prompt(
+        >     prompt_data=types.PromptData(
+        >         model="gemini-4-argon",
+        >         contents=[
+        >             genai_types.Content(
+        >                 parts=[genai_types.Part(text="Hello {user_name}, how can I help...")],
+        >             )
+        >         ],
+        >     ),
         > )
-        > created_prompt = prompts.create_version(prompt=prompt)
+        > created_prompt = client.prompts.create_version(
+        >     prompt=prompt,
+        >     config=types.CreatePromptVersionConfig(prompt_display_name="Customer Support Greeting"),
+        > )
         > ```
         >
         > Do you confirm? [Yes/No]
@@ -140,7 +151,8 @@ these steps:
 
 ## 1. Managing Prompts via Agent Platform SDK
 
-The SDK provides a high-level `Prompt` class in the preview module.
+The SDK manages prompts via `client.prompts` on `vertexai.Client` and
+`vertexai.types.Prompt`.
 
 ### Create a Prompt (Tier M)
 
@@ -153,42 +165,39 @@ Use when you need to create a new managed prompt in Agent Platform.
 
 ```python
 import vertexai
-from vertexai.preview import prompts
 
-vertexai.init(project="PROJECT_ID", location="LOCATION_ID")
+client = vertexai.Client(project="PROJECT_ID", location="LOCATION_ID")
 
-all_prompts = prompts.list()
+all_prompts = list(client.prompts.list())
 for p in all_prompts:
-    print(f"Name: {p.display_name}, ID: {p.prompt_id}")
+    prompt_res = client.prompts.get(prompt_id=p.prompt_id)
+    display_name = prompt_res.dataset.display_name if prompt_res.dataset else None
+    print(f"Name: {display_name}, Model: {p.model}, ID: {p.prompt_id}")
 ```
 
 ### Retrieve and Use a Prompt (Tier R)
 
 ```python
 import vertexai
-from vertexai.preview import prompts
+from google.genai import types as genai_types
 
-vertexai.init(project="PROJECT_ID", location="LOCATION_ID")
+client = vertexai.Client(project="PROJECT_ID", location="LOCATION_ID")
 
-retrieved_prompt = prompts.get(prompt_id="PROMPT_ID")
-# Attributes on retrieved Prompt:
-# - retrieved_prompt.prompt_id (e.g. "123456789...")
-# - retrieved_prompt.prompt_data (template text string)
-# - retrieved_prompt.model_name (target model)
-# - retrieved_prompt.prompt_name (display name, or
-#   retrieved_prompt._dataset.display_name)
-# Versions are supported: prompts.get(prompt_id="PROMPT_ID", version_id="2")
+retrieved_prompt = client.prompts.get(prompt_id="PROMPT_ID")
+# Versions are supported via: client.prompts.get_version(prompt_id="PROMPT_ID", version_id="2")
 
-# Assemble with variables (kwargs must match template variable names)
-assembled = retrieved_prompt.assemble_contents(text="The quick brown fox...")
+# Populate template variables (if any) via prompt_data.variables before assembling
+retrieved_prompt.prompt_data.variables = [
+    {"text": genai_types.Part(text="The quick brown fox...")}
+]
+assembled = retrieved_prompt.assemble_contents()
 print(assembled)
 ```
 
 ### Delete a Prompt (Tier D)
 
 **CRITICAL**: You must pass the numeric prompt ID (e.g.,
-`"1234567890123456789"`) to `prompts.delete()`. The SDK constructs the full
-resource path internally using the project and location from `vertexai.init()`.
+`"1234567890123456789"`) to `client.prompts.delete()`.
 
 **Confirmation Required**: As a Tier D (Destructive) operation, the agent MUST
 pause and request explicit, high-friction typed re-confirmation of the prompt ID
@@ -205,11 +214,10 @@ immediately to execute the deletion code via `run_command`.
 
 ```python
 import vertexai
-from vertexai.preview import prompts
 
-vertexai.init(project="PROJECT_ID", location="LOCATION_ID")
+client = vertexai.Client(project="PROJECT_ID", location="LOCATION_ID")
 
-prompts.delete(prompt_id="PROMPT_ID")
+client.prompts.delete(prompt_id="PROMPT_ID")
 ```
 
 ### Verification After Deletion
@@ -217,7 +225,8 @@ prompts.delete(prompt_id="PROMPT_ID")
 Whenever listing prompts or verifying state after deleting a prompt in the same
 conversation, you **MUST**:
 
-1.  Check in Python whether the deleted `prompt_id` appears in `prompts.list()`.
+1.  Check in Python whether the deleted `prompt_id` appears in
+    `client.prompts.list()`.
 2.  In your prose reply (even when the list is also shown as a card):
     *   If it is not found, explicitly confirm: *"I have verified that the
         deleted prompt (ID: `<PROMPT_ID>`) is no longer present in project
@@ -238,7 +247,7 @@ conversation, you **MUST**:
     the snippets carry as the `"MODEL_ID"` placeholder. Like the other
     placeholders it is MUST-replace, and it is replaced from what the user
     said -- if they named no model, ask. Do not substitute a plausible current
-    model such as `gemini-2.5-pro`.
+    model such as `gemini-4-argon`.
 -   **Underlying Schema**: When using the Dataset API, always use the correct
     `metadata_schema_uri` and nested `metadata` structure to ensure the prompt
     is recognized by Agent Platform Studio and the Prompts SDK.

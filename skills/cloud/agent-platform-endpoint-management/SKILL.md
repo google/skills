@@ -1,7 +1,7 @@
 ---
 name: agent-platform-endpoint-management
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: AiAndMachineLearning
 description: >-
   Manages Agent Platform serving endpoints. Use when you need to create, list,
@@ -194,8 +194,8 @@ undeploying models.
 
 ## Troubleshooting
 
--   **403 Permission Denied**: Ensure `aiplatform.admin` or `owner` role is
-    assigned.
+-   **403 Permission Denied**: Ensure `roles/aiplatform.admin` or `roles/owner`
+    role is assigned.
 -   **Quota Exceeded**: Verify the region's endpoint quota in the Cloud Console.
 -   **Resource Busy**: If a deletion fails, check if models are still being
     undeployed.

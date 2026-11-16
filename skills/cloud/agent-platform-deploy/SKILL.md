@@ -1,7 +1,7 @@
 ---
 name: agent-platform-deploy
 metadata:
-  version: "1.0.5"
+  version: "1.0.6"
   category: AiAndMachineLearning
 description: >-
   Deploy open models or custom weights from Model Garden to Agent Platform
@@ -168,8 +168,14 @@ gcloud ai model-garden models list-deployment-config \
 
 ## 2.1 Region Availability Check (Gemini + LoRA only)
 
-> For first-party Gemini or LoRA deploys, you must verify region availability
-> before proceeding. Load the full instructions with
+> **Retired model guard**: Legacy `gemini-2.5-*` models (such as
+> `gemini-2.5-flash`, `gemini-2.5-pro`, and `gemini-2.5-flash-lite`) are
+> retired. Never probe or recommend them; inform the user that the requested
+> `gemini-2.5-*` model is retired and suggest active supported models such as
+> `gemini-3.8-flash` or `gemini-3.5-flash-lite`.
+>
+> For active first-party Gemini or LoRA deploys, you must verify region
+> availability before proceeding. Load the full instructions with
 > `load_skill_resource(skill_name='agent-platform-deploy',
 > file_path='references/region_availability.md')`.
 >

@@ -10,14 +10,6 @@ Machine type → GPU count → hourly $ is a fixed mapping in Model Garden's
 valid pairing and one price. Actual bill may differ due to region,
 discounts, reservations, or subsequent SKU repricing.
 
-To refresh prices, run:
-  blaze run
-  //./agent-platform-deploy/scripts:verify_deploy_prices
-
-The verifier diffs every row against a live `CostEstimationService` call
-and prints PASS/FAIL per row + a summary; exits non-zero on any drift so
-it can gate a CL.
-
 This is a stopgap; the long-term plan is to have the root agent call
 `CostEstimationService.CalculateEstimate` directly (which resolves live
 SKUs via Cloud Billing) and pass the result into the sandbox. See design
@@ -142,9 +134,8 @@ if __name__ == "__main__":
     print(
         f"WARNING: price snapshot is {age_days} days old"
         f" (>{_STALENESS_THRESHOLD_DAYS} days threshold;"
-        f" LAST_UPDATED={LAST_UPDATED}). Refresh via"
-        " //./agent-platform-deploy/scripts:verify_deploy_prices"
-        " before quoting these numbers.",
+        f" LAST_UPDATED={LAST_UPDATED}). Refresh LAST_UPDATED and"
+        " _MACHINE_SPECS before quoting these numbers.",
         file=sys.stderr,
     )
 

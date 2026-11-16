@@ -1,7 +1,7 @@
 ---
 name: agent-platform-rag-engine-management
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: AiAndMachineLearning
 description: >-
   Manage and query Agent Platform RAG Engine Corpora and retrieve grounded
@@ -59,7 +59,7 @@ to the following safety tiers based on the action requested:
         > parameters. Please confirm this information before I proceed:
         >
         > *   **Target Corpus ID**: `projects/123/locations/us/ragCorpora/abc`
-        > *   **Target Model**: `gemini-2.5-pro`
+        > *   **Target Model**: `gemini-3.8-flash`
         > *   **Query Text**: "What are the company policies on remote work?"
         >
         > Do you confirm? [Yes/No]
@@ -268,7 +268,7 @@ rag_tool = types.Tool(
 
 # Generate content using the RAG Engine tool
 response = client.models.generate_content(
-    model="gemini-2.5-flash",
+    model="gemini-3.8-flash",
     contents="What is the speed of light?",
     config=types.GenerateContentConfig(
         tools=[rag_tool]

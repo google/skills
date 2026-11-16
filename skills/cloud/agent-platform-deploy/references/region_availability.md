@@ -3,7 +3,8 @@
 > [!NOTE] **Skip this section** if the user is deploying an open-weights model
 > from Model Garden (Gemma, Llama, DeepSeek, Qwen, or any user-supplied weights)
 > or a Gemini-tuned model — i.e. anything served via `gcloud ai model-garden
-> models deploy` (§3) onto a dedicated endpoint. These have no per-region publisher endpoint restriction.
+> models deploy` (§3) onto a dedicated endpoint. These have no per-region
+> publisher endpoint restriction.
 > The real failure modes for an unusual region are (a) the requested
 > accelerator/machine type isn't offered in that region, or (b) the project has
 > no quota — both surface as a clean error at deploy time before any resources
@@ -13,9 +14,19 @@
 > managed Gemini model (`google/gemini-*`) via a publisher endpoint whose
 > regional availability varies.
 
-Before responding to any deploy request that names a specific region for a
-first-party managed Gemini model (`google/gemini-*`), you **MUST** verify the
-model is actually available in that region by making a live API call. Do not
+> [!WARNING] **Retired Legacy Models (Do NOT Probe or Recommend)**: Legacy
+> Gemini 2.5 models (such as `gemini-2.5-flash`, `gemini-2.5-pro`, and
+> `gemini-2.5-flash-lite`) are retired. If the user asks to deploy or check
+> regional availability (including for a LoRA adapter) on a retired
+> `gemini-2.5-*` base model, **STOP immediately — do NOT run any
+> `:generateContent` or `gcloud` probe against the retired model and do NOT
+> recommend it**. Instead, inform the user that the requested `gemini-2.5-*`
+> model is retired and suggest active supported models such as
+> `gemini-3.8-flash` or `gemini-3.5-flash-lite`.
+
+Before responding to any deploy request that names a specific region for an
+active first-party managed Gemini model (`google/gemini-*`), you **MUST** verify
+the model is actually available in that region by making a live API call. Do not
 rely on Google Search, training-corpus knowledge, or publisher documentation for
 availability claims — regional availability changes frequently and grounded text
 can be stale or wrong.
@@ -41,7 +52,7 @@ curl -sS -o /dev/null -w "%{http_code}\n" \
 
 For LoRA adapters deployed on top of a first-party Gemini base model, probe the
 **base model** in the target region using the same `:generateContent` call above
-with `${MODEL_ID}` set to the base (e.g. `gemini-2.5-flash`). The adapter cannot
+with `${MODEL_ID}` set to the base (e.g. `gemini-3.8-flash`). The adapter cannot
 serve in a region where its base model isn't available. This does not apply to
 Gemini Tuning models, which are deployed via a different path and have no
 publisher-endpoint region restriction.
