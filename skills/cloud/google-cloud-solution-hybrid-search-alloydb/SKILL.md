@@ -1,7 +1,7 @@
 ---
 name: google-cloud-solution-hybrid-search-alloydb
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: MultiProductSolutions
 description: >-
   Discovers requirements and generates architectural, design, and deployment
@@ -271,8 +271,8 @@ in this phase.
 - [ ] **Step 1**: Generate guidance to deploy the solution, including the
   following:
   - AlloyDB DDL & SQL setup scripts for extensions (`google_ml_integration`,
-    `alloydb_scan`), tables, B-Tree indexes, ScaNN vector indexes, hybrid search
-    SQL, and Gemini validation CTEs.
+    `alloydb_scann`), tables, B-Tree indexes, ScaNN vector indexes, hybrid
+    search SQL, and Gemini validation CTEs.
   - MCP Toolbox deployment configuration on Cloud Run.
   - Python Cloud Run Function shim deployment command.
   - Application deployment command (`gcloud run deploy {app_name}`).

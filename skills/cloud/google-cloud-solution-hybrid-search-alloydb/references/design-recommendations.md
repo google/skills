@@ -86,7 +86,7 @@ Cloud.
             `max_num_levels = 3`, and `num_leaves = power(rows, 3/4)`.
     *   Improve search recall on highly selective filters by setting
         `scann.satisfy_limit = 'relaxed_order'` (streaming) and capping
-        partition search using `scann.max_pct_leaves_to_search = 15`.
+        partition search using `scann.max_num_leaves_to_search_pct = 15`.
     *   For high-dimensional embeddings (>= 500 dimensions), tune
         `scann.pre_reordering_num_neighbors` (default `50 * K`) to refine
         re-ranking precision.
