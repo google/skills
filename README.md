@@ -91,6 +91,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Compute Engine On-Demand Reservations**](./skills/cloud/compute-on-demand-reservations)
   - [**Compute Engine Spot Capacity Advice**](./skills/cloud/compute-spot-capacity-advice)
   - [**Compute Engine VM Creation**](./skills/cloud/compute-vm-creation)
+  - [**Compute Engine VM Host Events & Infrastructure Crash Troubleshooting**](./skills/cloud/compute-host-events-troubleshooting)
   - [**Designing and Deploying GCP Infrastructure with Application Design Center**](./skills/cloud/application-design-center-design-deploy)
   - [**Filestore Auditing Skill**](./skills/cloud/google-cloud-filestore-auditing)
   - [**Filestore Autoscale**](./skills/cloud/google-cloud-filestore-autoscale)
