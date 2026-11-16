@@ -87,6 +87,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Cloud Storage Diagnostic**](./skills/cloud/google-cloud-storage-diagnostic)
   - [**Cloud Storage FUSE**](./skills/cloud/google-cloud-storage-fuse)
   - [**Compute Engine Future Reservations & Calendar-Mode Feasibility**](./skills/cloud/compute-future-reservations)
+  - [**Compute Engine Managed Instance Group (MIG) Autoscaling Troubleshooting**](./skills/cloud/compute-mig-autoscaling-troubleshooting)
   - [**Compute Engine On-Demand Reservations**](./skills/cloud/compute-on-demand-reservations)
   - [**Compute Engine Spot Capacity Advice**](./skills/cloud/compute-spot-capacity-advice)
   - [**Compute Engine VM Creation**](./skills/cloud/compute-vm-creation)
