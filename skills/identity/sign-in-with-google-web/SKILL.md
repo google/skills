@@ -2,7 +2,7 @@
 name: sign-in-with-google-web
 metadata:
   category: Identity
-  version: "1.0.0"
+  version: "1.0.1"
 description: >-
   Implement, configure, and secure Sign In With Google (SiwG) using Google Identity
   Services (GIS / `https://accounts.google.com/gsi/client`) across web architectures.

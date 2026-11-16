@@ -31,14 +31,7 @@ export function setupCustomGoogleSignIn(
 
   // 2. Programmatically trigger One Tap / popup prompt on user click
   buttonEl.addEventListener('click', () => {
-    google.accounts.id.prompt((notification) => {
-      if (notification.isNotDisplayed()) {
-        console.warn(
-          'One Tap prompt not displayed:',
-          notification.getNotDisplayedReason()
-        );
-      }
-    });
+    google.accounts.id.prompt();
   });
 }
 ```

@@ -28,6 +28,7 @@ restricted), use the Intermediate Iframe helper pattern
 // Inside the intermediate iframe helper script
 window.google?.accounts?.id?.initialize({
   client_id: 'YOUR_CLIENT_ID.apps.googleusercontent.com',
+  allowed_parent_origin: 'https://publisher.example.com',
   callback: (response) => {
     if (response.credential) {
       // Securely forward credential to trusted top-level parent window only
