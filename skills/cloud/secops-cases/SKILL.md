@@ -3,7 +3,7 @@ name: secops-cases
 metadata:
   category: Security
   author: Google LLC
-  version: "1.1.2"
+  version: "1.1.3"
   status: published
 description: >-
   Manage Google Security Operations (SecOps) SOAR cases throughout their lifecycle.
@@ -107,7 +107,7 @@ related to ongoing investigations.
 
 ```markdown
 Example:
-Call `list_cases` with status="Open" and priority="PriorityHigh" to review top urgent incidents.
+Call `list_cases` with filter="status='OPENED' AND priority='PRIORITY_HIGH'" to review top urgent incidents.
 ```
 
 ---
@@ -140,10 +140,10 @@ Cases group one or more related security alerts that represent a single attack
 chain or incident scope. Alert linking connects new detections to existing cases.
 
 - **Step 1: Retrieve Case Context**
-  - **Remote**: Call `get_case(case_id=..., expand="tasks,tags,products")`.
+  - **Remote**: Call `get_case(caseId=..., expand="tasks,tags,products")`.
   - **Local**: Call `get_case_full_details(case_id=...)`.
 - **Step 2: Inspect Associated Alerts**
-  - **Remote**: Call `list_case_alerts(case_id=...)`.
+  - **Remote**: Call `list_case_alerts(caseId=...)`.
   - **Local**: Call `list_alerts_by_case(case_id=...)`.
 - **Step 3: Analyze Alert Grouping & Evidence**
   - Identify alert group identifiers using `list_alert_group_identifiers_by_case`.
@@ -167,14 +167,14 @@ operational stage to reflect current risk.
   - `PriorityHigh`: Active exploit attempts or confirmed credential misuse.
   - `PriorityCritical`: Confirmed breach, active ransomware, or sensitive data exfiltration.
 - **Updating Priority**:
-  - **Remote**: Call `update_case(case_id=..., priority="PriorityHigh")`.
+  - **Remote**: Call `update_case(caseId=..., priority="PRIORITY_HIGH")`.
   - **Local**: Call `change_case_priority(case_id=..., case_priority="PriorityHigh")`.
 - **Updating Description & Scope**:
   - When the attack vector or blast radius is confirmed, update the case summary.
-  - **Remote**: Call `update_case(case_id=..., description="...")`.
+  - **Remote**: Call `update_case(caseId=..., description="...")`.
   - **Local**: Call `update_case_description(case_id=..., description="...")`.
 - **Updating Lifecycle Stage & Assignment**:
-  - **Remote**: Call `update_case(case_id=..., status=..., assignee=...)`.
+  - **Remote**: Call `update_case(caseId=..., stage=..., assignee=...)`.
   - **Local**: Call `change_case_stage(case_id=..., stage=...)` and `assign_case(case_id=..., user=...)`.
 
 ---
@@ -189,7 +189,7 @@ to maintain an auditable chain of custody.
   - Recording host isolation, password reset, or IP blocking actions.
   - Summarizing communications with asset owners or incident commanders.
 - **Tool Invocations**:
-  - **Remote**: Call `create_case_comment(case_id=..., comment=...)`.
+  - **Remote**: Call `create_case_comment(caseId=..., comment=...)`.
   - **Local**: Call `post_case_comment(case_id=..., comment=...)`.
 - **Comment Format Standard**:
   ```markdown
@@ -218,7 +218,8 @@ attribution and categorical categorization.
   - `Maintenance`: Expected alert triggered by scheduled testing or system maintenance.
   - `Inconclusive`: Insufficient telemetry to confirm or refute malicious intent.
 - **Tool Invocations**:
-  - **Remote**: Call `execute_bulk_close_case(case_ids=[...], root_cause="...", reason="NotMalicious", comment="...")`.
+  - **Remote**: Call `execute_bulk_close_case` with `casesIds=[...]`,
+    `rootCause="..."`, `closeReason="NOT_MALICIOUS"`, and `closeComment="..."`.
   - **Local**: Call `close_case(case_id=..., root_cause="...", reason="NotMalicious", comment="...", tags="...")`.
 - **Verification**:
   - Call `list_cases` or `get_case` to confirm status reflects closed state.
