@@ -1,0 +1,2173 @@
+{
+  "bundles": {
+    "All AI Products": [
+      "Agent Assist",
+      "Agent Platform Workbench",
+      "Agent Platform Workbench v1",
+      "Agent Platform Workbench v2",
+      "AI Hub",
+      "AI Hypercomputer",
+      "AI Platform",
+      "AI Platform Data Labeling Service",
+      "AI Platform Optimizer",
+      "AI Platform Pipelines",
+      "AI Platform Prediction",
+      "AI Platform Training",
+      "Anti Money Laundering AI",
+      "AutoML Natural Language",
+      "AutoML Tables",
+      "AutoML Translation",
+      "Cloud Healthcare API",
+      "Cloud Healthcare API v1",
+      "Cloud Healthcare API v1beta1",
+      "Cloud Life Sciences",
+      "Cloud Natural Language API",
+      "Cloud Optimization AI",
+      "Cloud Talent Solution Job Search",
+      "Cloud Talent Solution Job Search v4",
+      "Cloud TPU",
+      "Cloud Translation",
+      "Cloud Vision",
+      "Cloud Vision API Product Search",
+      "Colab Enterprise",
+      "Contact Center AI Insights",
+      "CX Agent Studio",
+      "Deep Learning Containers",
+      "Deep Learning VM Images",
+      "Dialogflow",
+      "Document AI",
+      "Document AI Warehouse",
+      "Gemini",
+      "Gemini Cloud Assist",
+      "Gemini Code Assist",
+      "Gemini Code Assist in Apigee",
+      "Gemini Code Assist VERSION_UNSPECIFIED",
+      "Gemini Enterprise",
+      "Gemini Platform",
+      "Gemini on GDC API on GDC connected",
+      "Gemini VERSION_UNSPECIFIED",
+      "Generative AI on Vertex AI",
+      "Google Cloud Contact Center as a Service",
+      "Managed Service for Apache Airflow",
+      "Media Translation",
+      "Model Armor",
+      "Retail API",
+      "Speech-to-Text",
+      "Tensorflow Enterprise",
+      "Text-to-Speech",
+      "Translation Hub",
+      "Vertex AI",
+      "Vertex AI Agent Builder",
+      "Vertex AI Model Garden",
+      "Vertex AI Search",
+      "Vertex AI Vision"
+    ],
+    "All Data Products": [
+      "AlloyDB for PostgreSQL",
+      "AlloyDB Omni",
+      "BigQuery",
+      "BigQuery Engine for Apache Flink",
+      "BigQuery ML",
+      "Bigtable",
+      "Blockchain Analytics",
+      "Cloud Data Fusion",
+      "Cloud Database Migration Service",
+      "Cloud Database Migration Service v1",
+      "Cloud SQL",
+      "Cloud SQL for MySQL",
+      "Cloud SQL for PostgreSQL",
+      "Cloud SQL for SQL Server",
+      "Cloud Storage",
+      "Data Catalog",
+      "Data Catalog v1",
+      "Data Catalog v1beta1",
+      "Data Studio",
+      "Data Transfer Essentials",
+      "Database Center",
+      "Dataflow",
+      "Dataflow - Security Bulletins",
+      "Dataform",
+      "Dataprep by Trifacta",
+      "Dataproc",
+      "Dataproc Metastore",
+      "Dataproc Serverless",
+      "Datastream",
+      "Enterprise Knowledge Graph",
+      "Filestore",
+      "Firestore",
+      "Firestore in Datastore mode",
+      "Firestore with MongoDB compatibility",
+      "Google Cloud Managed Service for Apache Kafka",
+      "Looker",
+      "Looker Looker (Google Cloud core) and Looker (original) changes",
+      "Looker Looker (Google Cloud core) only changes",
+      "Looker Looker (original) only changes",
+      "Mainframe Assessment Tool",
+      "Mainframe Connector",
+      "Mainframe Connector VERSION_UNSPECIFIED",
+      "Managed Service for Apache Spark",
+      "Manufacturing Data Engine",
+      "Memorystore for Memcached",
+      "Memorystore for Memcached v1",
+      "Memorystore for Redis",
+      "Memorystore for Redis Cluster",
+      "Memorystore for Valkey",
+      "Oracle Database@Google Cloud",
+      "Oracle on Google Cloud Compute",
+      "Parallelstore",
+      "Pub/Sub",
+      "Pub/Sub Lite",
+      "Spanner"
+    ],
+    "All App Mod Products": [
+      "Anthos Attached Clusters",
+      "Anthos clusters on AWS",
+      "Anthos clusters on AWS (previous generation)",
+      "Anthos clusters on Azure",
+      "Anthos Config Management",
+      "API Gateway",
+      "API Gateway v1",
+      "API Keys API",
+      "Apigee",
+      "Apigee Adapter for Envoy",
+      "Apigee Advanced API Security",
+      "Apigee Analytics",
+      "Apigee API hub",
+      "Apigee Connectors",
+      "Apigee hybrid",
+      "Apigee Integrated Portal",
+      "Apigee Integration",
+      "Apigee Monetization",
+      "Apigee Operator for kubernetes",
+      "Apigee Registry",
+      "Apigee UI",
+      "Apigee X",
+      "App Engine Admin API",
+      "App Engine flexible environment .NET",
+      "App Engine flexible environment custom runtimes",
+      "App Engine flexible environment Go",
+      "App Engine flexible environment Java",
+      "App Engine flexible environment Node.js",
+      "App Engine flexible environment PHP",
+      "App Engine flexible environment Python",
+      "App Engine flexible environment Ruby",
+      "App Engine Standard 1.11",
+      "App Engine standard environment Go",
+      "App Engine standard environment Go 1.12+",
+      "App Engine standard environment Java",
+      "App Engine standard environment Java 8",
+      "App Engine standard environment Java gen2",
+      "App Engine standard environment Node.js",
+      "App Engine standard environment PHP",
+      "App Engine standard environment PHP 5",
+      "App Engine standard environment PHP 7+",
+      "App Engine standard environment Python",
+      "App Engine standard environment Python 2.7",
+      "App Engine standard environment Python 3",
+      "App Engine standard environment Ruby",
+      "App Hub",
+      "Application Integration",
+      "Artifact Registry",
+      "Artifact Registry v1",
+      "Backup and DR",
+      "Backup for GKE",
+      "Bare Metal Solution",
+      "Batch",
+      "Blockchain Node Engine",
+      "Buildpacks",
+      "Capacity Planner",
+      "Cloud Build",
+      "Cloud CDN",
+      "Cloud Deploy",
+      "Cloud DNS",
+      "Cloud Domains",
+      "Cloud Endpoints",
+      "Cloud Interconnect",
+      "Cloud Load Balancing",
+      "Cloud Logging",
+      "Cloud Monitoring",
+      "Cloud NAT",
+      "Cloud Quotas",
+      "Cloud Quotas v1",
+      "Cloud Quotas v1beta",
+      "Cloud Router",
+      "Cloud Run",
+      "Cloud Run functions",
+      "Cloud Service Mesh",
+      "Cloud Shell",
+      "Cloud Source Repositories",
+      "Cloud Tasks",
+      "Cloud Tasks v2",
+      "Cloud Tasks v2beta3",
+      "Cloud Trace",
+      "Cloud Workstations",
+      "Cluster Director",
+      "Cluster Services for OpenShift",
+      "Cluster Toolkit",
+      "Compute Engine",
+      "Config Connector",
+      "Config Controller",
+      "Connect for Anthos",
+      "Container Optimized OS",
+      "Container Registry",
+      "Developer Connect",
+      "Error Reporting",
+      "Eventarc",
+      "Game Servers",
+      "GitLab on Google Cloud",
+      "GKE Enterprise",
+      "Google Cloud Observability",
+      "Google Cloud VMware Engine",
+      "Google Distributed Cloud (software only) for bare metal",
+      "Google Distributed Cloud (software only) for VMware",
+      "Google Distributed Cloud connected",
+      "Google Distributed Cloud Edge Distributed Cloud Edge management software",
+      "Google Kubernetes Engine",
+      "Google Kubernetes Engine Extended Channel",
+      "Google Kubernetes Engine Main",
+      "Google Kubernetes Engine New Features",
+      "Google Kubernetes Engine No Channel",
+      "Google Kubernetes Engine Rapid Channel",
+      "Google Kubernetes Engine Regular Channel",
+      "Google Kubernetes Engine Stable Channel",
+      "Infrastructure Manager",
+      "Integration Connectors",
+      "Istio on Google Kubernetes Engine",
+      "Kf",
+      "Knative serving",
+      "Live Stream API",
+      "Managed Anthos Service Mesh Managed Anthos Service Mesh",
+      "Managed Cloud Service Mesh Managed Cloud Service Mesh",
+      "Media CDN",
+      "Migrate to Containers",
+      "Migrate to Virtual Machines",
+      "Migration Center",
+      "NetApp Cloud Volumes Service",
+      "NetApp Volumes",
+      "Network Connectivity Center",
+      "Network Intelligence Center",
+      "Recommender",
+      "Recommender v1beta1",
+      "SAP on Google Cloud",
+      "Service Catalog",
+      "Service Extensions",
+      "StratoZone",
+      "Terraform on Google Cloud",
+      "Transcoder API",
+      "Video Stitcher API",
+      "Virtual Private Cloud",
+      "VM Runtime on Google Distributed Cloud",
+      "Workflows",
+      "Workflows v1"
+    ],
+    "All Security Products": [
+      "Access Approval",
+      "Access Approval v1",
+      "Access Context Manager",
+      "Access Transparency",
+      "Advisory Notifications",
+      "Anthos Service Mesh - Security Bulletins",
+      "Apigee - Security Bulletins",
+      "Assured Open Source Software",
+      "Assured Workloads",
+      "Assured Workloads v1",
+      "Assured Workloads v1beta1",
+      "Audit Manager",
+      "Bare Metal Solution - Security Bulletins",
+      "Binary Authorization",
+      "Certificate Authority Service",
+      "Certificate Authority Service v1",
+      "Certificate Manager",
+      "Chrome Enterprise Premium",
+      "Cloud Asset Inventory",
+      "Cloud IAM - Permissions Change Log",
+      "Cloud Identity",
+      "Cloud IDS",
+      "Cloud Key Management Service",
+      "Cloud Logging",
+      "Cloud NGFW",
+      "Cloud NGFW v1",
+      "Cloud Secure Web Gateway",
+      "Cloud Service Mesh - Security Bulletins",
+      "Cloud VPN",
+      "compute - Security Bulletins",
+      "Compute Engine - Security Bulletins",
+      "Endpoint Verification",
+      "GKE - Security Bulletins",
+      "Google Cloud - Security Bulletins",
+      "Google Cloud Armor",
+      "Google Cloud VMware Engine - Security Bulletins",
+      "Google Distributed Cloud connected - Security Bulletins",
+      "Google SecOps",
+      "Google SecOps SIEM",
+      "Google SecOps SOAR",
+      "Google Threat Intelligence",
+      "Identity and Access Management",
+      "Identity Platform",
+      "Identity-Aware Proxy",
+      "Key Access Justifications",
+      "Managed Service for Microsoft Active Directory",
+      "Migrate to Containers - Security Bulletins",
+      "Migrate to Virtual Machines - Security Bulletins",
+      "Network Security Integration",
+      "Organization Policy",
+      "Policy Controller",
+      "Policy Intelligence",
+      "reCAPTCHA",
+      "Recommender",
+      "Recommender v1beta1",
+      "Resource Manager",
+      "Risk Manager",
+      "Secret Manager",
+      "Secure Source Manager",
+      "Secure Web Proxy",
+      "Security Command Center",
+      "Sensitive Data Protection",
+      "Sovereign Controls by Partners",
+      "VPC Service Controls",
+      "Web Risk"
+    ]
+  },
+  "products": [
+    {
+      "id": "access-approval",
+      "name": "Access Approval",
+      "url": "https://docs.cloud.google.com/feeds/access-approval-release-notes.xml"
+    },
+    {
+      "id": "access-approval-v1",
+      "name": "Access Approval v1",
+      "url": "https://docs.cloud.google.com/feeds/access-approval-v1-release-notes.xml"
+    },
+    {
+      "id": "access-context-manager",
+      "name": "Access Context Manager",
+      "url": "https://docs.cloud.google.com/feeds/access-context-manager-release-notes.xml"
+    },
+    {
+      "id": "access-transparency",
+      "name": "Access Transparency",
+      "url": "https://docs.cloud.google.com/feeds/access-transparency-release-notes.xml"
+    },
+    {
+      "id": "acquirerswitch",
+      "name": "Acquirer switch",
+      "url": "https://docs.cloud.google.com/feeds/acquirerswitch-release-notes.xml"
+    },
+    {
+      "id": "advisory-notifications",
+      "name": "Advisory Notifications",
+      "url": "https://docs.cloud.google.com/feeds/advisory-notifications-release-notes.xml"
+    },
+    {
+      "id": "agent-assist",
+      "name": "Agent Assist",
+      "url": "https://docs.cloud.google.com/feeds/agent-assist-release-notes.xml"
+    },
+    {
+      "id": "aiplatformnotebooks",
+      "name": "Agent Platform Workbench",
+      "url": "https://docs.cloud.google.com/feeds/aiplatformnotebooks-release-notes.xml"
+    },
+    {
+      "id": "aiplatformnotebooks-v1",
+      "name": "Agent Platform Workbench v1",
+      "url": "https://docs.cloud.google.com/feeds/aiplatformnotebooks-v1-release-notes.xml"
+    },
+    {
+      "id": "aiplatformnotebooks-v2",
+      "name": "Agent Platform Workbench v2",
+      "url": "https://docs.cloud.google.com/feeds/aiplatformnotebooks-v2-release-notes.xml"
+    },
+    {
+      "id": "agent-registry",
+      "name": "Agent Registry",
+      "url": "https://docs.cloud.google.com/feeds/agent-registry-release-notes.xml"
+    },
+    {
+      "id": "aihub",
+      "name": "AI Hub",
+      "url": "https://docs.cloud.google.com/feeds/aihub-release-notes.xml"
+    },
+    {
+      "id": "ai-hypercomputer",
+      "name": "AI Hypercomputer",
+      "url": "https://docs.cloud.google.com/feeds/ai-hypercomputer-release-notes.xml"
+    },
+    {
+      "id": "aiplatform",
+      "name": "AI Platform",
+      "url": "https://docs.cloud.google.com/feeds/aiplatform-release-notes.xml"
+    },
+    {
+      "id": "datalabeling",
+      "name": "AI Platform Data Labeling Service",
+      "url": "https://docs.cloud.google.com/feeds/datalabeling-release-notes.xml"
+    },
+    {
+      "id": "aiplatformoptimizer",
+      "name": "AI Platform Optimizer",
+      "url": "https://docs.cloud.google.com/feeds/aiplatformoptimizer-release-notes.xml"
+    },
+    {
+      "id": "ai-platform-pipelines",
+      "name": "AI Platform Pipelines",
+      "url": "https://docs.cloud.google.com/feeds/ai-platform-pipelines-release-notes.xml"
+    },
+    {
+      "id": "ai-platform-prediction",
+      "name": "AI Platform Prediction",
+      "url": "https://docs.cloud.google.com/feeds/ai-platform-prediction-release-notes.xml"
+    },
+    {
+      "id": "ai-platform-training",
+      "name": "AI Platform Training",
+      "url": "https://docs.cloud.google.com/feeds/ai-platform-training-release-notes.xml"
+    },
+    {
+      "id": "alloydb",
+      "name": "AlloyDB for PostgreSQL",
+      "url": "https://docs.cloud.google.com/feeds/alloydb-release-notes.xml"
+    },
+    {
+      "id": "alloydbomni",
+      "name": "AlloyDB Omni",
+      "url": "https://docs.cloud.google.com/feeds/alloydbomni-release-notes.xml"
+    },
+    {
+      "id": "anthos-attached-clusters",
+      "name": "Anthos Attached Clusters",
+      "url": "https://docs.cloud.google.com/feeds/anthos-attached-clusters-release-notes.xml"
+    },
+    {
+      "id": "anthos-clusters-on-aws",
+      "name": "Anthos clusters on AWS",
+      "url": "https://docs.cloud.google.com/feeds/anthos-clusters-on-aws-release-notes.xml"
+    },
+    {
+      "id": "gkeonaws",
+      "name": "Anthos clusters on AWS (previous generation)",
+      "url": "https://docs.cloud.google.com/feeds/gkeonaws-release-notes.xml"
+    },
+    {
+      "id": "anthos-on-azure",
+      "name": "Anthos clusters on Azure",
+      "url": "https://docs.cloud.google.com/feeds/anthos-on-azure-release-notes.xml"
+    },
+    {
+      "id": "anthosconfig",
+      "name": "Anthos Config Management",
+      "url": "https://docs.cloud.google.com/feeds/anthosconfig-release-notes.xml"
+    },
+    {
+      "id": "anthos-service-mesh-security-bulletins",
+      "name": "Anthos Service Mesh - Security Bulletins",
+      "url": "https://docs.cloud.google.com/feeds/anthos-service-mesh-security-bulletins.xml"
+    },
+    {
+      "id": "anti-money-laundering-ai",
+      "name": "Anti Money Laundering AI",
+      "url": "https://docs.cloud.google.com/feeds/anti-money-laundering-ai-release-notes.xml"
+    },
+    {
+      "id": "apigateway",
+      "name": "API Gateway",
+      "url": "https://docs.cloud.google.com/feeds/apigateway-release-notes.xml"
+    },
+    {
+      "id": "apigateway-v1",
+      "name": "API Gateway v1",
+      "url": "https://docs.cloud.google.com/feeds/apigateway-v1-release-notes.xml"
+    },
+    {
+      "id": "apikeys",
+      "name": "API Keys API",
+      "url": "https://docs.cloud.google.com/feeds/apikeys-release-notes.xml"
+    },
+    {
+      "id": "apigee",
+      "name": "Apigee",
+      "url": "https://docs.cloud.google.com/feeds/apigee-release-notes.xml"
+    },
+    {
+      "id": "apigee-security-bulletins",
+      "name": "Apigee - Security Bulletins",
+      "url": "https://docs.cloud.google.com/feeds/apigee-security-bulletins.xml"
+    },
+    {
+      "id": "apigee-envoy-adapter",
+      "name": "Apigee Adapter for Envoy",
+      "url": "https://docs.cloud.google.com/feeds/apigee-envoy-adapter-release-notes.xml"
+    },
+    {
+      "id": "apigee-api-security",
+      "name": "Apigee Advanced API Security",
+      "url": "https://docs.cloud.google.com/feeds/apigee-api-security-release-notes.xml"
+    },
+    {
+      "id": "apigee-analytics",
+      "name": "Apigee Analytics",
+      "url": "https://docs.cloud.google.com/feeds/apigee-analytics-release-notes.xml"
+    },
+    {
+      "id": "apigee-api-hub",
+      "name": "Apigee API hub",
+      "url": "https://docs.cloud.google.com/feeds/apigee-api-hub-release-notes.xml"
+    },
+    {
+      "id": "apigee-connectors",
+      "name": "Apigee Connectors",
+      "url": "https://docs.cloud.google.com/feeds/apigee-connectors-release-notes.xml"
+    },
+    {
+      "id": "apigee-hybrid",
+      "name": "Apigee hybrid",
+      "url": "https://docs.cloud.google.com/feeds/apigee-hybrid-release-notes.xml"
+    },
+    {
+      "id": "apigee-integrated-portal",
+      "name": "Apigee Integrated Portal",
+      "url": "https://docs.cloud.google.com/feeds/apigee-integrated-portal-release-notes.xml"
+    },
+    {
+      "id": "apigee-integration",
+      "name": "Apigee Integration",
+      "url": "https://docs.cloud.google.com/feeds/apigee-integration-release-notes.xml"
+    },
+    {
+      "id": "apigee-monetization",
+      "name": "Apigee Monetization",
+      "url": "https://docs.cloud.google.com/feeds/apigee-monetization-release-notes.xml"
+    },
+    {
+      "id": "apigee-apim-operator",
+      "name": "Apigee Operator for kubernetes",
+      "url": "https://docs.cloud.google.com/feeds/apigee-apim-operator-release-notes.xml"
+    },
+    {
+      "id": "apigee-registry",
+      "name": "Apigee Registry",
+      "url": "https://docs.cloud.google.com/feeds/apigee-registry-release-notes.xml"
+    },
+    {
+      "id": "apigee-ui",
+      "name": "Apigee UI",
+      "url": "https://docs.cloud.google.com/feeds/apigee-ui-release-notes.xml"
+    },
+    {
+      "id": "apigee-x",
+      "name": "Apigee X",
+      "url": "https://docs.cloud.google.com/feeds/apigee-x-release-notes.xml"
+    },
+    {
+      "id": "gaeadmin",
+      "name": "App Engine Admin API",
+      "url": "https://docs.cloud.google.com/feeds/gaeadmin-release-notes.xml"
+    },
+    {
+      "id": "gaeflex-net",
+      "name": "App Engine flexible environment .NET",
+      "url": "https://docs.cloud.google.com/feeds/gaeflex-net-release-notes.xml"
+    },
+    {
+      "id": "gaeflexiblecustomruntimes",
+      "name": "App Engine flexible environment custom runtimes",
+      "url": "https://docs.cloud.google.com/feeds/gaeflexiblecustomruntimes-release-notes.xml"
+    },
+    {
+      "id": "gaeflex-go",
+      "name": "App Engine flexible environment Go",
+      "url": "https://docs.cloud.google.com/feeds/gaeflex-go-release-notes.xml"
+    },
+    {
+      "id": "gaeflex-java",
+      "name": "App Engine flexible environment Java",
+      "url": "https://docs.cloud.google.com/feeds/gaeflex-java-release-notes.xml"
+    },
+    {
+      "id": "gaeflex-node",
+      "name": "App Engine flexible environment Node.js",
+      "url": "https://docs.cloud.google.com/feeds/gaeflex-node-release-notes.xml"
+    },
+    {
+      "id": "gaeflex-php",
+      "name": "App Engine flexible environment PHP",
+      "url": "https://docs.cloud.google.com/feeds/gaeflex-php-release-notes.xml"
+    },
+    {
+      "id": "gaeflex-py",
+      "name": "App Engine flexible environment Python",
+      "url": "https://docs.cloud.google.com/feeds/gaeflex-py-release-notes.xml"
+    },
+    {
+      "id": "gaeflex-ruby",
+      "name": "App Engine flexible environment Ruby",
+      "url": "https://docs.cloud.google.com/feeds/gaeflex-ruby-release-notes.xml"
+    },
+    {
+      "id": "gaestd-go-1.11",
+      "name": "App Engine Standard 1.11",
+      "url": "https://docs.cloud.google.com/feeds/gaestd-go-1.11-release-notes.xml"
+    },
+    {
+      "id": "gaestd-go",
+      "name": "App Engine standard environment Go",
+      "url": "https://docs.cloud.google.com/feeds/gaestd-go-release-notes.xml"
+    },
+    {
+      "id": "gaestd-go-1.12",
+      "name": "App Engine standard environment Go 1.12+",
+      "url": "https://docs.cloud.google.com/feeds/gaestd-go-1.12-release-notes.xml"
+    },
+    {
+      "id": "gaestd-java",
+      "name": "App Engine standard environment Java",
+      "url": "https://docs.cloud.google.com/feeds/gaestd-java-release-notes.xml"
+    },
+    {
+      "id": "gaestd-java-8",
+      "name": "App Engine standard environment Java 8",
+      "url": "https://docs.cloud.google.com/feeds/gaestd-java-8-release-notes.xml"
+    },
+    {
+      "id": "gaestd-java-gen2",
+      "name": "App Engine standard environment Java gen2",
+      "url": "https://docs.cloud.google.com/feeds/gaestd-java-gen2-release-notes.xml"
+    },
+    {
+      "id": "gaestd-node",
+      "name": "App Engine standard environment Node.js",
+      "url": "https://docs.cloud.google.com/feeds/gaestd-node-release-notes.xml"
+    },
+    {
+      "id": "gaestd-php",
+      "name": "App Engine standard environment PHP",
+      "url": "https://docs.cloud.google.com/feeds/gaestd-php-release-notes.xml"
+    },
+    {
+      "id": "gaestd-php-5",
+      "name": "App Engine standard environment PHP 5",
+      "url": "https://docs.cloud.google.com/feeds/gaestd-php-5-release-notes.xml"
+    },
+    {
+      "id": "gaestd-php-7",
+      "name": "App Engine standard environment PHP 7+",
+      "url": "https://docs.cloud.google.com/feeds/gaestd-php-7-release-notes.xml"
+    },
+    {
+      "id": "gaestd-py",
+      "name": "App Engine standard environment Python",
+      "url": "https://docs.cloud.google.com/feeds/gaestd-py-release-notes.xml"
+    },
+    {
+      "id": "gaestd-py-2.7",
+      "name": "App Engine standard environment Python 2.7",
+      "url": "https://docs.cloud.google.com/feeds/gaestd-py-2.7-release-notes.xml"
+    },
+    {
+      "id": "gaestd-py-3",
+      "name": "App Engine standard environment Python 3",
+      "url": "https://docs.cloud.google.com/feeds/gaestd-py-3-release-notes.xml"
+    },
+    {
+      "id": "gaestd-ruby",
+      "name": "App Engine standard environment Ruby",
+      "url": "https://docs.cloud.google.com/feeds/gaestd-ruby-release-notes.xml"
+    },
+    {
+      "id": "apphub",
+      "name": "App Hub",
+      "url": "https://docs.cloud.google.com/feeds/apphub-release-notes.xml"
+    },
+    {
+      "id": "appoptimize",
+      "name": "App Optimize API",
+      "url": "https://docs.cloud.google.com/feeds/appoptimize-release-notes.xml"
+    },
+    {
+      "id": "applicationdesigncenter",
+      "name": "Application Design Center",
+      "url": "https://docs.cloud.google.com/feeds/applicationdesigncenter-release-notes.xml"
+    },
+    {
+      "id": "application-integration",
+      "name": "Application Integration",
+      "url": "https://docs.cloud.google.com/feeds/application-integration-release-notes.xml"
+    },
+    {
+      "id": "artifactregistry",
+      "name": "Artifact Registry",
+      "url": "https://docs.cloud.google.com/feeds/artifactregistry-release-notes.xml"
+    },
+    {
+      "id": "artifactregistry-v1",
+      "name": "Artifact Registry v1",
+      "url": "https://docs.cloud.google.com/feeds/artifactregistry-v1-release-notes.xml"
+    },
+    {
+      "id": "assured-open-source-software",
+      "name": "Assured Open Source Software",
+      "url": "https://docs.cloud.google.com/feeds/assured-open-source-software-release-notes.xml"
+    },
+    {
+      "id": "assuredworkloads",
+      "name": "Assured Workloads",
+      "url": "https://docs.cloud.google.com/feeds/assuredworkloads-release-notes.xml"
+    },
+    {
+      "id": "assuredworkloads-v1",
+      "name": "Assured Workloads v1",
+      "url": "https://docs.cloud.google.com/feeds/assuredworkloads-v1-release-notes.xml"
+    },
+    {
+      "id": "assuredworkloads-v1beta1",
+      "name": "Assured Workloads v1beta1",
+      "url": "https://docs.cloud.google.com/feeds/assuredworkloads-v1beta1-release-notes.xml"
+    },
+    {
+      "id": "auditmanager",
+      "name": "Audit Manager",
+      "url": "https://docs.cloud.google.com/feeds/auditmanager-release-notes.xml"
+    },
+    {
+      "id": "automl-language",
+      "name": "AutoML Natural Language",
+      "url": "https://docs.cloud.google.com/feeds/automl-language-release-notes.xml"
+    },
+    {
+      "id": "automl-tables",
+      "name": "AutoML Tables",
+      "url": "https://docs.cloud.google.com/feeds/automl-tables-release-notes.xml"
+    },
+    {
+      "id": "automl-translate",
+      "name": "AutoML Translation",
+      "url": "https://docs.cloud.google.com/feeds/automl-translate-release-notes.xml"
+    },
+    {
+      "id": "backupdr",
+      "name": "Backup and DR",
+      "url": "https://docs.cloud.google.com/feeds/backupdr-release-notes.xml"
+    },
+    {
+      "id": "gkebackup",
+      "name": "Backup for GKE",
+      "url": "https://docs.cloud.google.com/feeds/gkebackup-release-notes.xml"
+    },
+    {
+      "id": "bare-metal",
+      "name": "Bare Metal Solution",
+      "url": "https://docs.cloud.google.com/feeds/bare-metal-release-notes.xml"
+    },
+    {
+      "id": "bare-metal-solution-security-bulletins",
+      "name": "Bare Metal Solution - Security Bulletins",
+      "url": "https://docs.cloud.google.com/feeds/bare-metal-solution-security-bulletins.xml"
+    },
+    {
+      "id": "batch",
+      "name": "Batch",
+      "url": "https://docs.cloud.google.com/feeds/batch-release-notes.xml"
+    },
+    {
+      "id": "bigquery",
+      "name": "BigQuery",
+      "url": "https://docs.cloud.google.com/feeds/bigquery-release-notes.xml"
+    },
+    {
+      "id": "managedflink",
+      "name": "BigQuery Engine for Apache Flink",
+      "url": "https://docs.cloud.google.com/feeds/managedflink-release-notes.xml"
+    },
+    {
+      "id": "bqml",
+      "name": "BigQuery ML",
+      "url": "https://docs.cloud.google.com/feeds/bqml-release-notes.xml"
+    },
+    {
+      "id": "bigtable",
+      "name": "Bigtable",
+      "url": "https://docs.cloud.google.com/feeds/bigtable-release-notes.xml"
+    },
+    {
+      "id": "binary-auth",
+      "name": "Binary Authorization",
+      "url": "https://docs.cloud.google.com/feeds/binary-auth-release-notes.xml"
+    },
+    {
+      "id": "blockchain-analytics",
+      "name": "Blockchain Analytics",
+      "url": "https://docs.cloud.google.com/feeds/blockchain-analytics-release-notes.xml"
+    },
+    {
+      "id": "blockchain-node-engine",
+      "name": "Blockchain Node Engine",
+      "url": "https://docs.cloud.google.com/feeds/blockchain-node-engine-release-notes.xml"
+    },
+    {
+      "id": "cloudbuildpacks",
+      "name": "Buildpacks",
+      "url": "https://docs.cloud.google.com/feeds/cloudbuildpacks-release-notes.xml"
+    },
+    {
+      "id": "capacity-planner",
+      "name": "Capacity Planner",
+      "url": "https://docs.cloud.google.com/feeds/capacity-planner-release-notes.xml"
+    },
+    {
+      "id": "carbon-footprint",
+      "name": "Carbon Footprint",
+      "url": "https://docs.cloud.google.com/feeds/carbon-footprint-release-notes.xml"
+    },
+    {
+      "id": "certificate-authority-service",
+      "name": "Certificate Authority Service",
+      "url": "https://docs.cloud.google.com/feeds/certificate-authority-service-release-notes.xml"
+    },
+    {
+      "id": "certificate-authority-service-v1",
+      "name": "Certificate Authority Service v1",
+      "url": "https://docs.cloud.google.com/feeds/certificate-authority-service-v1-release-notes.xml"
+    },
+    {
+      "id": "certificate-manager",
+      "name": "Certificate Manager",
+      "url": "https://docs.cloud.google.com/feeds/certificate-manager-release-notes.xml"
+    },
+    {
+      "id": "channel",
+      "name": "Channel Services",
+      "url": "https://docs.cloud.google.com/feeds/channel-release-notes.xml"
+    },
+    {
+      "id": "channel-v1",
+      "name": "Channel Services v1",
+      "url": "https://docs.cloud.google.com/feeds/channel-v1-release-notes.xml"
+    },
+    {
+      "id": "beyondcorp-enterprise",
+      "name": "Chrome Enterprise Premium",
+      "url": "https://docs.cloud.google.com/feeds/beyondcorp-enterprise-release-notes.xml"
+    },
+    {
+      "id": "cloud-api-registry",
+      "name": "Cloud API Registry",
+      "url": "https://docs.cloud.google.com/feeds/cloud-api-registry-release-notes.xml"
+    },
+    {
+      "id": "asset",
+      "name": "Cloud Asset Inventory",
+      "url": "https://docs.cloud.google.com/feeds/asset-release-notes.xml"
+    },
+    {
+      "id": "billing",
+      "name": "Cloud Billing",
+      "url": "https://docs.cloud.google.com/feeds/billing-release-notes.xml"
+    },
+    {
+      "id": "cloudbuild",
+      "name": "Cloud Build",
+      "url": "https://docs.cloud.google.com/feeds/cloudbuild-release-notes.xml"
+    },
+    {
+      "id": "cloudcdn",
+      "name": "Cloud CDN",
+      "url": "https://docs.cloud.google.com/feeds/cloudcdn-release-notes.xml"
+    },
+    {
+      "id": "cloud-console",
+      "name": "Cloud Console",
+      "url": "https://docs.cloud.google.com/feeds/cloud-console-release-notes.xml"
+    },
+    {
+      "id": "clouddatafusion",
+      "name": "Cloud Data Fusion",
+      "url": "https://docs.cloud.google.com/feeds/clouddatafusion-release-notes.xml"
+    },
+    {
+      "id": "dms",
+      "name": "Cloud Database Migration Service",
+      "url": "https://docs.cloud.google.com/feeds/dms-release-notes.xml"
+    },
+    {
+      "id": "dms-v1",
+      "name": "Cloud Database Migration Service v1",
+      "url": "https://docs.cloud.google.com/feeds/dms-v1-release-notes.xml"
+    },
+    {
+      "id": "debugger",
+      "name": "Cloud Debugger",
+      "url": "https://docs.cloud.google.com/feeds/debugger-release-notes.xml"
+    },
+    {
+      "id": "clouddeploy",
+      "name": "Cloud Deploy",
+      "url": "https://docs.cloud.google.com/feeds/clouddeploy-release-notes.xml"
+    },
+    {
+      "id": "deploymentmanager",
+      "name": "Cloud Deployment Manager",
+      "url": "https://docs.cloud.google.com/feeds/deploymentmanager-release-notes.xml"
+    },
+    {
+      "id": "dns",
+      "name": "Cloud DNS",
+      "url": "https://docs.cloud.google.com/feeds/dns-release-notes.xml"
+    },
+    {
+      "id": "domains",
+      "name": "Cloud Domains",
+      "url": "https://docs.cloud.google.com/feeds/domains-release-notes.xml"
+    },
+    {
+      "id": "endpoints",
+      "name": "Cloud Endpoints",
+      "url": "https://docs.cloud.google.com/feeds/endpoints-release-notes.xml"
+    },
+    {
+      "id": "healthcare",
+      "name": "Cloud Healthcare API",
+      "url": "https://docs.cloud.google.com/feeds/healthcare-release-notes.xml"
+    },
+    {
+      "id": "healthcare-v1",
+      "name": "Cloud Healthcare API v1",
+      "url": "https://docs.cloud.google.com/feeds/healthcare-v1-release-notes.xml"
+    },
+    {
+      "id": "healthcare-v1beta1",
+      "name": "Cloud Healthcare API v1beta1",
+      "url": "https://docs.cloud.google.com/feeds/healthcare-v1beta1-release-notes.xml"
+    },
+    {
+      "id": "cloudhub",
+      "name": "Cloud Hub",
+      "url": "https://docs.cloud.google.com/feeds/cloudhub-release-notes.xml"
+    },
+    {
+      "id": "cloud-iam-permissions-change-log",
+      "name": "Cloud IAM - Permissions Change Log",
+      "url": "https://docs.cloud.google.com/feeds/cloud-iam-permissions-change-log.xml"
+    },
+    {
+      "id": "cloudidentity",
+      "name": "Cloud Identity",
+      "url": "https://docs.cloud.google.com/feeds/cloudidentity-release-notes.xml"
+    },
+    {
+      "id": "ids",
+      "name": "Cloud IDS",
+      "url": "https://docs.cloud.google.com/feeds/ids-release-notes.xml"
+    },
+    {
+      "id": "cloudinterconnect",
+      "name": "Cloud Interconnect",
+      "url": "https://docs.cloud.google.com/feeds/cloudinterconnect-release-notes.xml"
+    },
+    {
+      "id": "kms",
+      "name": "Cloud Key Management Service",
+      "url": "https://docs.cloud.google.com/feeds/kms-release-notes.xml"
+    },
+    {
+      "id": "life-sciences",
+      "name": "Cloud Life Sciences",
+      "url": "https://docs.cloud.google.com/feeds/life-sciences-release-notes.xml"
+    },
+    {
+      "id": "cloudloadbalancing",
+      "name": "Cloud Load Balancing",
+      "url": "https://docs.cloud.google.com/feeds/cloudloadbalancing-release-notes.xml"
+    },
+    {
+      "id": "location-finder",
+      "name": "Cloud Location Finder",
+      "url": "https://docs.cloud.google.com/feeds/location-finder-release-notes.xml"
+    },
+    {
+      "id": "logging",
+      "name": "Cloud Logging",
+      "url": "https://docs.cloud.google.com/feeds/logging-release-notes.xml"
+    },
+    {
+      "id": "monitoring",
+      "name": "Cloud Monitoring",
+      "url": "https://docs.cloud.google.com/feeds/monitoring-release-notes.xml"
+    },
+    {
+      "id": "cloudnat",
+      "name": "Cloud NAT",
+      "url": "https://docs.cloud.google.com/feeds/cloudnat-release-notes.xml"
+    },
+    {
+      "id": "language",
+      "name": "Cloud Natural Language API",
+      "url": "https://docs.cloud.google.com/feeds/language-release-notes.xml"
+    },
+    {
+      "id": "cloud-firewall",
+      "name": "Cloud NGFW",
+      "url": "https://docs.cloud.google.com/feeds/cloud-firewall-release-notes.xml"
+    },
+    {
+      "id": "cloud-firewall-v1",
+      "name": "Cloud NGFW v1",
+      "url": "https://docs.cloud.google.com/feeds/cloud-firewall-v1-release-notes.xml"
+    },
+    {
+      "id": "number-registry",
+      "name": "Cloud Number Registry",
+      "url": "https://docs.cloud.google.com/feeds/number-registry-release-notes.xml"
+    },
+    {
+      "id": "cloudoptimization",
+      "name": "Cloud Optimization AI",
+      "url": "https://docs.cloud.google.com/feeds/cloudoptimization-release-notes.xml"
+    },
+    {
+      "id": "productregistry",
+      "name": "Cloud Product Registry API",
+      "url": "https://docs.cloud.google.com/feeds/productregistry-release-notes.xml"
+    },
+    {
+      "id": "profiler",
+      "name": "Cloud Profiler",
+      "url": "https://docs.cloud.google.com/feeds/profiler-release-notes.xml"
+    },
+    {
+      "id": "cloudquotas",
+      "name": "Cloud Quotas",
+      "url": "https://docs.cloud.google.com/feeds/cloudquotas-release-notes.xml"
+    },
+    {
+      "id": "cloudquotas-v1",
+      "name": "Cloud Quotas v1",
+      "url": "https://docs.cloud.google.com/feeds/cloudquotas-v1-release-notes.xml"
+    },
+    {
+      "id": "cloudquotas-v1beta",
+      "name": "Cloud Quotas v1beta",
+      "url": "https://docs.cloud.google.com/feeds/cloudquotas-v1beta-release-notes.xml"
+    },
+    {
+      "id": "cloudrouter",
+      "name": "Cloud Router",
+      "url": "https://docs.cloud.google.com/feeds/cloudrouter-release-notes.xml"
+    },
+    {
+      "id": "run",
+      "name": "Cloud Run",
+      "url": "https://docs.cloud.google.com/feeds/run-release-notes.xml"
+    },
+    {
+      "id": "functions",
+      "name": "Cloud Run functions",
+      "url": "https://docs.cloud.google.com/feeds/functions-release-notes.xml"
+    },
+    {
+      "id": "cloudscheduler",
+      "name": "Cloud Scheduler",
+      "url": "https://docs.cloud.google.com/feeds/cloudscheduler-release-notes.xml"
+    },
+    {
+      "id": "gcloud",
+      "name": "Cloud SDK",
+      "url": "https://docs.cloud.google.com/feeds/gcloud-release-notes.xml"
+    },
+    {
+      "id": "secure-web-gateway",
+      "name": "Cloud Secure Web Gateway",
+      "url": "https://docs.cloud.google.com/feeds/secure-web-gateway-release-notes.xml"
+    },
+    {
+      "id": "servicemesh",
+      "name": "Cloud Service Mesh",
+      "url": "https://docs.cloud.google.com/feeds/servicemesh-release-notes.xml"
+    },
+    {
+      "id": "cloud-service-mesh-security-bulletins",
+      "name": "Cloud Service Mesh - Security Bulletins",
+      "url": "https://docs.cloud.google.com/feeds/cloud-service-mesh-security-bulletins.xml"
+    },
+    {
+      "id": "shell",
+      "name": "Cloud Shell",
+      "url": "https://docs.cloud.google.com/feeds/shell-release-notes.xml"
+    },
+    {
+      "id": "source-repositories",
+      "name": "Cloud Source Repositories",
+      "url": "https://docs.cloud.google.com/feeds/source-repositories-release-notes.xml"
+    },
+    {
+      "id": "cloud-sql",
+      "name": "Cloud SQL",
+      "url": "https://docs.cloud.google.com/feeds/cloud-sql-release-notes.xml"
+    },
+    {
+      "id": "cloud-sql-mysql",
+      "name": "Cloud SQL for MySQL",
+      "url": "https://docs.cloud.google.com/feeds/cloud-sql-mysql-release-notes.xml"
+    },
+    {
+      "id": "cloud-sql-postgres",
+      "name": "Cloud SQL for PostgreSQL",
+      "url": "https://docs.cloud.google.com/feeds/cloud-sql-postgres-release-notes.xml"
+    },
+    {
+      "id": "cloud-sql-server",
+      "name": "Cloud SQL for SQL Server",
+      "url": "https://docs.cloud.google.com/feeds/cloud-sql-server-release-notes.xml"
+    },
+    {
+      "id": "storage",
+      "name": "Cloud Storage",
+      "url": "https://docs.cloud.google.com/feeds/storage-release-notes.xml"
+    },
+    {
+      "id": "job",
+      "name": "Cloud Talent Solution Job Search",
+      "url": "https://docs.cloud.google.com/feeds/job-release-notes.xml"
+    },
+    {
+      "id": "job-v4",
+      "name": "Cloud Talent Solution Job Search v4",
+      "url": "https://docs.cloud.google.com/feeds/job-v4-release-notes.xml"
+    },
+    {
+      "id": "cloud-tasks",
+      "name": "Cloud Tasks",
+      "url": "https://docs.cloud.google.com/feeds/cloud-tasks-release-notes.xml"
+    },
+    {
+      "id": "cloud-tasks-v2",
+      "name": "Cloud Tasks v2",
+      "url": "https://docs.cloud.google.com/feeds/cloud-tasks-v2-release-notes.xml"
+    },
+    {
+      "id": "cloud-tasks-v2beta3",
+      "name": "Cloud Tasks v2beta3",
+      "url": "https://docs.cloud.google.com/feeds/cloud-tasks-v2beta3-release-notes.xml"
+    },
+    {
+      "id": "tpu",
+      "name": "Cloud TPU",
+      "url": "https://docs.cloud.google.com/feeds/tpu-release-notes.xml"
+    },
+    {
+      "id": "trace",
+      "name": "Cloud Trace",
+      "url": "https://docs.cloud.google.com/feeds/trace-release-notes.xml"
+    },
+    {
+      "id": "translate",
+      "name": "Cloud Translation",
+      "url": "https://docs.cloud.google.com/feeds/translate-release-notes.xml"
+    },
+    {
+      "id": "vision",
+      "name": "Cloud Vision",
+      "url": "https://docs.cloud.google.com/feeds/vision-release-notes.xml"
+    },
+    {
+      "id": "visionproductsearch",
+      "name": "Cloud Vision API Product Search",
+      "url": "https://docs.cloud.google.com/feeds/visionproductsearch-release-notes.xml"
+    },
+    {
+      "id": "cloudvpn",
+      "name": "Cloud VPN",
+      "url": "https://docs.cloud.google.com/feeds/cloudvpn-release-notes.xml"
+    },
+    {
+      "id": "workstations",
+      "name": "Cloud Workstations",
+      "url": "https://docs.cloud.google.com/feeds/workstations-release-notes.xml"
+    },
+    {
+      "id": "cluster-director",
+      "name": "Cluster Director",
+      "url": "https://docs.cloud.google.com/feeds/cluster-director-release-notes.xml"
+    },
+    {
+      "id": "clusterservicesforopenshift",
+      "name": "Cluster Services for OpenShift",
+      "url": "https://docs.cloud.google.com/feeds/clusterservicesforopenshift-release-notes.xml"
+    },
+    {
+      "id": "cluster-toolkit",
+      "name": "Cluster Toolkit",
+      "url": "https://docs.cloud.google.com/feeds/cluster-toolkit-release-notes.xml"
+    },
+    {
+      "id": "colabenterprise",
+      "name": "Colab Enterprise",
+      "url": "https://docs.cloud.google.com/feeds/colabenterprise-release-notes.xml"
+    },
+    {
+      "id": "compute-security-bulletins",
+      "name": "compute - Security Bulletins",
+      "url": "https://docs.cloud.google.com/feeds/compute-security-bulletins.xml"
+    },
+    {
+      "id": "compute",
+      "name": "Compute Engine",
+      "url": "https://docs.cloud.google.com/feeds/compute-release-notes.xml"
+    },
+    {
+      "id": "compute-engine-security-bulletins",
+      "name": "Compute Engine - Security Bulletins",
+      "url": "https://docs.cloud.google.com/feeds/compute-engine-security-bulletins.xml"
+    },
+    {
+      "id": "configconnector",
+      "name": "Config Connector",
+      "url": "https://docs.cloud.google.com/feeds/configconnector-release-notes.xml"
+    },
+    {
+      "id": "configcontroller",
+      "name": "Config Controller",
+      "url": "https://docs.cloud.google.com/feeds/configcontroller-release-notes.xml"
+    },
+    {
+      "id": "config-sync",
+      "name": "Config Sync",
+      "url": "https://docs.cloud.google.com/feeds/config-sync-release-notes.xml"
+    },
+    {
+      "id": "connect-for-anthos",
+      "name": "Connect for Anthos",
+      "url": "https://docs.cloud.google.com/feeds/connect-for-anthos-release-notes.xml"
+    },
+    {
+      "id": "contactcenterinsights",
+      "name": "Contact Center AI Insights",
+      "url": "https://docs.cloud.google.com/feeds/contactcenterinsights-release-notes.xml"
+    },
+    {
+      "id": "cos",
+      "name": "Container Optimized OS",
+      "url": "https://docs.cloud.google.com/feeds/cos-release-notes.xml"
+    },
+    {
+      "id": "container-registry",
+      "name": "Container Registry",
+      "url": "https://docs.cloud.google.com/feeds/container-registry-release-notes.xml"
+    },
+    {
+      "id": "cortex",
+      "name": "Cortex Framework",
+      "url": "https://docs.cloud.google.com/feeds/cortex-release-notes.xml"
+    },
+    {
+      "id": "cx-agent-studio",
+      "name": "CX Agent Studio",
+      "url": "https://docs.cloud.google.com/feeds/cx-agent-studio-release-notes.xml"
+    },
+    {
+      "id": "data-catalog",
+      "name": "Data Catalog",
+      "url": "https://docs.cloud.google.com/feeds/data-catalog-release-notes.xml"
+    },
+    {
+      "id": "data-catalog-v1",
+      "name": "Data Catalog v1",
+      "url": "https://docs.cloud.google.com/feeds/data-catalog-v1-release-notes.xml"
+    },
+    {
+      "id": "data-catalog-v1beta1",
+      "name": "Data Catalog v1beta1",
+      "url": "https://docs.cloud.google.com/feeds/data-catalog-v1beta1-release-notes.xml"
+    },
+    {
+      "id": "data-studio",
+      "name": "Data Studio",
+      "url": "https://docs.cloud.google.com/feeds/data-studio-release-notes.xml"
+    },
+    {
+      "id": "data-transfer-essentials",
+      "name": "Data Transfer Essentials",
+      "url": "https://docs.cloud.google.com/feeds/data-transfer-essentials-release-notes.xml"
+    },
+    {
+      "id": "databasecenter",
+      "name": "Database Center",
+      "url": "https://docs.cloud.google.com/feeds/databasecenter-release-notes.xml"
+    },
+    {
+      "id": "dataflow",
+      "name": "Dataflow",
+      "url": "https://docs.cloud.google.com/feeds/dataflow-release-notes.xml"
+    },
+    {
+      "id": "dataflow-security-bulletins",
+      "name": "Dataflow - Security Bulletins",
+      "url": "https://docs.cloud.google.com/feeds/dataflow-security-bulletins.xml"
+    },
+    {
+      "id": "dataform",
+      "name": "Dataform",
+      "url": "https://docs.cloud.google.com/feeds/dataform-release-notes.xml"
+    },
+    {
+      "id": "dataprep",
+      "name": "Dataprep by Trifacta",
+      "url": "https://docs.cloud.google.com/feeds/dataprep-release-notes.xml"
+    },
+    {
+      "id": "dataproc",
+      "name": "Dataproc",
+      "url": "https://docs.cloud.google.com/feeds/dataproc-release-notes.xml"
+    },
+    {
+      "id": "metastore",
+      "name": "Dataproc Metastore",
+      "url": "https://docs.cloud.google.com/feeds/metastore-release-notes.xml"
+    },
+    {
+      "id": "dataproc-serverless",
+      "name": "Dataproc Serverless",
+      "url": "https://docs.cloud.google.com/feeds/dataproc-serverless-release-notes.xml"
+    },
+    {
+      "id": "datastream",
+      "name": "Datastream",
+      "url": "https://docs.cloud.google.com/feeds/datastream-release-notes.xml"
+    },
+    {
+      "id": "aiplatformdeeplearningcontainers",
+      "name": "Deep Learning Containers",
+      "url": "https://docs.cloud.google.com/feeds/aiplatformdeeplearningcontainers-release-notes.xml"
+    },
+    {
+      "id": "deeplearningvm",
+      "name": "Deep Learning VM Images",
+      "url": "https://docs.cloud.google.com/feeds/deeplearningvm-release-notes.xml"
+    },
+    {
+      "id": "developer-connect",
+      "name": "Developer Connect",
+      "url": "https://docs.cloud.google.com/feeds/developer-connect-release-notes.xml"
+    },
+    {
+      "id": "dialogflow",
+      "name": "Dialogflow",
+      "url": "https://docs.cloud.google.com/feeds/dialogflow-release-notes.xml"
+    },
+    {
+      "id": "discovery-engine",
+      "name": "Discovery Engine API",
+      "url": "https://docs.cloud.google.com/feeds/discovery-engine-release-notes.xml"
+    },
+    {
+      "id": "duai",
+      "name": "Document AI",
+      "url": "https://docs.cloud.google.com/feeds/duai-release-notes.xml"
+    },
+    {
+      "id": "document-warehouse",
+      "name": "Document AI Warehouse",
+      "url": "https://docs.cloud.google.com/feeds/document-warehouse-release-notes.xml"
+    },
+    {
+      "id": "endpointverification",
+      "name": "Endpoint Verification",
+      "url": "https://docs.cloud.google.com/feeds/endpointverification-release-notes.xml"
+    },
+    {
+      "id": "enterprise-knowledge-graph",
+      "name": "Enterprise Knowledge Graph",
+      "url": "https://docs.cloud.google.com/feeds/enterprise-knowledge-graph-release-notes.xml"
+    },
+    {
+      "id": "error-reporting",
+      "name": "Error Reporting",
+      "url": "https://docs.cloud.google.com/feeds/error-reporting-release-notes.xml"
+    },
+    {
+      "id": "eventarc",
+      "name": "Eventarc",
+      "url": "https://docs.cloud.google.com/feeds/eventarc-release-notes.xml"
+    },
+    {
+      "id": "filestore",
+      "name": "Filestore",
+      "url": "https://docs.cloud.google.com/feeds/filestore-release-notes.xml"
+    },
+    {
+      "id": "fs",
+      "name": "Firestore",
+      "url": "https://docs.cloud.google.com/feeds/fs-release-notes.xml"
+    },
+    {
+      "id": "datastore",
+      "name": "Firestore in Datastore mode",
+      "url": "https://docs.cloud.google.com/feeds/datastore-release-notes.xml"
+    },
+    {
+      "id": "firestore-with-mongodb-compatibility",
+      "name": "Firestore with MongoDB compatibility",
+      "url": "https://docs.cloud.google.com/feeds/firestore-with-mongodb-compatibility-release-notes.xml"
+    },
+    {
+      "id": "cloud-game-servers",
+      "name": "Game Servers",
+      "url": "https://docs.cloud.google.com/feeds/cloud-game-servers-release-notes.xml"
+    },
+    {
+      "id": "gemini",
+      "name": "Gemini",
+      "url": "https://docs.cloud.google.com/feeds/gemini-release-notes.xml"
+    },
+    {
+      "id": "gemini-cloud-assist",
+      "name": "Gemini Cloud Assist",
+      "url": "https://docs.cloud.google.com/feeds/gemini-cloud-assist-release-notes.xml"
+    },
+    {
+      "id": "gemini-codeassist",
+      "name": "Gemini Code Assist",
+      "url": "https://docs.cloud.google.com/feeds/gemini-codeassist-release-notes.xml"
+    },
+    {
+      "id": "apigee-gemini",
+      "name": "Gemini Code Assist in Apigee",
+      "url": "https://docs.cloud.google.com/feeds/apigee-gemini-release-notes.xml"
+    },
+    {
+      "id": "gemini-codeassist-version_unspecified",
+      "name": "Gemini Code Assist VERSION_UNSPECIFIED",
+      "url": "https://docs.cloud.google.com/feeds/gemini-codeassist-version_unspecified-release-notes.xml"
+    },
+    {
+      "id": "gemini-enterprise",
+      "name": "Gemini Enterprise",
+      "url": "https://docs.cloud.google.com/feeds/gemini-enterprise-release-notes.xml"
+    },
+    {
+      "id": "gemini-platform",
+      "name": "Gemini Platform",
+      "url": "https://docs.cloud.google.com/feeds/gemini-platform-release-notes.xml"
+    },
+    {
+      "id": "gemini-on-gdcc",
+      "name": "Gemini on GDC API on GDC connected",
+      "url": "https://docs.cloud.google.com/feeds/gemini-on-gdcc-release-notes.xml"
+    },
+    {
+      "id": "gemini-version_unspecified",
+      "name": "Gemini VERSION_UNSPECIFIED",
+      "url": "https://docs.cloud.google.com/feeds/gemini-version_unspecified-release-notes.xml"
+    },
+    {
+      "id": "generative-ai-on-vertex-ai",
+      "name": "Generative AI on Vertex AI",
+      "url": "https://docs.cloud.google.com/feeds/generative-ai-on-vertex-ai-release-notes.xml"
+    },
+    {
+      "id": "gitlab",
+      "name": "GitLab on Google Cloud",
+      "url": "https://docs.cloud.google.com/feeds/gitlab-release-notes.xml"
+    },
+    {
+      "id": "gke-security-bulletins",
+      "name": "GKE - Security Bulletins",
+      "url": "https://docs.cloud.google.com/feeds/gke-security-bulletins.xml"
+    },
+    {
+      "id": "anthos",
+      "name": "GKE Enterprise",
+      "url": "https://docs.cloud.google.com/feeds/anthos-release-notes.xml"
+    },
+    {
+      "id": "gemini-enterprise",
+      "name": "Gemini Enterprise",
+      "url": "https://docs.cloud.google.com/feeds/agentspace-release-notes.xml"
+    },
+    {
+      "id": "google-cloud-security-bulletins",
+      "name": "Google Cloud - Security Bulletins",
+      "url": "https://docs.cloud.google.com/feeds/google-cloud-security-bulletins.xml"
+    },
+    {
+      "id": "architecture-center",
+      "name": "Google Cloud Architecture Center",
+      "url": "https://docs.cloud.google.com/feeds/architecture-center-release-notes.xml"
+    },
+    {
+      "id": "armor",
+      "name": "Google Cloud Armor",
+      "url": "https://docs.cloud.google.com/feeds/armor-release-notes.xml"
+    },
+    {
+      "id": "ccai-platform",
+      "name": "Google Cloud Contact Center as a Service",
+      "url": "https://docs.cloud.google.com/feeds/ccai-platform-release-notes.xml"
+    },
+    {
+      "id": "managedkafka",
+      "name": "Google Cloud Managed Service for Apache Kafka",
+      "url": "https://docs.cloud.google.com/feeds/managedkafka-release-notes.xml"
+    },
+    {
+      "id": "gcpmarketplace",
+      "name": "Google Cloud Marketplace",
+      "url": "https://docs.cloud.google.com/feeds/gcpmarketplace-release-notes.xml"
+    },
+    {
+      "id": "gcpmarketplacepartners",
+      "name": "Google Cloud Marketplace Partners",
+      "url": "https://docs.cloud.google.com/feeds/gcpmarketplacepartners-release-notes.xml"
+    },
+    {
+      "id": "mcp",
+      "name": "Google Cloud MCP servers",
+      "url": "https://docs.cloud.google.com/feeds/mcp-release-notes.xml"
+    },
+    {
+      "id": "stackdriver",
+      "name": "Google Cloud Observability",
+      "url": "https://docs.cloud.google.com/feeds/stackdriver-release-notes.xml"
+    },
+    {
+      "id": "gcp",
+      "name": "Google Cloud Platform (GCP)",
+      "url": "https://docs.cloud.google.com/feeds/gcp-release-notes.xml"
+    },
+    {
+      "id": "vmware-engine",
+      "name": "Google Cloud VMware Engine",
+      "url": "https://docs.cloud.google.com/feeds/vmware-engine-release-notes.xml"
+    },
+    {
+      "id": "google-cloud-vmware-engine-security-bulletins",
+      "name": "Google Cloud VMware Engine - Security Bulletins",
+      "url": "https://docs.cloud.google.com/feeds/google-cloud-vmware-engine-security-bulletins.xml"
+    },
+    {
+      "id": "anthos-bare-metal",
+      "name": "Google Distributed Cloud (software only) for bare metal",
+      "url": "https://docs.cloud.google.com/feeds/anthos-bare-metal-release-notes.xml"
+    },
+    {
+      "id": "gkeonprem",
+      "name": "Google Distributed Cloud (software only) for VMware",
+      "url": "https://docs.cloud.google.com/feeds/gkeonprem-release-notes.xml"
+    },
+    {
+      "id": "distributed-cloud-edge",
+      "name": "Google Distributed Cloud connected",
+      "url": "https://docs.cloud.google.com/feeds/distributed-cloud-edge-release-notes.xml"
+    },
+    {
+      "id": "distributed-cloud-edge-security-bulletins",
+      "name": "Google Distributed Cloud connected - Security Bulletins",
+      "url": "https://docs.cloud.google.com/feeds/distributed-cloud-edge-security-bulletins.xml"
+    },
+    {
+      "id": "distributed-cloud-edge-distributed-cloud-edge-management-software",
+      "name": "Google Distributed Cloud Edge Distributed Cloud Edge management software",
+      "url": "https://docs.cloud.google.com/feeds/distributed-cloud-edge-distributed-cloud-edge-management-software-release-notes.xml"
+    },
+    {
+      "id": "gke",
+      "name": "Google Kubernetes Engine",
+      "url": "https://docs.cloud.google.com/feeds/gke-release-notes.xml"
+    },
+    {
+      "id": "gke-extended-channel",
+      "name": "Google Kubernetes Engine Extended Channel",
+      "url": "https://docs.cloud.google.com/feeds/gke-extended-channel-release-notes.xml"
+    },
+    {
+      "id": "gke-main",
+      "name": "Google Kubernetes Engine Main",
+      "url": "https://docs.cloud.google.com/feeds/gke-main-release-notes.xml"
+    },
+    {
+      "id": "gke-new-features",
+      "name": "Google Kubernetes Engine New Features",
+      "url": "https://docs.cloud.google.com/feeds/gke-new-features-release-notes.xml"
+    },
+    {
+      "id": "gke-no-channel",
+      "name": "Google Kubernetes Engine No Channel",
+      "url": "https://docs.cloud.google.com/feeds/gke-no-channel-release-notes.xml"
+    },
+    {
+      "id": "gke-rapid-channel",
+      "name": "Google Kubernetes Engine Rapid Channel",
+      "url": "https://docs.cloud.google.com/feeds/gke-rapid-channel-release-notes.xml"
+    },
+    {
+      "id": "gke-regular-channel",
+      "name": "Google Kubernetes Engine Regular Channel",
+      "url": "https://docs.cloud.google.com/feeds/gke-regular-channel-release-notes.xml"
+    },
+    {
+      "id": "gke-stable-channel",
+      "name": "Google Kubernetes Engine Stable Channel",
+      "url": "https://docs.cloud.google.com/feeds/gke-stable-channel-release-notes.xml"
+    },
+    {
+      "id": "chronicle-security-operations",
+      "name": "Google SecOps",
+      "url": "https://docs.cloud.google.com/feeds/chronicle-security-operations-release-notes.xml"
+    },
+    {
+      "id": "chronicle-soar-marketplace",
+      "name": "Google SecOps Marketplace",
+      "url": "https://docs.cloud.google.com/feeds/chronicle-soar-marketplace-release-notes.xml"
+    },
+    {
+      "id": "chronicle",
+      "name": "Google SecOps SIEM",
+      "url": "https://docs.cloud.google.com/feeds/chronicle-release-notes.xml"
+    },
+    {
+      "id": "chronicle-soar",
+      "name": "Google SecOps SOAR",
+      "url": "https://docs.cloud.google.com/feeds/chronicle-soar-release-notes.xml"
+    },
+    {
+      "id": "changelog.rss",
+      "name": "Google Threat Intelligence",
+      "url": "https://gtidocs.virustotal.com/changelog.rss"
+    },
+    {
+      "id": "guestenvironment",
+      "name": "Guest Environment",
+      "url": "https://docs.cloud.google.com/feeds/guestenvironment-release-notes.xml"
+    },
+    {
+      "id": "iam",
+      "name": "Identity and Access Management",
+      "url": "https://docs.cloud.google.com/feeds/iam-release-notes.xml"
+    },
+    {
+      "id": "identityplatform",
+      "name": "Identity Platform",
+      "url": "https://docs.cloud.google.com/feeds/identityplatform-release-notes.xml"
+    },
+    {
+      "id": "iap",
+      "name": "Identity-Aware Proxy",
+      "url": "https://docs.cloud.google.com/feeds/iap-release-notes.xml"
+    },
+    {
+      "id": "inframanager",
+      "name": "Infrastructure Manager",
+      "url": "https://docs.cloud.google.com/feeds/inframanager-release-notes.xml"
+    },
+    {
+      "id": "integration-connectors",
+      "name": "Integration Connectors",
+      "url": "https://docs.cloud.google.com/feeds/integration-connectors-release-notes.xml"
+    },
+    {
+      "id": "iot",
+      "name": "IoT Core",
+      "url": "https://docs.cloud.google.com/feeds/iot-release-notes.xml"
+    },
+    {
+      "id": "issuerswitch",
+      "name": "Issuer switch",
+      "url": "https://docs.cloud.google.com/feeds/issuerswitch-release-notes.xml"
+    },
+    {
+      "id": "istio",
+      "name": "Istio on Google Kubernetes Engine",
+      "url": "https://docs.cloud.google.com/feeds/istio-release-notes.xml"
+    },
+    {
+      "id": "key-access-justifications",
+      "name": "Key Access Justifications",
+      "url": "https://docs.cloud.google.com/feeds/key-access-justifications-release-notes.xml"
+    },
+    {
+      "id": "kf",
+      "name": "Kf",
+      "url": "https://docs.cloud.google.com/feeds/kf-release-notes.xml"
+    },
+    {
+      "id": "runanthos",
+      "name": "Knative serving",
+      "url": "https://docs.cloud.google.com/feeds/runanthos-release-notes.xml"
+    },
+    {
+      "id": "dataplex",
+      "name": "Knowledge Catalog",
+      "url": "https://docs.cloud.google.com/feeds/dataplex-release-notes.xml"
+    },
+    {
+      "id": "livestream",
+      "name": "Live Stream API",
+      "url": "https://docs.cloud.google.com/feeds/livestream-release-notes.xml"
+    },
+    {
+      "id": "looker",
+      "name": "Looker",
+      "url": "https://docs.cloud.google.com/feeds/looker-release-notes.xml"
+    },
+    {
+      "id": "looker-looker-google-cloud-core-and-looker-original-changes",
+      "name": "Looker Looker (Google Cloud core) and Looker (original) changes",
+      "url": "https://docs.cloud.google.com/feeds/looker-looker-google-cloud-core-and-looker-original-changes-release-notes.xml"
+    },
+    {
+      "id": "looker-looker-google-cloud-core-only-changes",
+      "name": "Looker Looker (Google Cloud core) only changes",
+      "url": "https://docs.cloud.google.com/feeds/looker-looker-google-cloud-core-only-changes-release-notes.xml"
+    },
+    {
+      "id": "looker-looker-original-only-changes",
+      "name": "Looker Looker (original) only changes",
+      "url": "https://docs.cloud.google.com/feeds/looker-looker-original-only-changes-release-notes.xml"
+    },
+    {
+      "id": "mainframeassessmenttool",
+      "name": "Mainframe Assessment Tool",
+      "url": "https://docs.cloud.google.com/feeds/mainframeassessmenttool-release-notes.xml"
+    },
+    {
+      "id": "mainframeconnector",
+      "name": "Mainframe Connector",
+      "url": "https://docs.cloud.google.com/feeds/mainframeconnector-release-notes.xml"
+    },
+    {
+      "id": "mainframeconnector-version_unspecified",
+      "name": "Mainframe Connector VERSION_UNSPECIFIED",
+      "url": "https://docs.cloud.google.com/feeds/mainframeconnector-version_unspecified-release-notes.xml"
+    },
+    {
+      "id": "servicemesh-managed-anthos-service-mesh",
+      "name": "Managed Anthos Service Mesh Managed Anthos Service Mesh",
+      "url": "https://docs.cloud.google.com/feeds/servicemesh-managed-anthos-service-mesh-release-notes.xml"
+    },
+    {
+      "id": "servicemesh-managed-cloud-service-mesh",
+      "name": "Managed Cloud Service Mesh Managed Cloud Service Mesh",
+      "url": "https://docs.cloud.google.com/feeds/servicemesh-managed-cloud-service-mesh-release-notes.xml"
+    },
+    {
+      "id": "composer",
+      "name": "Managed Service for Apache Airflow",
+      "url": "https://docs.cloud.google.com/feeds/composer-release-notes.xml"
+    },
+    {
+      "id": "managed-spark",
+      "name": "Managed Service for Apache Spark",
+      "url": "https://docs.cloud.google.com/feeds/managed-spark-release-notes.xml"
+    },
+    {
+      "id": "managedmicrosoftad",
+      "name": "Managed Service for Microsoft Active Directory",
+      "url": "https://docs.cloud.google.com/feeds/managedmicrosoftad-release-notes.xml"
+    },
+    {
+      "id": "manufacturing-data-engine",
+      "name": "Manufacturing Data Engine",
+      "url": "https://docs.cloud.google.com/feeds/manufacturing-data-engine-release-notes.xml"
+    },
+    {
+      "id": "mediacdn",
+      "name": "Media CDN",
+      "url": "https://docs.cloud.google.com/feeds/mediacdn-release-notes.xml"
+    },
+    {
+      "id": "mediatranslation",
+      "name": "Media Translation",
+      "url": "https://docs.cloud.google.com/feeds/mediatranslation-release-notes.xml"
+    },
+    {
+      "id": "memorystorememcache",
+      "name": "Memorystore for Memcached",
+      "url": "https://docs.cloud.google.com/feeds/memorystorememcache-release-notes.xml"
+    },
+    {
+      "id": "memorystorememcache-v1",
+      "name": "Memorystore for Memcached v1",
+      "url": "https://docs.cloud.google.com/feeds/memorystorememcache-v1-release-notes.xml"
+    },
+    {
+      "id": "memorystore",
+      "name": "Memorystore for Redis",
+      "url": "https://docs.cloud.google.com/feeds/memorystore-release-notes.xml"
+    },
+    {
+      "id": "memorystorerediscluster",
+      "name": "Memorystore for Redis Cluster",
+      "url": "https://docs.cloud.google.com/feeds/memorystorerediscluster-release-notes.xml"
+    },
+    {
+      "id": "memorystorevalkey",
+      "name": "Memorystore for Valkey",
+      "url": "https://docs.cloud.google.com/feeds/memorystorevalkey-release-notes.xml"
+    },
+    {
+      "id": "migrateanthos",
+      "name": "Migrate to Containers",
+      "url": "https://docs.cloud.google.com/feeds/migrateanthos-release-notes.xml"
+    },
+    {
+      "id": "migrate-to-containers-security-bulletins",
+      "name": "Migrate to Containers - Security Bulletins",
+      "url": "https://docs.cloud.google.com/feeds/migrate-to-containers-security-bulletins.xml"
+    },
+    {
+      "id": "migrategce",
+      "name": "Migrate to Virtual Machines",
+      "url": "https://docs.cloud.google.com/feeds/migrategce-release-notes.xml"
+    },
+    {
+      "id": "migrate-to-virtual-machines-security-bulletins",
+      "name": "Migrate to Virtual Machines - Security Bulletins",
+      "url": "https://docs.cloud.google.com/feeds/migrate-to-virtual-machines-security-bulletins.xml"
+    },
+    {
+      "id": "migrationcenter",
+      "name": "Migration Center",
+      "url": "https://docs.cloud.google.com/feeds/migrationcenter-release-notes.xml"
+    },
+    {
+      "id": "modelarmor",
+      "name": "Model Armor",
+      "url": "https://docs.cloud.google.com/feeds/modelarmor-release-notes.xml"
+    },
+    {
+      "id": "netapp-cloud-volumes",
+      "name": "NetApp Cloud Volumes Service",
+      "url": "https://docs.cloud.google.com/feeds/netapp-cloud-volumes-release-notes.xml"
+    },
+    {
+      "id": "netappvolumes",
+      "name": "NetApp Volumes",
+      "url": "https://docs.cloud.google.com/feeds/netappvolumes-release-notes.xml"
+    },
+    {
+      "id": "networkconnectivitycenter",
+      "name": "Network Connectivity Center",
+      "url": "https://docs.cloud.google.com/feeds/networkconnectivitycenter-release-notes.xml"
+    },
+    {
+      "id": "networkintelligence",
+      "name": "Network Intelligence Center",
+      "url": "https://docs.cloud.google.com/feeds/networkintelligence-release-notes.xml"
+    },
+    {
+      "id": "network-security-integration",
+      "name": "Network Security Integration",
+      "url": "https://docs.cloud.google.com/feeds/network-security-integration-release-notes.xml"
+    },
+    {
+      "id": "networkservicetiers",
+      "name": "Network Service Tiers",
+      "url": "https://docs.cloud.google.com/feeds/networkservicetiers-release-notes.xml"
+    },
+    {
+      "id": "oracledatabase",
+      "name": "Oracle Database@Google Cloud",
+      "url": "https://docs.cloud.google.com/feeds/oracledatabase-release-notes.xml"
+    },
+    {
+      "id": "oraclecompute",
+      "name": "Oracle on Google Cloud Compute",
+      "url": "https://docs.cloud.google.com/feeds/oraclecompute-release-notes.xml"
+    },
+    {
+      "id": "organization-policy",
+      "name": "Organization Policy",
+      "url": "https://docs.cloud.google.com/feeds/organization-policy-release-notes.xml"
+    },
+    {
+      "id": "parallelstore",
+      "name": "Parallelstore",
+      "url": "https://docs.cloud.google.com/feeds/parallelstore-release-notes.xml"
+    },
+    {
+      "id": "policy-controller",
+      "name": "Policy Controller",
+      "url": "https://docs.cloud.google.com/feeds/policy-controller-release-notes.xml"
+    },
+    {
+      "id": "policyintelligence",
+      "name": "Policy Intelligence",
+      "url": "https://docs.cloud.google.com/feeds/policyintelligence-release-notes.xml"
+    },
+    {
+      "id": "pubsub",
+      "name": "Pub/Sub",
+      "url": "https://docs.cloud.google.com/feeds/pubsub-release-notes.xml"
+    },
+    {
+      "id": "pubsublite",
+      "name": "Pub/Sub Lite",
+      "url": "https://docs.cloud.google.com/feeds/pubsublite-release-notes.xml"
+    },
+    {
+      "id": "recaptcha-enterprise",
+      "name": "reCAPTCHA",
+      "url": "https://docs.cloud.google.com/feeds/recaptcha-enterprise-release-notes.xml"
+    },
+    {
+      "id": "automl-recommendation",
+      "name": "Recommendations",
+      "url": "https://docs.cloud.google.com/feeds/automl-recommendation-release-notes.xml"
+    },
+    {
+      "id": "cloudrecommender",
+      "name": "Recommender",
+      "url": "https://docs.cloud.google.com/feeds/cloudrecommender-release-notes.xml"
+    },
+    {
+      "id": "cloudrecommender-v1beta1",
+      "name": "Recommender v1beta1",
+      "url": "https://docs.cloud.google.com/feeds/cloudrecommender-v1beta1-release-notes.xml"
+    },
+    {
+      "id": "cloudresourcemanager",
+      "name": "Resource Manager",
+      "url": "https://docs.cloud.google.com/feeds/cloudresourcemanager-release-notes.xml"
+    },
+    {
+      "id": "retail",
+      "name": "Retail API",
+      "url": "https://docs.cloud.google.com/feeds/retail-release-notes.xml"
+    },
+    {
+      "id": "risk-manager",
+      "name": "Risk Manager",
+      "url": "https://docs.cloud.google.com/feeds/risk-manager-release-notes.xml"
+    },
+    {
+      "id": "saasservicemgmt",
+      "name": "SaaS Runtime",
+      "url": "https://docs.cloud.google.com/feeds/saasservicemgmt-release-notes.xml"
+    },
+    {
+      "id": "sapongooglecloud",
+      "name": "SAP on Google Cloud",
+      "url": "https://docs.cloud.google.com/feeds/sapongooglecloud-release-notes.xml"
+    },
+    {
+      "id": "secretmanager",
+      "name": "Secret Manager",
+      "url": "https://docs.cloud.google.com/feeds/secretmanager-release-notes.xml"
+    },
+    {
+      "id": "secure-source-manager",
+      "name": "Secure Source Manager",
+      "url": "https://docs.cloud.google.com/feeds/secure-source-manager-release-notes.xml"
+    },
+    {
+      "id": "secure-web-proxy",
+      "name": "Secure Web Proxy",
+      "url": "https://docs.cloud.google.com/feeds/secure-web-proxy-release-notes.xml"
+    },
+    {
+      "id": "scc",
+      "name": "Security Command Center",
+      "url": "https://docs.cloud.google.com/feeds/scc-release-notes.xml"
+    },
+    {
+      "id": "dlp",
+      "name": "Sensitive Data Protection",
+      "url": "https://docs.cloud.google.com/feeds/dlp-release-notes.xml"
+    },
+    {
+      "id": "privatecatalog",
+      "name": "Service Catalog",
+      "url": "https://docs.cloud.google.com/feeds/privatecatalog-release-notes.xml"
+    },
+    {
+      "id": "privatecatalog-v1.1",
+      "name": "Service Catalog v1.1",
+      "url": "https://docs.cloud.google.com/feeds/privatecatalog-v1.1-release-notes.xml"
+    },
+    {
+      "id": "servicedirectory",
+      "name": "Service Directory",
+      "url": "https://docs.cloud.google.com/feeds/servicedirectory-release-notes.xml"
+    },
+    {
+      "id": "service-extensions",
+      "name": "Service Extensions",
+      "url": "https://docs.cloud.google.com/feeds/service-extensions-release-notes.xml"
+    },
+    {
+      "id": "service-health",
+      "name": "Service Health",
+      "url": "https://docs.cloud.google.com/feeds/service-health-release-notes.xml"
+    },
+    {
+      "id": "serviceinfrastructure",
+      "name": "Service Infrastructure",
+      "url": "https://docs.cloud.google.com/feeds/serviceinfrastructure-release-notes.xml"
+    },
+    {
+      "id": "service-usage",
+      "name": "Service Usage",
+      "url": "https://docs.cloud.google.com/feeds/service-usage-release-notes.xml"
+    },
+    {
+      "id": "sovereign-controls-by-partners",
+      "name": "Sovereign Controls by Partners",
+      "url": "https://docs.cloud.google.com/feeds/sovereign-controls-by-partners-release-notes.xml"
+    },
+    {
+      "id": "sovereign-controls-by-partners-for-partners",
+      "name": "Sovereign Controls by Partners for Partners",
+      "url": "https://docs.cloud.google.com/feeds/sovereign-controls-by-partners-for-partners-release-notes.xml"
+    },
+    {
+      "id": "spanner",
+      "name": "Spanner",
+      "url": "https://docs.cloud.google.com/feeds/spanner-release-notes.xml"
+    },
+    {
+      "id": "speech",
+      "name": "Speech-to-Text",
+      "url": "https://docs.cloud.google.com/feeds/speech-release-notes.xml"
+    },
+    {
+      "id": "storagetransfer",
+      "name": "Storage Transfer Service",
+      "url": "https://docs.cloud.google.com/feeds/storagetransfer-release-notes.xml"
+    },
+    {
+      "id": "stratozone",
+      "name": "StratoZone",
+      "url": "https://docs.cloud.google.com/feeds/stratozone-release-notes.xml"
+    },
+    {
+      "id": "telecom-subscriber-insights",
+      "name": "Telecom Subscriber Insights",
+      "url": "https://docs.cloud.google.com/feeds/telecom-subscriber-insights-release-notes.xml"
+    },
+    {
+      "id": "tensorflowenterprise",
+      "name": "Tensorflow Enterprise",
+      "url": "https://docs.cloud.google.com/feeds/tensorflowenterprise-release-notes.xml"
+    },
+    {
+      "id": "terraform",
+      "name": "Terraform on Google Cloud",
+      "url": "https://docs.cloud.google.com/feeds/terraform-release-notes.xml"
+    },
+    {
+      "id": "terraform-version_unspecified",
+      "name": "Terraform on Google Cloud VERSION_UNSPECIFIED",
+      "url": "https://docs.cloud.google.com/feeds/terraform-version_unspecified-release-notes.xml"
+    },
+    {
+      "id": "tts",
+      "name": "Text-to-Speech",
+      "url": "https://docs.cloud.google.com/feeds/tts-release-notes.xml"
+    },
+    {
+      "id": "cloudtoolspowershell",
+      "name": "Tools for PowerShell",
+      "url": "https://docs.cloud.google.com/feeds/cloudtoolspowershell-release-notes.xml"
+    },
+    {
+      "id": "cloudtoolsvisualstudio",
+      "name": "Tools for Visual Studio",
+      "url": "https://docs.cloud.google.com/feeds/cloudtoolsvisualstudio-release-notes.xml"
+    },
+    {
+      "id": "trafficdirector",
+      "name": "Traffic Director",
+      "url": "https://docs.cloud.google.com/feeds/trafficdirector-release-notes.xml"
+    },
+    {
+      "id": "transcode",
+      "name": "Transcoder API",
+      "url": "https://docs.cloud.google.com/feeds/transcode-release-notes.xml"
+    },
+    {
+      "id": "transferappliance",
+      "name": "Transfer Appliance",
+      "url": "https://docs.cloud.google.com/feeds/transferappliance-release-notes.xml"
+    },
+    {
+      "id": "translation-hub",
+      "name": "Translation Hub",
+      "url": "https://docs.cloud.google.com/feeds/translation-hub-release-notes.xml"
+    },
+    {
+      "id": "unifiedmaintenance",
+      "name": "Unified Maintenance",
+      "url": "https://docs.cloud.google.com/feeds/unifiedmaintenance-release-notes.xml"
+    },
+    {
+      "id": "vertex-ai-product-group",
+      "name": "Vertex AI Product Group",
+      "url": "https://docs.cloud.google.com/feeds/vertex-ai-product-group-release-notes.xml"
+    },
+    {
+      "id": "vertex-ai",
+      "name": "Vertex AI",
+      "url": "https://docs.cloud.google.com/feeds/vertex-ai-release-notes.xml"
+    },
+    {
+      "id": "vertex-ai-agent-builder",
+      "name": "Vertex AI Agent Builder",
+      "url": "https://docs.cloud.google.com/feeds/vertex-ai-agent-builder-release-notes.xml"
+    },
+    {
+      "id": "vertex-ai-model-garden",
+      "name": "Vertex AI Model Garden",
+      "url": "https://docs.cloud.google.com/feeds/vertex-ai-model-garden-release-notes.xml"
+    },
+    {
+      "id": "gen-app-builder",
+      "name": "Vertex AI Search",
+      "url": "https://docs.cloud.google.com/feeds/gen-app-builder-release-notes.xml"
+    },
+    {
+      "id": "vertex-ai-vision",
+      "name": "Vertex AI Vision",
+      "url": "https://docs.cloud.google.com/feeds/vertex-ai-vision-release-notes.xml"
+    },
+    {
+      "id": "video",
+      "name": "Video Intelligence API",
+      "url": "https://docs.cloud.google.com/feeds/video-release-notes.xml"
+    },
+    {
+      "id": "video-stitcher",
+      "name": "Video Stitcher API",
+      "url": "https://docs.cloud.google.com/feeds/video-stitcher-release-notes.xml"
+    },
+    {
+      "id": "vpc",
+      "name": "Virtual Private Cloud",
+      "url": "https://docs.cloud.google.com/feeds/vpc-release-notes.xml"
+    },
+    {
+      "id": "vmruntime",
+      "name": "VM Runtime on Google Distributed Cloud",
+      "url": "https://docs.cloud.google.com/feeds/vmruntime-release-notes.xml"
+    },
+    {
+      "id": "vpc-sc",
+      "name": "VPC Service Controls",
+      "url": "https://docs.cloud.google.com/feeds/vpc-sc-release-notes.xml"
+    },
+    {
+      "id": "webrisk",
+      "name": "Web Risk",
+      "url": "https://docs.cloud.google.com/feeds/webrisk-release-notes.xml"
+    },
+    {
+      "id": "workflows",
+      "name": "Workflows",
+      "url": "https://docs.cloud.google.com/feeds/workflows-release-notes.xml"
+    },
+    {
+      "id": "workflows-v1",
+      "name": "Workflows v1",
+      "url": "https://docs.cloud.google.com/feeds/workflows-v1-release-notes.xml"
+    }
+  ]
+}
