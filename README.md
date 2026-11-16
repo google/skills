@@ -114,6 +114,7 @@ This command gives you an option to also remove obsolete skills.
   - [**GKE Productionize Skill**](./skills/cloud/gke-productionize)
   - [**GKE Reliability**](./skills/cloud/gke-reliability)
   - [**GKE Service Networking Skill**](./skills/cloud/gke-service-networking)
+  - [**GKE StatefulSet without readiness probes**](./skills/cloud/gke-statefulset-without-probes)
   - [**GKE Storage**](./skills/cloud/gke-storage)
   - [**GKE Storage Troubleshooting Skill**](./skills/cloud/gke-storage-troubleshooting)
   - [**GKE TPU Dynamic Slices Monitoring & Management**](./skills/cloud/gke-ai-troubleshooting-tpu-dynamic-slices-monitoring)
