@@ -6,7 +6,7 @@ compatibility: "Google Ads MCP Server (tools: search, list_accessible_customers,
 metadata:
   category: GoogleAds
   author: google-ads-api-team
-  version: "1.0.2"
+  version: "1.0.3"
 ---
 
 # Google Ads API Account Performance Diagnostics Skill
@@ -16,8 +16,16 @@ This skill provides instructions on how to use the Google Ads MCP server tools t
 ## Workflows
 
 ### Pre-Flight Tool Verification
-Before starting any diagnostic task, verify whether the Google Ads MCP Server tools (`search`, `list_accessible_customers`, `get_resource_metadata` — these may be exposed with a server prefix, e.g. `customers_list_accessible_customers`) are available in the runtime environment:
-- **If MCP tools are available**: Proceed with live diagnostics — first [identify active client accounts](#identifying-active-client-accounts), then run GAQL via the `search` tool (arguments `customer_id` and `query`).
+Before starting any diagnostic task, verify whether the Google Ads MCP Server
+tools (`search`, `list_accessible_customers`, `get_resource_metadata` — exposed
+with default server prefixes as `search_search`,
+`customers_list_accessible_customers`, and `metadata_get_resource_metadata`) are
+available in the runtime environment:
+- **If MCP tools are available**: Proceed with live diagnostics — first
+  [identify active client accounts](#identifying-active-client-accounts), then
+  run GAQL via the `search` tool (structured parameters `customer_id`,
+  `resource`, and `fields`, plus optional `conditions`, `orderings`, `limit`,
+  and `login_customer_id`).
 - **If MCP tools are missing**: Follow [Fallback When MCP Tools Are Unavailable](#fallback-when-mcp-tools-are-unavailable).
 
 ### Identifying Active Client Accounts
@@ -36,9 +44,14 @@ WHERE customer_client.status = 'ENABLED' AND customer_client.manager = FALSE
 Only run subsequent diagnostic queries against the enabled client customer IDs retrieved from this list. Do not query deactivated or manager accounts, as doing so will cause API errors.
 
 ### Fallback When MCP Tools Are Unavailable
-When Google Ads MCP tools (`search`, `list_accessible_customers`, `get_resource_metadata` — these may be exposed with a server prefix, e.g. `customers_list_accessible_customers`) are not registered in the runtime environment:
+When Google Ads MCP tools (`search`, `list_accessible_customers`,
+`get_resource_metadata` — exposed with default server prefixes as
+`search_search`, `customers_list_accessible_customers`, and
+`metadata_get_resource_metadata`) are not registered in the runtime environment:
 1. **Inform the User**: State that live account performance diagnostics require the Google Ads MCP Server.
-2. **Reference Setup Guide**: Direct the user to the setup instructions in the [google-ads-api-mcp-setup](../google-ads-api-mcp-setup/SKILL.md) skill to install and configure the Google Ads MCP Server for their assistant environment.
+2. **Reference Setup Guide**: Direct the user to the setup instructions in the
+   `google-ads-api-mcp-setup` skill to install and configure the Google Ads MCP
+   Server for their assistant environment.
 3. **Provide GAQL Templates, Gotchas, and Remediation Guidance**: Formulate and output the complete diagnostic plan for manual execution in the Google Ads Query Builder or via API integration:
    - Provide all multi-step GAQL queries for the workflow, including current-vs-prior date window comparisons (e.g. traffic, impression share, conversion breakdowns, or change events).
    - Explain all metric conversion and constraint gotchas (`metrics.cost_micros / 1,000,000` for currency, impression share reported as decimals or `"< 0.10"`, `change_event` 30-day window and `LIMIT 10000` without `metrics.*`, and `successful_event_count / total_event_count` plus `status` for upload health).
@@ -50,12 +63,14 @@ When Google Ads MCP tools (`search`, `list_accessible_customers`, `get_resource_
 When conversions or conversion value suddenly decline, use the following steps to diagnose the issue.
 
 **Steps:**
-1.  **Discover Fields**: Use `get_resource_metadata` with resource `campaign` or `ad_group` to ensure you have the correct field names.
+1.  **Discover Fields**: Use `get_resource_metadata` with `resource_name` set to `campaign` or `ad_group` to ensure you have the correct field names.
 2.  **Query Performance**: Use `search` to retrieve performance data.
     *   **Resource**: `campaign` or `ad_group`
-    *   **Fields**: Include `campaign.name`, `metrics.conversions`, `metrics.conversions_value`, `metrics.cost_micros`.
-    *   **Segments**: To isolate the loss, include segments like `segments.date`, `segments.device`, `segments.conversion_action`.
-    *   **Conditions**: Compare the period of decline with a previous period (e.g., `segments.date >= '{start_date}'`).
+    *   **Fields**: Include `campaign.name`, `metrics.conversions`,
+        `metrics.conversions_value`, `metrics.cost_micros`, plus segment fields
+        (`segments.date`, `segments.device`, `segments.conversion_action`)
+        inside `fields` rather than as a separate `segments` argument.
+    *   **Conditions**: Compare the period of decline with a previous period using a finite date range (e.g., `segments.date >= '{start_date}' AND segments.date <= '{end_date}'`).
     *   *Gotcha*: `metrics.cost_micros` must be divided by 1,000,000 to get standard currency amounts.
     *   *Gotcha (conversion action segmentation)*: In GAQL, `metrics.cost_micros` cannot be selected when segmenting by `segments.conversion_action`. Query conversion action breakdowns separately without `metrics.cost_micros`.
 

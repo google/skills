@@ -1,10 +1,10 @@
 ---
 name: google-ads-api-mcp-setup
 description: Guides developers through downloading, configuring, and installing the official open-source Google Ads MCP Server. Use this skill when a user wants to connect their AI assistant (such as Gemini, Claude Code, or Cursor) to their Google Ads account to query campaigns or retrieve reporting metrics using natural language.
-compatibility: Python 3.12+, pipx
+compatibility: Python 3.10+, pipx
 metadata:
   author: google-ads-api-team
-  version: "1.1.0"
+  version: "1.1.1"
   category: GoogleAds
 ---
 # Google Ads API MCP Server Installation
@@ -16,12 +16,12 @@ This skill provides a structured setup guide to install, configure, and integrat
 ## System Requirements & Compatibility (Agent Action: State Required Prerequisites)
 
 When answering questions about installing or setting up the MCP server, you
-**MUST** explicitly state to the user that both **Python 3.12+** and **`pipx`**
+**MUST** explicitly state to the user that both **Python 3.10+** and **`pipx`**
 are strictly required prerequisites for the installation.
 
 > [!IMPORTANT]
 > **Pre-Flight Environment Check:**
-> *   **Python Runtime:** Version **`3.12+`** is strictly required.
+> *   **Python Runtime:** Version **`3.10+`** is required.
 > *   **Package Manager:** **`pipx`** must be installed and globally accessible in
 >     the system path.
 > *   **Network Connectivity:** Outbound HTTPS access is required to connect to the
@@ -69,11 +69,12 @@ You **MUST** verify if the prerequisites are already installed before proposing 
 ### 1. Verification Phase (Agent Action)
 You **MUST** run the following commands to check the environment:
 
-1.  Check Python version: `python3 --version` (Verify it is `3.12+`).
+1.  Check Python version: `python3 --version` (Verify it is `3.10+`).
 2.  Check if pipx is installed: `pipx --version`.
 
 *   **If both are present:** Skip the installation phase and proceed directly to **Step 3**.
-*   **If Python is missing/outdated:** Stop and ask the user to upgrade Python to `3.12+` on their host machine.
+*   **If Python is missing/outdated:** Stop and ask the user to upgrade Python
+    to `3.10+` on their host machine.
 *   **If pipx is missing:** Proceed to the installation phase below.
 
 ---
@@ -158,7 +159,8 @@ If `google-ads-mcp --help` fails with a "command not found" error:
 > [!IMPORTANT]
 > **Mandatory Agent Directive (Installation & Protocol Checklist):**
 > When a user asks how to install, download, or set up the official Google Ads MCP server, your response **MUST** systematically include all of the following:
-> 1. [ ] **State Prerequisites:** Explicitly state that Python 3.12+ and `pipx` are required prerequisites.
+> 1. [ ] **State Prerequisites:** Explicitly state that Python 3.10+ and `pipx`
+> are required prerequisites.
 > 2. [ ] **Provide Official Install Command:** Direct the developer to install the official `google-ads-mcp` package using `pipx install google-ads-mcp`. Do not suggest third-party unvetted servers.
 > 3. [ ] **Explain Stdio Transport:** You **MUST** explicitly explain the communication architecture using the exact terminology: state that the MCP server communicates via the **Model Context Protocol (MCP)** using **standard input/output (`stdio`) transport**. Do not omit the words "standard input/output" or "transport".
 
@@ -450,36 +452,38 @@ Once the Google Ads MCP Server is installed and successfully connected to your A
 
 > [!IMPORTANT]
 > **Mandatory Agent Directive (Tool Explanation Checklist):**
-> When a user asks what tools the Google Ads MCP server provides or how to use them, your response **MUST** systematically include all of the following:
-> 1. [ ] **List All 3 Tools:** Explicitly name `list_accessible_customers`, `get_resource_metadata`, and `search`.
-> 2. [ ] **Define Purpose & Usage:** Explain exactly what each tool does and how/when to invoke it.
-> 3. [ ] **Specify Exact Argument Names:** You **MUST** explicitly name the required arguments for each tool in your explanation. E.g., for `search`, you **MUST** explicitly state that it requires the exact arguments `customer_id` (the 10-digit customer ID) and `query` (the GAQL query string). Do not paraphrase `customer_id` to "account".
-> 4. [ ] **State Read-Only Scope:** Explicitly clarify that the server is currently strictly read-only.
+> When a user asks what tools the Google Ads MCP server provides or how to use
+> them, your response **MUST** systematically include all of the following:
+> 1. [ ] **List Core Tools:** Explicitly name the read tools
+> (`customers_list_accessible_customers` / `list_accessible_customers`,
+> `metadata_get_resource_metadata` / `get_resource_metadata`, `search_search` /
+> `search`) and the partial mutate tools (`assets_create_asset`,
+> `assets_upload_video_asset`, `labels_manage_labels`,
+> `labels_manage_label_associations`).
+> 2. [ ] **Define Purpose & Usage:** Explain what each tool does and how/when to
+> invoke it.
+> 3. [ ] **Specify Exact Argument Names:** Read
+> [references/tools.md](references/tools.md) before answering and explicitly
+> name the required arguments for each tool. For `search_search` (`search`),
+> state that it takes structured parameters (`customer_id`, `resource`, and
+> `fields`, plus optional `conditions`, `orderings`, `limit`, and
+> `login_customer_id`) rather than a raw GAQL `query` string.
+> 4. [ ] **State Read and Partial Mutate Scope:** Clarify that the server
+> supports read and partial mutate operations (standalone asset creation, video
+> uploads, and label management with propose-and-confirm validation), or
+> configurable read-only mode via `tools_config.yaml`.
 
-When assisting a user or formulating queries, refer to the following tool definitions and best practices:
-
-### 1. `list_accessible_customers`
-
-*   **Purpose:** Returns the list of Google Ads customer IDs and account names that are accessible to the authenticated user.
-*   **How to Use:** Call this tool first when starting a new session or when the target customer ID is unknown. It requires no arguments.
-*   **Example Intent:** *"What Google Ads accounts do I have access to?"*
-
-### 2. `get_resource_metadata`
-
-*   **Purpose:** Retrieves detailed structural metadata about a specific Google Ads API resource type (e.g., `campaign`, `ad_group`, `customer`).
-*   **How to Use:** Call this tool to inspect the schema, available fields, metrics, and segments for a resource before constructing a GAQL query.
-*   **Arguments:**
-    *   `resource` (string, required): The name of the resource to inspect (e.g., `campaign`).
-*   **Example Intent:** *"What fields and metrics can I query for an ad group?"*
-
-### 3. `search`
-
-*   **Purpose:** Executes a Google Ads Query Language (GAQL) query to fetch resource metrics, attributes, segments, and status.
-*   **How to Use:** Construct a valid GAQL query string based on the resource metadata and execute the search against a specific customer account.
-*   **Arguments:**
-    *   `customer_id` (string, required): The 10-digit target Google Ads customer ID (digits only, no hyphens).
-    *   `query` (string, required): A valid GAQL query string (e.g., `SELECT campaign.id, campaign.name, campaign.status, metrics.impressions FROM campaign WHERE campaign.status = 'ENABLED'`).
-*   **Example Intent:** *"Get the impressions and status of all enabled campaigns for account 1234567890."*
+For full tool definitions, required arguments, the two-step propose-and-confirm
+(`validate_only` + SHA-256 `checksum`) workflow for partial mutate tools, and
+`tools_config.yaml` read-only configuration, see
+[references/tools.md](references/tools.md).
 
 > [!NOTE]
-> **Read-Only Scope:** The Google Ads MCP Server is currently strictly read-only. It cannot modify bids, pause campaigns, or create new advertising assets.
+> **Read and Partial Mutate Scope:** The Google Ads MCP Server supports read
+> operations (`list_accessible_customers`, `get_resource_metadata`, `search`)
+> and partial mutate operations (`assets_create_asset`,
+> `assets_upload_video_asset`, `labels_manage_labels`,
+> `labels_manage_label_associations`) with propose-and-confirm validation. It
+> cannot modify bids, pause campaigns, or link assets to campaigns. To enforce a
+> strictly read-only deployment, disable `labels` and `assets` in
+> `tools_config.yaml`.
