@@ -1,7 +1,7 @@
 ---
 name: cloud-build-basics
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: DevOps
 description: >-
   Teaches the fundamentals of Cloud Build on Google Cloud. Covers core concepts,

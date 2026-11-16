@@ -96,7 +96,7 @@ gcloud builds triggers run <TRIGGER_ID> --region=<REGION> --sha=<COMMIT_SHA>
 flag to any run command to override variables.
 
 ```bash
-gcloud builds triggers run <TRIGGER_ID> --region=<REGION> --branch=<BRANCH_NAME> --substitutions="\_VARIABLE_NAME=<VALUE>"
+gcloud builds triggers run <TRIGGER_ID> --region=<REGION> --branch=<BRANCH_NAME> --substitutions="_VARIABLE_NAME=<VALUE>"
 ```
 
 **Variation E: Run a repoless or inline trigger** For Manual, Pub/Sub, or

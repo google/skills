@@ -116,7 +116,7 @@ gcloud builds triggers create github \
     --branch-pattern="<BRANCH_REGEX>" \
     --build-config="<CONFIG_FILE_PATH>" \
     --service-account="projects/<PROJECT_ID>/serviceAccounts/<SERVICE_ACCOUNT_EMAIL>" \
-    --substitutions="\_KEY=VALUE" \
+    --substitutions="_KEY=VALUE" \
     --ignored-files="docs/**,README.md"
 ```
 
