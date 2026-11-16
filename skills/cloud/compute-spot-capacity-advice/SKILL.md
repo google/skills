@@ -1,7 +1,7 @@
 ---
 name: compute-spot-capacity-advice
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   category: Compute
 description: >-
   Evaluates Google Compute Engine (GCE) Spot VM capacity obtainability, placement
@@ -65,7 +65,7 @@ gcloud beta compute advice capacity \
 
 ### Flag Reference & CLI Constraints
 
-For complete flag definitions, refer to the [`gcloud beta compute advice capacity` reference documentation](https://docs.cloud.google.com/sdk/gcloud/reference/beta/compute/advice/capacity.md.txt). When constructing commands, apply these non-obvious CLI constraints:
+For complete flag definitions, refer to the [`gcloud beta compute advice capacity` reference documentation](https://docs.cloud.google.com/sdk/gcloud/reference/beta/compute/advice/capacity). When constructing commands, apply these non-obvious CLI constraints:
 
 * **`--region` vs. `--zones`**: `--region` is automatically inferred when `--zones` is specified.
 * **`--size` Bounds**: Accepts `1` to `1000` VMs per query.
