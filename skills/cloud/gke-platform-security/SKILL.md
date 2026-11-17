@@ -12,7 +12,7 @@ description: >-
   for Workload Identity (use gke-workload-identity) or workload-level security
   (SecretProviderClass, PSS, NetPol, gVisor pod runtimeClassName; use gke-workload-security).
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: Security
 ---
 
@@ -64,6 +64,7 @@ gcloud container clusters describe <CLUSTER_NAME> --region <REGION> \
 # Enable if not already (Day-1 change)
 gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
   --enable-secret-manager \
+  --enable-secret-manager-rotation \
   --secret-manager-rotation-interval=120s \
   --quiet
 ```
@@ -122,9 +123,11 @@ gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
   --enable-shielded-nodes \
   --quiet
 
-# Enable GKE Sandbox (gVisor) runtime on an existing cluster
-gcloud container clusters update <CLUSTER_NAME> --region <REGION> \
-  --enable-gke-sandbox \
+# Enable GKE Sandbox (gVisor) runtime on a Standard cluster node pool
+gcloud container node-pools create <NODE_POOL_NAME> \
+  --cluster=<CLUSTER_NAME> \
+  --region=<REGION> \
+  --sandbox=type=gvisor \
   --quiet
 ```
 
@@ -198,6 +201,7 @@ gcloud projects add-iam-policy-binding <PROJECT_ID> \
   --member "serviceAccount:<GSA_NAME>@<PROJECT_ID>.iam.gserviceaccount.com" \
   --role "roles/pubsub.subscriber" \
   --quiet
+```
 
 ## Resources
 
@@ -207,4 +211,3 @@ gcloud projects add-iam-policy-binding <PROJECT_ID> \
 - [Binary Authorization on GKE](https://cloud.google.com/binary-authorization/docs/setting-up)
 - [Shielded GKE Nodes](https://cloud.google.com/kubernetes-engine/docs/how-to/shielded-gke-nodes)
 - [GKE Sandbox (gVisor)](https://cloud.google.com/kubernetes-engine/docs/how-to/sandbox-pods)
-```

@@ -100,7 +100,7 @@ gcloud container clusters create-auto <CLUSTER_NAME> \
   --region <REGION> --project <PROJECT_ID> \
   --enable-private-nodes --enable-master-authorized-networks \
   --enable-dns-access --release-channel regular \
-  --enable-secret-manager --scoped-rbs-bindings \
+  --enable-secret-manager \
   --quiet
 
 # Get credentials (CLI-only)
@@ -279,7 +279,7 @@ Use `locations/-` to match all regions/zones when listing.
 
 Error / Symptom                       | Likely Cause                                 | Remediation
 ------------------------------------- | -------------------------------------------- | -----------
-`PERMISSION_DENIED` on cluster create | Missing `container.clusters.create` IAM role | Grant `roles/container.admin` or `roles/container.clusterAdmin`
+`PERMISSION_DENIED` on cluster create | Missing `container.clusters.create` IAM permission | Grant `roles/container.admin` or `roles/container.clusterAdmin`
 Quota exceeded                        | Regional vCPU, GPU, or IP address limits     | Request quota increase or select a different region
 IP exhaustion / CIDR conflict         | Pod subnet too small or overlapping ranges   | Re-plan IP ranges; may require cluster recreation (Day-0)
 Workload Identity not working         | Missing OIDC issuer or federated credential  | Verify `workloadIdentityConfig.workloadPool`; configure federated identity binding

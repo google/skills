@@ -8,13 +8,16 @@ description: >-
   GKE RAG with Cloud SQL/AlloyDB (use google-cloud-solution-rag-enterprise-search-gke-sqldb),
   or batch/HPC (use gke-batch-hpc).
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: Containers
 ---
 
 # GKE AI/ML Inference
 
-> **Routing Note:** For migrating existing AI workloads to GKE, open `google-cloud-solution-guided-gke-ai-migration/SKILL.md`. For GKE RAG with Cloud SQL or AlloyDB (`pgvector`), open `google-cloud-solution-rag-enterprise-search-gke-sqldb/SKILL.md`.
+> **Routing Note:** For migrating existing AI workloads to GKE, refer to the
+> `google-cloud-solution-guided-gke-ai-migration` skill. For GKE RAG with Cloud
+> SQL or AlloyDB (`pgvector`), refer to the
+> `google-cloud-solution-rag-enterprise-search-gke-sqldb` skill.
 
 This reference covers deploying AI/ML inference workloads on GKE using Google's
 Inference Quickstart (GIQ) and best practices for LLM serving.

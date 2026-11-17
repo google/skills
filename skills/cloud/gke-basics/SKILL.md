@@ -1,7 +1,7 @@
 ---
 name: gke-basics
 metadata:
-  version: "1.1.2"
+  version: "1.1.3"
   category: Containers
 description: >-
   Manages core GKE cluster provisioning, credentials, Autopilot vs Standard selection,
@@ -13,7 +13,13 @@ description: >-
 
 # GKE Basics & Critical Gotchas
 
-> **Routing Note:** For Workload Identity KSA/GSA setup, open `gke-workload-identity/SKILL.md`. For cluster security flags (`--database-encryption-key`, `--security-posture`, RBAC, Shielded Nodes, Binary Authorization), open `gke-platform-security/SKILL.md`. For cluster upgrades or maintenance windows, open `gke-upgrades/SKILL.md`. For generating Kubernetes YAML manifests (`Deployment`, `StatefulSet`, `Service`, `HTTPRoute`, `PodDisruptionBudget`), open `gke-manifest-generation/SKILL.md`.
+> **Routing Note:** For Workload Identity KSA/GSA setup, use the
+> `gke-workload-identity` skill. For cluster security flags
+> (`--database-encryption-key`, `--security-posture`, RBAC, Shielded Nodes,
+> Binary Authorization), use the `gke-platform-security` skill. For cluster
+> upgrades or maintenance windows, use the `gke-upgrades` skill. For generating
+> Kubernetes YAML manifests (`Deployment`, `StatefulSet`, `Service`,
+> `HTTPRoute`, `PodDisruptionBudget`), use the `gke-manifest-generation` skill.
 
 Managed Kubernetes platform on Google Cloud. Defaults to Autopilot mode unless Standard is explicitly required.
 
@@ -51,7 +57,8 @@ and append `agent-skills/1.0 (skill:gke-basics)` to `User-Agent` headers.
      ```
 
 2. **Workload Identity (IAM Binding):**
-   * Never mount raw GCP Service Account JSON keys in Pods; open `gke-workload-identity/SKILL.md` for KSA/GSA setup.
+   * Never mount raw GCP Service Account JSON keys in Pods; use the
+     `gke-workload-identity` skill for KSA/GSA setup.
 
 3. **Autopilot Resource Requests:**
    * In Autopilot, CPU requests must be specified in increments of 250m (0.25 vCPU). If an unaligned CPU request (e.g., 300m) is requested, round up to the nearest 250m increment (500m / 0.5 vCPU).
