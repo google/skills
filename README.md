@@ -192,6 +192,7 @@ This command gives you an option to also remove obsolete skills.
   - [**GKE TPU Metrics Monitoring Guide**](./skills/cloud/gke-ai-troubleshooting-tpu-metrics-monitoring)
   - [**Handle Disruption on GPUs and TPUs Troubleshooting**](./skills/cloud/gke-ai-troubleshooting-handle-disruption-gpu-tpu)
   - [**Metric Selection (Service Query & Local Keyword Filtering)**](./skills/cloud/cloud-monitoring-metric-selection)
+  - [**Personalized Service Health incident correlation**](./skills/cloud/servicehealth-incident-correlation)
   - [**SLO Alert Configuration Setup Wizard**](./skills/cloud/google-cloud-slo-alert-configuration)
   - [**TPU Connection Failure and VBAR OOM Troubleshooting**](./skills/cloud/gke-ai-troubleshooting-tpu-vbar-oom)
   - [**Workload Manager Basics**](./skills/cloud/workload-manager-basics)
