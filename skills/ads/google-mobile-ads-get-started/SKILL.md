@@ -6,7 +6,7 @@ description: >-
   integrate, set up, or configure the SDK for AdMob or Ad Manager, GMA Next-Gen
   SDK or mobile ads framework in an Android, iOS, or Unity application.
 metadata:
-  version: "1.2.0"
+  version: "1.2.1"
   category: GoogleAds
 ---
 # Google Mobile Ads SDK - Install

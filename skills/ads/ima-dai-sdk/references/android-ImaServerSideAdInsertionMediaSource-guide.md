@@ -46,6 +46,7 @@ repositories {
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     implementation("androidx.media3:media3-ui")
     implementation("androidx.media3:media3-exoplayer")
     implementation("androidx.media3:media3-exoplayer-hls")
@@ -63,6 +64,7 @@ Ensure to declare the permissions required by the IMA DAI SDK in
 `AndroidManifest.xml`:
 
 ```xml
+<uses-permission android:name="android.permission.INTERNET"/>
 <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 ```
 

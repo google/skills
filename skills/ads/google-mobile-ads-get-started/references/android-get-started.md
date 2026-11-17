@@ -50,7 +50,7 @@ fun interface OnAdapterInitializationCompleteListener {
         curl -sS https://dl.google.com/dl/android/maven2/com/google/android/libraries/ads/mobile/sdk/ads-mobile-sdk/maven-metadata.xml | sed -n 's/.*<latest>\(.*\)<\/latest>.*/\1/p'
         ```
 
-    -   [ ] Configure `minSdk` (24+) and `compileSdk` (34+).
+    -   [ ] Configure `minSdk` (24+) and `compileSdk` (35+).
     -   [ ] Exclude `play-services-ads` and `play-services-ads-lite` from all
         dependencies globally in the app-level build file to avoid duplicate
         symbol errors.

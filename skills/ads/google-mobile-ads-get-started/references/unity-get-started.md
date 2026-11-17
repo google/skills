@@ -15,7 +15,8 @@
         ```
 
     -   Modify `Packages/manifest.json` with the "OpenUPM" scoped registry,
-        using the latest version.
+        replacing the placeholder version (`"11.6.0"` below) with the latest
+        stable version returned above.
 
         ```json
         {
@@ -29,8 +30,7 @@
             }
           ],
           "dependencies": {
-            // Replace 11.2.0 with the latest stable version.
-            "com.google.ads.mobile": "11.2.0"
+            "com.google.ads.mobile": "11.6.0"
           }
         }
         ```
@@ -52,8 +52,9 @@
     interacting with Unity objects (`UnityEngine`) are explicitly scheduled on
     the main thread using `ExecuteInUpdate()`.
 
-    Do not set `MobileAds.RaiseAdEventsOnUnityMainThread` to `true`, it is
-    obsolete.
+    Do not set `MobileAds.RaiseAdEventsOnUnityMainThread` to `true`, because ad
+    events triggered while the app is paused or backgrounded can be delayed or
+    dropped.
 
     ```c#
     using GoogleMobileAds.Api;

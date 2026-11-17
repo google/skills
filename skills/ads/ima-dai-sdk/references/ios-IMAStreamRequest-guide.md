@@ -55,7 +55,7 @@ Create `IMAAdDisplayContainer` object using the `videoView` containing the
 player.
 
 ```swift
-adDisplayContainer = IMAAdDisplayContainer(adContainer: videoView)
+adDisplayContainer = IMAAdDisplayContainer(adContainer: videoView, viewController: self)
 ```
 
 Create `IMAAVPlayerVideoDisplay` with the `AVPlayer` instance so that the IMA
@@ -120,7 +120,8 @@ Implement `IMAAdsLoaderDelegate` to handle stream initialization or failure:
 ```swift
 func adsLoader(_ loader: IMAAdsLoader, adsLoadedWith adsLoadedData: IMAAdsLoadedData) {
   print("DAI session ID: \(adsLoadedData.streamManager!.streamId!)")
-  adsLoadedData.streamManager.initialize(with: nil)
+  streamManager = adsLoadedData.streamManager!
+  streamManager!.initialize(with: nil)
 }
 
 func adsLoader(_ loader: IMAAdsLoader, failedWith adErrorData: IMAAdLoadingErrorData) {

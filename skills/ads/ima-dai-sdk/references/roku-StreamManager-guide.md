@@ -91,7 +91,7 @@ End Function
 ```brightscript
 streamRequest = m.sdk.CreateLiveStreamRequest(
   <ASSET_KEY_PLACEHOLDER>,
-  "", // Replace the empty string with a Google DAI API key if the app use one
+  "", ' Replace the empty string with a Google DAI API key if the app uses one
   <NETWORK_CODE_PLACEHOLDER>
 )
 ```
@@ -108,7 +108,7 @@ Provide the following parameters:
 streamRequest = m.sdk.CreateVodStreamRequest(
   <CONTENT_SOURCE_ID_PLACEHOLDER>,
   <VIDEO_ID_PLACEHOLDER>,
-  "", // Replace the empty string with a Google DAI API key if the app use one
+  "", ' Replace the empty string with a Google DAI API key if the app uses one
   <NETWORK_CODE_PLACEHOLDER>
 )
 ```
@@ -147,6 +147,7 @@ Else
   Else
     m.streamManager.start()
   End If
+End If
 
 ```
 
