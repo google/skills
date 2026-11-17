@@ -13,16 +13,20 @@ become available to the agent environment:
 *   **Description**: Lists traces in the target GCP project that match a v1
     filter query expression.
 *   **Arguments**:
+    *   `projectId` (string, required): ID of the Cloud project where the trace
+        data is stored.
+    *   `startTime` (string, required): Query start time (RFC 3339 timestamp).
+    *   `endTime` (string, required): Query end time (RFC 3339 timestamp).
     *   `filter` (string, optional): The filter expression (e.g. `latency:2s`).
     *   `pageSize` (integer, optional): Maximum number of traces to return
         (default is 100).
-    *   `startTime` (string, optional): Query start time.
-    *   `endTime` (string, optional): Query end time.
 
 ### 2. `get_trace`
 
 *   **Description**: Retrieves all spans associated with a specific trace ID.
 *   **Arguments**:
+    *   `projectId` (string, required): ID of the Cloud project where the trace
+        data is stored.
     *   `traceId` (string, required): The 32-character hex trace ID.
 
 ## Guidance: Scripts vs. MCP Tools

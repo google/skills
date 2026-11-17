@@ -1,7 +1,7 @@
 ---
 name: cloud-trace-querying
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: CloudObservabilityAndMonitoring
 description: >-
   Query Cloud Trace spans, filter by latency thresholds or error status,
