@@ -109,6 +109,7 @@ This command gives you an option to also remove obsolete skills.
   - [**GKE Golden Base Image Discovery Expert**](./skills/cloud/gke-custom-golden-image-discovery)
   - [**GKE Golden Path Configuration**](./skills/cloud/gke-golden-path)
   - [**GKE JobSet Interruption Troubleshooting**](./skills/cloud/gke-ai-troubleshooting-jobset-interruption)
+  - [**GKE Kueue troubleshooting**](./skills/cloud/gke-kueue-troubleshooting)
   - [**GKE Manifest Generation Skill**](./skills/cloud/gke-manifest-generation)
   - [**GKE Multi-Tenancy**](./skills/cloud/gke-multitenancy)
   - [**GKE Networking**](./skills/cloud/gke-networking)
