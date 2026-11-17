@@ -9,13 +9,13 @@ drops for various Cloud products such as PSC, serverless workloads, and others.
     Lines 20-65
 -   [2. Core, Instance, Subnet, Latency and Drop Fields](#2-core-instance-subnet-latency-and-drop-fields):
     Lines 67-88
--   [3. Packet Drops Analysis](#3-packet-drops-analysis): Lines 90-101
+-   [3. Packet Drops Analysis](#3-packet-drops-analysis): Lines 90-98
 -   [4. Private Service Connect (PSC) Analysis](#4-private-service-connect-psc-analysis):
-    Lines 103-115
+    Lines 100-110
 -   [5. Serverless Workloads (Direct VPC Egress)](#5-serverless-workloads-direct-vpc-egress):
-    Lines 117-126
+    Lines 112-121
 -   [6. Flow Analyzer and Reference Documentation](#6-flow-analyzer-and-reference-documentation):
-    Lines 128-136
+    Lines 123-132
 
 ## 1. Querying VPC Flow Logs (BigQuery and Cloud Logging)
 
@@ -83,35 +83,31 @@ gcloud logging read '(logName="projects/{project_id}/logs/compute.googleapis.com
     sub-millisecond precision across TCP and Falcon); `rtt_msec` (`INT64`, whole
     ms) is TCP-only.
 -   **Packet Drops**: `disposition` (`"DROPPED"`), `drop_reason`,
-    `packets_dropped`, `bytes_dropped`, `throughput_inclusion` (`"INCLUDED"` or
-    `"EXCLUDED"` relative to `packets_sent` / `bytes_sent`).
+    `packets_dropped`, `bytes_dropped`, `throughput_inclusion` (`"INCLUDED"`
+    when `packets_sent` / `bytes_sent` already include dropped traffic;
+    `"EXCLUDED"` when dropped traffic is counted separately).
 
 ## 3. Packet Drops Analysis
 
 VPC Flow Logs record dropped packet volume, drop reasons, dropped packet/byte
-counters, and whether dropped traffic is included in sent throughput counters
-(when calculating packet loss rates, avoid double-counting by adding dropped
-packets to sent packets in the denominator only when dropped packets are
-excluded from sent throughput).
+counters, and `throughput_inclusion` (check whether dropped traffic is already
+included in `packets_sent` / `bytes_sent` before combining counters).
 
 -   **Firewall Deny Attribution**: VPC Flow Logs report firewall drops without
-    naming the specific rule. When identifying or ranking the responsible
-    firewall rules, query **Firewall Rules Logging**
-    (`compute.googleapis.com/firewall`).
+    naming the specific rule. To attribute denies to specific firewall rules,
+    query **Firewall Rules Logging** (`compute.googleapis.com/firewall`).
 
 ## 4. Private Service Connect (PSC) Analysis
 
-VPC Flow Logs also cover Private Service Connect (PSC) traffic across endpoints,
-service attachments, and PSC interfaces (PSC-I), capturing the reporting side
-(consumer or producer), endpoint/attachment details, connection IDs, network
-attachments, and producer identity (project ID, or service class ID when the
-producer hides its project ID).
+VPC Flow Logs annotate Private Service Connect (PSC) traffic across endpoints,
+service attachments, and PSC interfaces (PSC-I), recording the reporting side
+(consumer or producer), endpoint/attachment metadata, connection IDs, network
+attachments, and producer project or service class metadata.
 
--   **Cross-Project Correlation**: Producer-side flow logs include an annotation
-    of the consumer's original pre-NAT 5-tuple (even though the producer
-    workload does not see it directly), enabling correlation between consumer
-    and producer logs using either the shared connection ID or the consumer
-    connection annotation.
+-   **Cross-Project Correlation**: Producer-side flow logs include the
+    consumer's pre-NAT 5-tuple annotation alongside the local connection,
+    supporting correlation across consumer and producer logs via the shared
+    connection ID or consumer connection annotation.
 
 ## 5. Serverless Workloads (Direct VPC Egress)
 
@@ -132,5 +128,5 @@ destination.
 -   **Record Schema Discovery**: For exact nested field paths (such as packet
     drops, PSC endpoints/interfaces, or serverless metadata), inspect a sample
     log record (`LIMIT 1` / `--limit=1`) or search/fetch the official public
-    documentation (`search_web` or `curl -sL`):
+    documentation (e.g., via `curl -sL`):
     [VPC Flow Logs record format](https://docs.cloud.google.com/vpc/docs/about-flow-logs-records.md.txt)

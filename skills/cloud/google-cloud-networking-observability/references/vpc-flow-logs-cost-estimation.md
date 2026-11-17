@@ -6,44 +6,31 @@ calculations for VPC Flow Logs using the standard tiered pricing model.
 
 ## Table of Contents
 
--   [Agent Instructions](#agent-instructions): Lines 22-47
+-   [Agent Instructions](#agent-instructions): Lines 22-33
 -   [Step 1: Scope and Capabilities (Boundaries)](#step-1-scope-and-capabilities-boundaries):
-    Lines 50-81
+    Lines 37-67
 -   [Step 2: Configuration Defaults](#step-2-configuration-defaults): Lines
-    84-91
+    71-78
 -   [Step 3: Resource Resolution (Discover Target Subnets)](#step-3-resource-resolution-discover-target-subnets):
-    Lines 95-152
+    Lines 82-138
 -   [Step 4: Retrieve Metrics (Batch Query)](#step-4-retrieve-metrics-batch-query):
-    Lines 155-228
+    Lines 142-215
 -   [Step 5: Cost Calculations (CLI Calculator)](#step-5-cost-calculations-cli-calculator):
-    Lines 231-306
--   [Step 6: Format Report](#step-6-format-report): Lines 309-350
+    Lines 219-293
+-   [Step 6: Format Report](#step-6-format-report): Lines 297-338
 
 ## Agent Instructions
 
 When a user requests a cost estimation, the agent MUST follow this procedure
 step-by-step.
 
-> [!CAUTION] **STRICT SCRIPTING BAN (RUNAWAY PREVENTION)**:
+> [!IMPORTANT] **In-Memory Execution Only**:
 >
-> -   **DO NOT** write or execute Python scripts or shell scripts *saved on
->     disk* (e.g., `.py` or `.sh` files).
-> -   Prefer structured JSON parsing (`python3 -c` or `jq`) over line-oriented
->     text filters (`grep`, `awk`, `sed`) to avoid brittle field matching.
-> -   For all text filtering, matching, and counting, you MUST pipe the output
->     to `python3 -c` and process the data stream in-memory.
-> -   **PYTHON LIMITATION**: You **CANNOT** use backslashes inside f-string
->     expressions. Bash will eat the escapes and cause a `SyntaxError`.
->     -   ❌ **BAD**: `print(f"Name: {v[\"name\"]}")`
->     -   ✅ **GOOD**: `print(f"Name: {v['name']}")` OR
->         `print("Name: {}".format(v["name"]))`
-> -   **PROJECT ID FORMAT**: Always use the exact Project ID provided by the
->     user (including any dashes like `my-project-id`). Do not modify, strip
->     dashes, or alter the formatting before making API calls.
-> -   You MUST execute all steps using ONLY direct tool calls (`gcloud`, `curl`,
->     `jq`) and use `python3 -c` or `bc` only as an in-memory calculator. You
->     must manually filter the data and format the final markdown report in your
->     response text.
+> -   Do not create persistent `.py`, `.sh`, or `.json` files in the working
+>     directory.
+> -   Run `gcloud` and `curl` directly, parse JSON responses in-memory with
+>     `jq` or `python3 -c`, and format the final markdown report in your
+>     response.
 
 ---
 
@@ -71,8 +58,8 @@ Before starting, validate that the request is supported.
 >     prices only)
 >
 > If the user requests estimation for an unsupported feature or resource,
-> reply immediately in your first turn (without running CLI commands or
-> workspace searches), substituting the unsupported feature name (e.g.,
+> decline immediately without running `gcloud` or Monitoring API queries,
+> substituting the unsupported feature or resource name in the response (e.g.,
 > `Cloud VPN`, `Cloud Interconnect`, `Organization`):
 >
 > ```text
@@ -126,7 +113,7 @@ gcloud compute networks subnets describe {subnet_name} --region={region} --proje
 Find all subnetworks in the VPC and get their details:
 
 ```bash
-gcloud compute networks subnets list --filter="network:https://www.googleapis.com/compute/v1/projects/{project_id}/global/networks/{vpc_name}" --project={project_id} --format="json(name, id, region, network)" > {vpc_name}_subnets.json
+gcloud compute networks subnets list --filter="network:https://www.googleapis.com/compute/v1/projects/{project_id}/global/networks/{vpc_name}" --project={project_id} --format="json(name, id, region, network)"
 ```
 
 *If 0 subnetworks are found, immediately respond with:*
@@ -140,7 +127,7 @@ gcloud compute networks subnets list --filter="network:https://www.googleapis.co
 Find all subnetworks in the project and get their details:
 
 ```bash
-gcloud compute networks subnets list --project={project_id} --format="json(name, id, region, network)" > {project_id}_subnets.json
+gcloud compute networks subnets list --project={project_id} --format="json(name, id, region, network)"
 ```
 
 *If 0 subnetworks are found, immediately respond with:*
@@ -154,9 +141,9 @@ gcloud compute networks subnets list --project={project_id} --format="json(name,
 
 ### Step 4: Retrieve Metrics (Batch Query)
 
-To avoid turn-limit timeouts on projects with many subnetworks, you **MUST NOT**
-query the Monitoring API in a loop. Instead, perform a single project-wide batch
-query and filter the results in-context.
+To avoid per-subnet API quota exhaustion and high latency on large projects, do
+**not** query the Monitoring API in a loop. Instead, run one project-wide batch
+query and filter the results in-memory.
 
 #### Step 4.A: Calculate Time Window (Last 30 Days)
 
@@ -179,16 +166,16 @@ URL="https://monitoring.googleapis.com/v3/projects/${project_id}/timeSeries?filt
 
 RESPONSE=$(curl -s -H "Authorization: Bearer $(gcloud auth print-access-token 2>/dev/null)" "$URL")
 if echo "$RESPONSE" | grep -q "401"; then
-  curl -s -H "Authorization: Bearer $(gcloud auth application-default print-access-token 2>/dev/null)" "$URL" > ${project_id}_metrics.json
-else
-  echo "$RESPONSE" > ${project_id}_metrics.json
+  RESPONSE=$(curl -s -H "Authorization: Bearer $(gcloud auth application-default print-access-token 2>/dev/null)" "$URL")
 fi
 
-python3 -c '
-import sys, json, os
+printf '%s\n' "$RESPONSE" | python3 -c '
+import sys, json
 try:
-    project_id = os.environ.get("project_id", "'"{project_id}"'")
-    data = json.load(open(f"{project_id}_metrics.json"))
+    data = json.load(sys.stdin)
+    if "error" in data:
+        print("API_ERROR:", json.dumps(data["error"]), file=sys.stderr)
+        sys.exit(1)
     for ts in data.get("timeSeries", []):
         labels = ts.get("resource", {}).get("labels", {})
         points = ts.get("points", [])
@@ -203,6 +190,7 @@ try:
             }))
 except Exception as e:
     print(f"Error: {e}", file=sys.stderr)
+    sys.exit(1)
 '
 ```
 
@@ -255,7 +243,7 @@ Sum all effective logs ($L_{raw} \times S$) to get $L_{total}$. Sum all
 $V_{subnet}$ to get $V_{total}$.
 
 Run the following Python command (filling in $V_{total}$ and $L_{total}$) to
-calculate the exact tiered pricing matching the original agent logic:
+calculate the monthly tiered generation and Cloud Logging storage costs:
 
 ```bash
 python3 -c '
