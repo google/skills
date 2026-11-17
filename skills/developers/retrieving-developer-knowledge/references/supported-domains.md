@@ -2,7 +2,6 @@
 
 The Developer Knowledge API and MCP server search, retrieve, and synthesize documentation from official public pages across the following domains:
 
-<!-- LINT.IfChange -->
 
 *   **Google Cloud & Infrastructure**:
     *   `docs.cloud.google.com` (Official Google Cloud Documentation)
@@ -31,6 +30,5 @@ The Developer Knowledge API and MCP server search, retrieve, and synthesize docu
     *   `mapsplatform.google.com` (Google Maps Platform)
     *   `fuchsia.dev` (Fuchsia OS)
 
-<!-- LINT.ThenChange(//depot/google3/third_party/devsite/developers/en/knowledge/reference/corpus-reference.md) -->
 
 These domains represent the complete corpus of searchable and retrievable technical content. For more details on the live corpus, see [Corpus Reference](https://developers.google.com/knowledge/reference/corpus-reference).
