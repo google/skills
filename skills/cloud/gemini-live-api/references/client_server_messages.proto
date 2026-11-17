@@ -1,11 +1,14 @@
-// Proto definitions for the Gemini Enterprise Live API wire protocol.
+// Proto definitions for the Gemini Enterprise Agent Platform Live API wire
+// protocol (`LlmBidiService/BidiGenerateContent`), derived from the public
+// documentation:
+//   - https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/models/live-api
+//   - https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rpc/google.cloud.aiplatform.v1
 //
-// Models the WebSocket frames described in client_server_messages.md.
-// Both `ClientMessage` (client -> server) and `ServerMessage` (server ->
-// client) are oneof envelopes; each WebSocket frame sets exactly one of the
-// listed fields.
-//
-// Covers the Gemini Enterprise Agent Platform (`BidiGenerateContent*`) shapes.
+// Always serialize and parse WebSocket frames as UTF-8 JSON text (e.g.,
+// `google.protobuf.json_format.MessageToJson` and
+// `Parse(..., ignore_unknown_fields=True)` in Python), never as binary protobuf
+// bytes. Field numbers below are sequential local identifiers; only JSON field
+// names and enum names appear on the WebSocket wire.
 
 syntax = "proto3";
 
@@ -14,126 +17,293 @@ package google.ai.live.v1;
 import "google/protobuf/duration.proto";
 import "google/protobuf/struct.proto";
 
+option java_multiple_files = true;
+
 // =============================================================================
 // Top-level envelopes
 // =============================================================================
 
-// Client -> server frame. Exactly one field is set per frame.
+// Client -> server WebSocket frame (`BidiGenerateContentClientMessage`).
+// Exactly one field in `message_type` must be set per frame.
 message ClientMessage {
   oneof message_type {
     // First frame only. Configures the session.
     BidiGenerateContentSetup setup = 1;
 
-    // Turn-based, history-affecting input. Interrupts ongoing model output.
+    // Turn-based, history-bearing input. Interrupts ongoing model generation.
     BidiGenerateContentClientContent client_content = 2;
 
-    // Continuous, low-latency audio/video input. Not added to history.
+    // Continuous, low-latency audio/video/text input.
     BidiGenerateContentRealtimeInput realtime_input = 3;
 
     // Reply to a server-issued `tool_call`.
     BidiGenerateContentToolResponse tool_response = 4;
+
+    // Mid-session update to `system_instruction` or `tools`
+    // (`gemini-3.8-live`).
+    BidiGenerateContentContextUpdate context_update = 5;
   }
 }
 
-// Server -> client frame. Exactly one field is set per frame.
+// Server -> client WebSocket frame (`BidiGenerateContentServerMessage`).
 message ServerMessage {
   oneof message_type {
-    // Sent once after `setup` is accepted. Gate further sends on this.
+    // Sent once after `setup` is accepted. Gate all subsequent sends on this.
     BidiGenerateContentSetupComplete setup_complete = 1;
 
-    // Streamed model output (audio/text), turn lifecycle.
+    // Streamed model output (audio/text), transcriptions, turn lifecycle.
     BidiGenerateContentServerContent server_content = 2;
 
     // Model is requesting tool execution.
     BidiGenerateContentToolCall tool_call = 3;
 
-    // Cancels previously-issued tool calls (e.g. on user interruption).
+    // Cancels previously issued tool calls (e.g., on user barge-in).
     BidiGenerateContentToolCallCancellation tool_call_cancellation = 4;
 
-    // Token / duration accounting.
-    UsageMetadata usage_metadata = 5;
+    // Connection will be terminated soon (typically ~60s warning).
+    GoAway go_away = 5;
 
-    // Connection will be terminated soon.
-    GoAway go_away = 6;
+    // Checkpoint handle for transparent session resumption.
+    SessionResumptionUpdate session_resumption_update = 6;
 
-    // Resume handle for reconnects.
-    SessionResumptionUpdate session_resumption_update = 7;
+    // Server-side VAD signal emitted when `setup.explicit_vad_signal = true`.
+    VoiceActivity voice_activity = 7;
   }
+
+  // Token usage accounting for the session / turn.
+  UsageMetadata usage_metadata = 8;
 }
 
 // =============================================================================
-// Common content primitives
+// Common content & tool primitives
 // =============================================================================
 
-// A piece of binary data carried inline (audio chunk, image frame, etc.).
+// Inline binary media payload (audio chunk, image frame, etc.).
 message Blob {
-  // IANA-style mime type, e.g. "audio/pcm;rate=16000", "image/jpeg".
+  // IANA MIME type, e.g., "audio/pcm;rate=16000" or "image/jpeg".
   string mime_type = 1;
 
   // Raw bytes (base64-encoded on the JSON wire).
   bytes data = 2;
+
+  // Optional display name for the blob.
+  string display_name = 3;
 }
 
-// A reference to a remote file (e.g. GCS URI).
+// Reference to a remote file (e.g., Cloud Storage `gs://` URI).
 message FileData {
   string mime_type = 1;
   string file_uri = 2;
+  string display_name = 3;
+}
+
+// Code generated by the model when the `code_execution` tool is enabled.
+message ExecutableCode {
+  enum Language {
+    LANGUAGE_UNSPECIFIED = 0;
+    PYTHON = 1;
+  }
+
+  Language language = 1;
+  string code = 2;
+  optional string id = 3;
+}
+
+// Output of server-side execution of `ExecutableCode`.
+message CodeExecutionResult {
+  enum Outcome {
+    OUTCOME_UNSPECIFIED = 0;
+    OUTCOME_OK = 1;
+    OUTCOME_FAILED = 2;
+    OUTCOME_DEADLINE_EXCEEDED = 3;
+  }
+
+  Outcome outcome = 1;
+  string output = 2;
+  optional string id = 3;
 }
 
 // A function call requested by the model.
 message FunctionCall {
-  // Opaque ID matching the eventual `FunctionResponse.id`. Optional.
+  // Unique call ID; echo in the matching `FunctionResponse.id`.
   string id = 1;
   string name = 2;
   google.protobuf.Struct args = 3;
 }
 
-// Result of executing a function call.
+// Media payload carried inside a multimodal `FunctionResponse`.
+message FunctionResponseBlob {
+  string mime_type = 1;
+  bytes data = 2;
+  string display_name = 3;
+}
+
+// URI reference carried inside a multimodal `FunctionResponse`.
+message FunctionResponseFileData {
+  string mime_type = 1;
+  string file_uri = 2;
+  string display_name = 3;
+}
+
+// Multimodal part inside `FunctionResponse.parts`.
+message FunctionResponsePart {
+  oneof data {
+    FunctionResponseBlob inline_data = 1;
+    FunctionResponseFileData file_data = 2;
+  }
+}
+
+// Result of executing a `FunctionCall`.
 message FunctionResponse {
-  // Must match the originating `FunctionCall.id`. Optional.
+  // Controls how a `NON_BLOCKING` function response is scheduled into the turn.
+  enum Scheduling {
+    SCHEDULING_UNSPECIFIED = 0;
+    // Add result to context only; do not interrupt or trigger generation.
+    SILENT = 1;
+    // Wait until current generation/speech finishes, then generate a response.
+    WHEN_IDLE = 2;
+    // Interrupt ongoing model output and immediately generate a response.
+    INTERRUPT = 3;
+  }
+
+  // Must match the originating `FunctionCall.id`.
   string id = 1;
   string name = 2;
   google.protobuf.Struct response = 3;
+  repeated FunctionResponsePart parts = 4;
+
+  // Only applicable to `NON_BLOCKING` function calls. Defaults to `WHEN_IDLE`.
+  optional Scheduling scheduling = 5;
 }
 
-// A part of a Content message; oneof of the supported part types.
-//
-// The markdown only references `text`, `inlineData`, and `fileData` parts; no
-// other variants are described.
+// Single content part within a `Content` turn.
 message Part {
   oneof data {
     string text = 1;
     Blob inline_data = 2;
     FileData file_data = 3;
+    FunctionCall function_call = 4;
+    FunctionResponse function_response = 5;
+    ExecutableCode executable_code = 6;
+    CodeExecutionResult code_execution_result = 7;
   }
+
+  // True if this part represents model thought/reasoning text.
+  bool thought = 8;
+  bytes thought_signature = 9;
 }
 
-// A piece of conversation content with a role and ordered parts.
+// Conversation turn with role ("user" or "model") and ordered parts.
 message Content {
-  // Typically "user" or "model".
   string role = 1;
   repeated Part parts = 2;
 }
 
-// Tool declaration. The markdown only states that tools carry "function
-// declarations and built-ins (Search, code execution)" without defining the
-// internal schema, so the contents are left opaque here.
+// Declaration of a client-executed function tool.
+message FunctionDeclaration {
+  enum Behavior {
+    UNSPECIFIED = 0;
+    // Pause conversation until `FunctionResponse` arrives (`gemini-3.8-live`).
+    BLOCKING = 1;
+    // Continue conversation asynchronously while tool runs (Live API default).
+    NON_BLOCKING = 2;
+  }
+
+  string name = 1;
+  string description = 2;
+
+  // OpenAPI 3.0 Schema object (mutually exclusive with
+  // `parameters_json_schema`).
+  google.protobuf.Struct parameters = 3;
+
+  // Standard JSON Schema object for parameters.
+  google.protobuf.Value parameters_json_schema = 4;
+
+  // OpenAPI 3.0 response Schema object (mutually exclusive with
+  // `response_json_schema`).
+  google.protobuf.Struct response = 5;
+
+  // Standard JSON Schema object for response.
+  google.protobuf.Value response_json_schema = 6;
+
+  // Execution mode in `BidiGenerateContent` (`NON_BLOCKING` or `BLOCKING`).
+  optional Behavior behavior = 7;
+}
+
+// Tool configuration entry. Set at most one tool type per `Tool` message.
+// Note: Search tools (`google_search`) cannot be combined with
+// `function_declarations` in Live API setup.
 message Tool {
-  google.protobuf.Struct value = 1;
+  message GoogleSearch {
+    repeated string exclude_domains = 1;
+  }
+
+  message CodeExecution {}
+
+  message UrlContext {}
+
+  repeated FunctionDeclaration function_declarations = 1;
+
+  // Retrieval config (e.g., Vertex RAG Store on `v1beta1`).
+  google.protobuf.Struct retrieval = 2;
+  GoogleSearch google_search = 3;
+  google.protobuf.Struct google_maps = 4;
+  google.protobuf.Struct enterprise_web_search = 5;
+  CodeExecution code_execution = 6;
+  UrlContext url_context = 7;
 }
 
 // =============================================================================
-// Setup
+// Safety settings
+// =============================================================================
+
+enum HarmCategory {
+  HARM_CATEGORY_UNSPECIFIED = 0;
+  HARM_CATEGORY_HATE_SPEECH = 1;
+  HARM_CATEGORY_DANGEROUS_CONTENT = 2;
+  HARM_CATEGORY_HARASSMENT = 3;
+  HARM_CATEGORY_SEXUALLY_EXPLICIT = 4;
+  HARM_CATEGORY_CIVIC_INTEGRITY = 5 [deprecated = true];
+  HARM_CATEGORY_IMAGE_HATE = 6;
+  HARM_CATEGORY_IMAGE_DANGEROUS_CONTENT = 7;
+  HARM_CATEGORY_IMAGE_HARASSMENT = 8;
+  HARM_CATEGORY_IMAGE_SEXUALLY_EXPLICIT = 9;
+  HARM_CATEGORY_JAILBREAK = 10;
+}
+
+message SafetySetting {
+  enum HarmBlockThreshold {
+    HARM_BLOCK_THRESHOLD_UNSPECIFIED = 0;
+    BLOCK_LOW_AND_ABOVE = 1;
+    BLOCK_MEDIUM_AND_ABOVE = 2;
+    BLOCK_ONLY_HIGH = 3;
+    BLOCK_NONE = 4;
+    OFF = 5;
+  }
+
+  enum HarmBlockMethod {
+    HARM_BLOCK_METHOD_UNSPECIFIED = 0;
+    SEVERITY = 1;
+    PROBABILITY = 2;
+  }
+
+  HarmCategory category = 1;
+  HarmBlockThreshold threshold = 2;
+  HarmBlockMethod method = 3;
+}
+
+// =============================================================================
+// Session setup (`BidiGenerateContentSetup`)
 // =============================================================================
 
 message BidiGenerateContentSetup {
-  // Required.
-  // "projects/{p}/locations/{l}/publishers/google/models/{m}"
+  // Required. Format:
+  // "projects/{project}/locations/{location}/publishers/google/models/{model}"
   string model = 1;
 
   GenerationConfig generation_config = 2;
 
-  // Text-only parts.
+  // Developer / system instructions (text parts only).
   Content system_instruction = 3;
 
   repeated Tool tools = 4;
@@ -147,13 +317,31 @@ message BidiGenerateContentSetup {
   AudioTranscriptionConfig input_audio_transcription = 8;
 
   AudioTranscriptionConfig output_audio_transcription = 9;
+
+  // If true, server emits top-level `voice_activity` frames on VAD transitions.
+  bool explicit_vad_signal = 10;
+
+  // Proactive audio configuration (always on in `gemini-3.8-live`; opt-in on
+  // `gemini-live-2.5-flash-native-audio`).
+  ProactivityConfig proactivity = 11;
+
+  // Conversation history configuration (set
+  // `initial_history_in_client_content = true` when seeding prior turns).
+  HistoryConfig history_config = 12;
+
+  repeated SafetySetting safety_settings = 13;
+
+  // User-defined billing/reporting labels.
+  map<string, string> labels = 14;
 }
 
 message GenerationConfig {
   enum Modality {
     MODALITY_UNSPECIFIED = 0;
     TEXT = 1;
-    AUDIO = 2;
+    IMAGE = 2;
+    AUDIO = 3;
+    VIDEO = 4;
   }
 
   enum MediaResolution {
@@ -163,56 +351,94 @@ message GenerationConfig {
     MEDIA_RESOLUTION_HIGH = 3;
   }
 
-  // Pick exactly one per session; default AUDIO.
-  repeated Modality response_modalities = 1;
+  optional float temperature = 1;
+  optional float top_p = 2;
+  optional float top_k = 3;
+  optional int32 candidate_count = 4;
+  optional int32 max_output_tokens = 5;
+  optional float presence_penalty = 6;
+  optional float frequency_penalty = 7;
+  optional int32 seed = 8;
 
-  float temperature = 2;
-  float top_p = 3;
-  int32 top_k = 4;
-  int32 max_output_tokens = 5;
+  // Response modality for the session: typically `[AUDIO]` (default) or
+  // `[TEXT]`.
+  repeated Modality response_modalities = 9;
 
-  // Only effective when response_modalities=[AUDIO].
-  SpeechConfig speech_config = 6;
+  optional MediaResolution media_resolution = 10;
 
-  MediaResolution media_resolution = 7;
+  optional SpeechConfig speech_config = 11;
 
-  ThinkingConfig thinking_config = 8;
+  reserved 12;
+
+  // Enables emotion-aware responses (always on in `gemini-3.8-live`; opt-in on
+  // `gemini-live-2.5-flash-native-audio`).
+  optional bool enable_affective_dialog = 13;
 }
 
 message SpeechConfig {
-  // Single-speaker voice (Live API is single-speaker only).
+  // Single-speaker voice configuration (Live API is single-speaker only).
   VoiceConfig voice_config = 1;
 
-  // BCP-47 (e.g. "en-US"). Output TTS language.
+  // BCP-47 language code (e.g., "en-US", "en-IN").
   string language_code = 2;
 }
 
 message VoiceConfig {
-  PrebuiltVoiceConfig prebuilt_voice_config = 1;
+  oneof voice_config {
+    PrebuiltVoiceConfig prebuilt_voice_config = 1;
+  }
 }
 
 message PrebuiltVoiceConfig {
-  // Case-sensitive prebuilt voice name (e.g. "Aoede", "Charon").
+  // Case-sensitive prebuilt voice name (e.g., "Aoede", "Puck", "Charon").
   string voice_name = 1;
 }
 
-message ThinkingConfig {
-  // 0 disables thinking. Only honored on models that support it.
-  int32 thinking_budget = 1;
+message ProactivityConfig {
+  optional bool proactive_audio = 1;
+}
+
+message HistoryConfig {
+  // Must be set to `true` in `gemini-3.8-live` when seeding prior conversation
+  // history via `client_content`.
+  bool initial_history_in_client_content = 1;
+}
+
+message AudioTranscriptionConfig {
+  enum Mode {
+    MODE_UNSPECIFIED = 0;
+    VERBATIM = 1;
+    SMART = 2;
+  }
+
+  // Optional BCP-47 language hints; omit for automatic language detection.
+  repeated string language_codes = 1;
+
+  // Domain-specific terms/phrases (up to 1,000) to bias speech recognition.
+  repeated string custom_vocabulary = 2;
+
+  // Transcription mode (`VERBATIM` default or `SMART` cleanup).
+  Mode mode = 3;
 }
 
 message SessionResumptionConfig {
-  // Provide to resume; omit to start a new resumable session.
-  string handle = 1;
+  // Previous session handle from `SessionResumptionUpdate.new_handle`.
+  optional string handle = 1;
+
+  // Enables `last_consumed_client_message_index` in resumption updates.
   bool transparent = 2;
 }
 
 message ContextWindowCompressionConfig {
   message SlidingWindow {
-    int64 target_tokens = 1;
+    optional int64 target_tokens = 1;
   }
-  int64 trigger_tokens = 1;
-  SlidingWindow sliding_window = 2;
+
+  optional int64 trigger_tokens = 1;
+
+  oneof compression_mechanism {
+    SlidingWindow sliding_window = 2;
+  }
 }
 
 message RealtimeInputConfig {
@@ -224,50 +450,41 @@ message RealtimeInputConfig {
 
   enum TurnCoverage {
     TURN_COVERAGE_UNSPECIFIED = 0;
-    TURN_INCLUDES_ALL_INPUT = 1;
-    TURN_INCLUDES_ONLY_ACTIVITY = 2;
-    TURN_INCLUDES_AUDIO_ACTIVITY_AND_ALL_VIDEO = 3;
+    TURN_INCLUDES_ONLY_ACTIVITY = 1;
+    TURN_INCLUDES_ALL_INPUT = 2;
   }
 
-  // Unset -> server-side VAD enabled by default.
+  message AutomaticActivityDetection {
+    enum StartSensitivity {
+      START_SENSITIVITY_UNSPECIFIED = 0;
+      START_SENSITIVITY_HIGH = 1;
+      START_SENSITIVITY_LOW = 2;
+    }
+
+    enum EndSensitivity {
+      END_SENSITIVITY_UNSPECIFIED = 0;
+      END_SENSITIVITY_HIGH = 1;
+      END_SENSITIVITY_LOW = 2;
+    }
+
+    optional bool disabled = 1;
+    StartSensitivity start_of_speech_sensitivity = 2;
+    EndSensitivity end_of_speech_sensitivity = 3;
+    int32 prefix_padding_ms = 4;
+    int32 silence_duration_ms = 5;
+  }
+
   AutomaticActivityDetection automatic_activity_detection = 1;
-  ActivityHandling activity_handling = 2;
-  TurnCoverage turn_coverage = 3;
+  optional ActivityHandling activity_handling = 2;
+  optional TurnCoverage turn_coverage = 3;
 }
-
-message AutomaticActivityDetection {
-  enum StartSensitivity {
-    START_SENSITIVITY_UNSPECIFIED = 0;
-    START_SENSITIVITY_HIGH = 1;
-    START_SENSITIVITY_LOW = 2;
-  }
-
-  enum EndSensitivity {
-    END_SENSITIVITY_UNSPECIFIED = 0;
-    END_SENSITIVITY_HIGH = 1;
-    END_SENSITIVITY_LOW = 2;
-  }
-
-  // If true, client must send activity_start / activity_end manually.
-  bool disabled = 1;
-  StartSensitivity start_of_speech_sensitivity = 2;
-  EndSensitivity end_of_speech_sensitivity = 3;
-  int32 prefix_padding_ms = 4;
-  int32 silence_duration_ms = 5;
-}
-
-// Empty configuration message for enabling input/output audio transcription.
-message AudioTranscriptionConfig {}
 
 // =============================================================================
-// ClientContent / RealtimeInput / ToolResponse
+// Post-setup client messages
 // =============================================================================
 
 message BidiGenerateContentClientContent {
-  // Conversation history + the latest user request.
   repeated Content turns = 1;
-
-  // If true, server starts generating immediately.
   bool turn_complete = 2;
 }
 
@@ -275,30 +492,41 @@ message BidiGenerateContentRealtimeInput {
   message ActivityStart {}
   message ActivityEnd {}
 
-  // Deprecated: combined audio/video chunks. Prefer the typed `audio` /
-  // `video` fields below.
+  // Deprecated: prefer typed `audio`, `video`, or `text` fields below.
   repeated Blob media_chunks = 1 [deprecated = true];
 
-  // Typed realtime audio (PCM 16-bit, 16 kHz mono).
+  // Realtime audio stream (`audio/pcm;rate=16000`, 16-bit signed mono PCM).
   Blob audio = 2;
 
-  // Typed realtime video frame (image/jpeg|png|webp).
+  // Realtime video/screen frame (`image/jpeg`, `image/png`, or `image/webp`).
   Blob video = 3;
 
+  // Manual VAD markers (only valid when `automatic_activity_detection.disabled`
+  // is `true`).
+  ActivityStart activity_start = 4;
+  ActivityEnd activity_end = 5;
+
+  // Signals microphone turned off (only valid when auto-VAD is enabled).
+  optional bool audio_stream_end = 6;
+
   // Realtime text input.
-  string text = 4;
-
-  // Mic turned off; only valid with auto-VAD enabled.
-  bool audio_stream_end = 5;
-
-  // Only when auto-VAD is disabled.
-  ActivityStart activity_start = 6;
-  ActivityEnd activity_end = 7;
+  optional string text = 7;
 }
 
 message BidiGenerateContentToolResponse {
-  // Match `FunctionCall.id` from the server. `id` is optional.
   repeated FunctionResponse function_responses = 1;
+}
+
+// Mid-session update to `system_instruction` and/or `tools`.
+message BidiGenerateContentContextUpdate {
+  // Wrapper distinguishing "leave tools unchanged" (unset) from "clear all
+  // tools" (`tools: {}` / empty list).
+  message Tools {
+    repeated Tool tools = 1;
+  }
+
+  Tools tools = 1;
+  Content system_instruction = 2;
 }
 
 // =============================================================================
@@ -306,75 +534,137 @@ message BidiGenerateContentToolResponse {
 // =============================================================================
 
 message BidiGenerateContentSetupComplete {
-  // Server-assigned session identifier.
-  string session_id = 1;
+  optional string session_id = 1;
 }
 
 message BidiGenerateContentServerContent {
-  // Streamed model output parts (text and/or `inline_data` audio @ 24 kHz).
-  Content model_turn = 1;
+  message Transcription {
+    string text = 1;
+    bool finished = 2;
+  }
 
-  // Model has finished generating; playback may still be flushing.
-  bool generation_complete = 2;
+  enum TurnCompleteReason {
+    TURN_COMPLETE_REASON_UNSPECIFIED = 0;
+    MALFORMED_FUNCTION_CALL = 1;
+    RESPONSE_REJECTED = 2;
+    NEED_MORE_INPUT = 3;
+    PROHIBITED_INPUT_CONTENT = 4;
+    IMAGE_PROHIBITED_INPUT_CONTENT = 5;
+    INPUT_TEXT_CONTAIN_PROMINENT_PERSON_PROHIBITED = 6;
+    INPUT_IMAGE_CELEBRITY = 7;
+    INPUT_IMAGE_PHOTO_REALISTIC_CHILD_PROHIBITED = 8;
+    INPUT_TEXT_NCII_PROHIBITED = 9;
+    INPUT_OTHER = 10;
+    INPUT_IP_PROHIBITED = 11;
+    BLOCKLIST = 12;
+    UNSAFE_PROMPT_FOR_IMAGE_GENERATION = 13;
+    GENERATED_IMAGE_SAFETY = 14;
+    GENERATED_CONTENT_SAFETY = 15;
+    GENERATED_AUDIO_SAFETY = 16;
+    GENERATED_VIDEO_SAFETY = 17;
+    GENERATED_CONTENT_PROHIBITED = 18;
+    GENERATED_CONTENT_BLOCKLIST = 19;
+    GENERATED_IMAGE_PROHIBITED = 20;
+    GENERATED_IMAGE_CELEBRITY = 21;
+    GENERATED_IMAGE_PROMINENT_PEOPLE_DETECTED_BY_REWRITER = 22;
+    GENERATED_IMAGE_IDENTIFIABLE_PEOPLE = 23;
+    GENERATED_IMAGE_MINORS = 24;
+    OUTPUT_IMAGE_IP_PROHIBITED = 25;
+    GENERATED_OTHER = 26;
+    MAX_REGENERATION_REACHED = 27;
+  }
 
-  // Logical end of turn.
-  bool turn_complete = 3;
+  enum SpeechState {
+    SPEECH_STATE_UNSPECIFIED = 0;
+    NON_SPEECH = 1;
+    SPEECH = 2;
+  }
 
-  // Generation was interrupted by client input -- drop queued audio playback.
-  bool interrupted = 4;
+  enum InteractionStatus {
+    INTERACTION_STATUS_UNSPECIFIED = 0;
+    IN_PROGRESS = 1;
+    REQUIRES_ACTION = 2 [deprecated = true];
+    IDLE = 3;
+  }
 
-  // When grounding (e.g. Google Search) is used. Modelled as Struct because the
-  // full grounding schema is out of scope for this wire-protocol proto.
+  optional Content model_turn = 1;
+  bool turn_complete = 2;
+  bool interrupted = 3;
+  bool generation_complete = 4;
   google.protobuf.Struct grounding_metadata = 5;
-
-  // Transcription of the user's spoken input. Requires
-  // `input_audio_transcription` set in `setup`.
   Transcription input_transcription = 6;
-
-  // Transcription of the model's spoken output. Requires
-  // `output_audio_transcription` set in `setup`.
   Transcription output_transcription = 7;
-}
-
-message Transcription {
-  string text = 1;
-  bool finished = 2;
+  TurnCompleteReason turn_complete_reason = 8;
+  SpeechState speech_state = 9;
+  Transcription interim_input_transcription = 10;
+  InteractionStatus interaction_status = 11;
 }
 
 message BidiGenerateContentToolCall {
-  // Each has `id`, `name`, `args`. Reply with matching FunctionResponse.id.
   repeated FunctionCall function_calls = 1;
 }
 
 message BidiGenerateContentToolCallCancellation {
-  // IDs of previously-issued tool calls to cancel. Stop the work; do not
-  // send `tool_response` for these.
   repeated string ids = 1;
 }
 
 // =============================================================================
-// Connection lifecycle / accounting
+// Lifecycle, VAD & token accounting
 // =============================================================================
 
 message GoAway {
-  // Time until the connection terminates with ABORTED.
   google.protobuf.Duration time_left = 1;
 }
 
 message SessionResumptionUpdate {
-  // Handle to resume; empty if `resumable=false`.
   string new_handle = 1;
   bool resumable = 2;
-
-  // Set only when SessionResumptionConfig.transparent=true.
   int64 last_consumed_client_message_index = 3;
 }
 
-// Token / duration accounting (cached-content style).
+message VoiceActivity {
+  enum Type {
+    TYPE_UNSPECIFIED = 0;
+    ACTIVITY_START = 1;
+    ACTIVITY_END = 2;
+  }
+
+  Type type = 1;
+  google.protobuf.Duration audio_offset = 2;
+}
+
+enum Modality {
+  MODALITY_UNSPECIFIED = 0;
+  TEXT = 1;
+  IMAGE = 2;
+  VIDEO = 3;
+  AUDIO = 4;
+  DOCUMENT = 5;
+}
+
+message ModalityTokenCount {
+  Modality modality = 1;
+  int32 token_count = 2;
+}
+
 message UsageMetadata {
-  int32 total_token_count = 1;
-  int32 text_count = 2;
-  int32 image_count = 3;
-  int32 video_duration_seconds = 4;
-  int32 audio_duration_seconds = 5;
+  enum TrafficType {
+    TRAFFIC_TYPE_UNSPECIFIED = 0;
+    ON_DEMAND = 1;
+    ON_DEMAND_PRIORITY = 2;
+    ON_DEMAND_FLEX = 3;
+    PROVISIONED_THROUGHPUT = 4;
+  }
+
+  int32 prompt_token_count = 1;
+  int32 candidates_token_count = 2;
+  int32 total_token_count = 3;
+  int32 tool_use_prompt_token_count = 4;
+  int32 thoughts_token_count = 5;
+  int32 cached_content_token_count = 6;
+  repeated ModalityTokenCount prompt_tokens_details = 7;
+  repeated ModalityTokenCount cache_tokens_details = 8;
+  repeated ModalityTokenCount candidates_tokens_details = 9;
+  repeated ModalityTokenCount tool_use_prompt_tokens_details = 10;
+  TrafficType traffic_type = 11;
 }

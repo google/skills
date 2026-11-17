@@ -1,406 +1,341 @@
 # Live API `ClientMessage` and `ServerMessage` Reference
 
-This document describes the **wire-level WebSocket protocol** for the Gemini
-Enterprise Agent Platform Live API (`BidiGenerateContent*`).
+This document describes the **wire-level WebSocket JSON protocol** for the
+Gemini Enterprise Agent Platform Live API
+(`LlmBidiService/BidiGenerateContent`).
 
-Docs:
-https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/models/multimodal-live
+Canonical reference docs:
 
-The service exposes the RPC `BidiGenerateContent`. Search the corresponding
-website for more information.
+- [Live API reference](https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/models/live-api.md.txt)
+- [RPC reference (`google.cloud.aiplatform.v1`)](https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rpc/google.cloud.aiplatform.v1)
+- [Start and manage live sessions](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/live-api/start-manage-session.md.txt)
+- [Migrate from Gemini 2.5 to Gemini 3.8 Live](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/live-api/migrate-from-gemini-2-5-to-gemini-3-8-live.md.txt)
+- [Asynchronous function calling](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/live-api/asynchronous-function-calling.md.txt)
+- [Configure language and voice](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/live-api/configure-language-voice.md.txt)
+- [Live API best practices](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/live-api/best-practices.md.txt)
+
+## Table of Contents
+
+1. [Connection, Endpoints, and Models](#1-connection-endpoints-and-models): Lines 35-69
+2. [Top-Level Envelopes (`ClientMessage` and `ServerMessage`)](#2-top-level-envelopes-clientmessage-and-servermessage): Lines 71-101
+3. [Session Lifecycle](#3-session-lifecycle): Lines 103-134
+4. [`BidiGenerateContentSetup` (`setup`)](#4-bidigeneratecontentsetup-setup): Lines 136-206
+5. [`BidiGenerateContentClientContent` (`clientContent`)](#5-bidigeneratecontentclientcontent-clientcontent): Lines 208-224
+6. [`BidiGenerateContentRealtimeInput` (`realtimeInput`)](#6-bidigeneratecontentrealtimeinput-realtimeinput): Lines 226-243
+7. [`BidiGenerateContentToolResponse` (`toolResponse`) and Function Calling](#7-bidigeneratecontenttoolresponse-toolresponse-and-function-calling): Lines 245-264
+8. [`BidiGenerateContentContextUpdate` (`contextUpdate`)](#8-bidigeneratecontentcontextupdate-contextupdate): Lines 266-279
+9. [Server Messages (`setupComplete`, `serverContent`, `toolCall`, `voiceActivity`)](#9-server-messages-setupcomplete-servercontent-toolcall-voiceactivity): Lines 281-315
+10. [Lifecycle and Accounting (`GoAway`, `SessionResumptionUpdate`, `UsageMetadata`)](#10-lifecycle-and-accounting-goaway-sessionresumptionupdate-usagemetadata): Lines 317-334
+11. [End-to-End JSON Wire Examples](#11-end-to-end-json-wire-examples): Lines 336-420
+12. [Realtime vs. Add-Context Input Cookbook](#12-realtime-vs-add-context-input-cookbook): Lines 422-484
+13. [Common Pitfalls](#13-common-pitfalls): Lines 486-504
 
 ---
 
-## 1. Connection
+## 1. Connection, Endpoints, and Models
 
 ### Endpoints
 
-Backend                                   | WebSocket URI
------------------------------------------ | -------------
-Gemini Enterprise Agent Platform          | `wss://{LOCATION}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`
-Gemini Enterprise Agent Platform (global) | `wss://aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`
+| Channel | WebSocket URI | When to use |
+| --- | --- | --- |
+| **GA (`v1`, default)** | `wss://{LOCATION}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1.LlmBidiService/BidiGenerateContent` | Default for all standard Live API sessions (`gemini-3.8-live`, `gemini-live-2.5-flash-native-audio`, etc.). |
+| **Preview (`v1beta1`)** | `wss://{LOCATION}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent` | Use when configuring `v1beta1`-only tools such as Vertex RAG Engine (`retrieval.vertexRagStore`). |
 
-### Auth
+> **Regional endpoints required:** Live API models only support regional
+> endpoints in US and EU multi-regions (recommended default: `us-central1`; for
+> example, `europe-west4` in EU). Live API models do **not** support the
+> `global` endpoint (`wss://aiplatform.googleapis.com/...`).
 
--   `Authorization: Bearer <ADC token>` (or API key in Express mode).
+### Authentication & Wire Framing
 
-### Frames
+- **Header**: `Authorization: Bearer <ADC access token>` on the WebSocket HTTP
+  upgrade request (refresh before expiry and re-attach on every reconnect).
+- **Wire format**: Every frame is a **JSON-serialized protobuf text message**
+  (UTF-8 WebSocket text frame) matching `ClientMessage` (client -> server) or
+  `ServerMessage` (server -> client) from `client_server_messages.proto`. Never
+  send binary-encoded protobuf bytes (`SerializeToString()`). When parsing
+  server JSON frames into `ServerMessage`, ignore unknown fields
+  (`ignore_unknown_fields=True` in Python `google.protobuf.json_format.Parse`)
+  for forward compatibility.
 
-All frames are JSON-serialized protobuf messages of either `ClientMessage`
-(client → server) or `ServerMessage` (server → client). Each frame is exactly
-one WebSocket text message.
+### Supported Models
+
+| Model ID | Status | Key Capabilities & Behavioral Notes |
+| --- | --- | --- |
+| `gemini-3.8-live` | **GA (Recommended)** | Native audio I/O, VAD, affective dialog & proactive audio **always enabled by default**, `contextUpdate` (mid-session instructions/tools), `NON_BLOCKING` & `BLOCKING` function calling, custom vocabulary. |
+| `gemini-live-2.5-flash-native-audio` | **GA** | Native audio I/O, transcriptions, VAD, opt-in `enableAffectiveDialog` & `proactivity.proactiveAudio`, function calling. |
+| `gemini-3.5-transcribe-live-preview` | **Preview** | Dedicated low-latency speech-to-text streaming (`inputTranscription` / `interimInputTranscription`), `VERBATIM` & `SMART` modes, custom vocabulary. |
 
 ---
 
-## 2. Top-level structure (oneof)
+## 2. Top-Level Envelopes (`ClientMessage` and `ServerMessage`)
 
-`ClientMessage` and `ServerMessage` are both **oneof envelopes** — each frame
-sets exactly one of the listed fields.
+### `ClientMessage` (client -> server)
 
-### `ClientMessage` (you → server)
+Each client frame sets **exactly one** `message_type` oneof field:
 
-| Field | Type | When to use |
+| JSON Field | Proto Type | When to use |
 | --- | --- | --- |
-| `setup` | `BidiGenerateContentSetup` | First frame only. Configures the session. |
-| `clientContent` | `BidiGenerateContentClientContent` | Append to conversation history; turn-based input. Interrupts the model. |
-| `realtimeInput` | `BidiGenerateContentRealtimeInput` | Continuous, low-latency audio/video/text input. Not added to history. |
-| `toolResponse` | `BidiGenerateContentToolResponse` | Reply to a server-issued `toolCall`. |
+| `setup` | `BidiGenerateContentSetup` | First frame only. Configures model, voice, tools, VAD, resumption, and transcriptions. |
+| `clientContent` | `BidiGenerateContentClientContent` | Turn-based, history-bearing input (typed turns, uploaded clips/images, seeded history). Interrupts active model output. |
+| `realtimeInput` | `BidiGenerateContentRealtimeInput` | Continuous, low-latency audio/video/text stream + manual VAD markers. |
+| `toolResponse` | `BidiGenerateContentToolResponse` | Replies to server-issued `toolCall` requests. |
+| `contextUpdate` | `BidiGenerateContentContextUpdate` | Updates `systemInstruction` and/or `tools` mid-session (`gemini-3.8-live`). |
 
-### `ServerMessage` (server → you)
+### `ServerMessage` (server -> client)
 
-| Field | Type | Meaning |
+Each server frame carries one `message_type` event (and may carry top-level
+`usageMetadata`):
+
+| JSON Field | Proto Type | Meaning |
 | --- | --- | --- |
-| `setupComplete` | `BidiGenerateContentSetupComplete` | Sent once after `setup` is accepted. Gate further sends on this. |
-| `serverContent` | `BidiGenerateContentServerContent` | Streamed model output (audio/text), turn lifecycle. |
-| `toolCall` | `BidiGenerateContentToolCall` | Model is requesting tool execution. |
-| `toolCallCancellation` | `BidiGenerateContentToolCallCancellation` | Cancels previously-issued tool calls (e.g. on user interruption). |
-| `usageMetadata` | `UsageMetadata` | Token / duration accounting. |
-| `goAway` | `GoAway` | Connection will be terminated soon. |
-| `sessionResumptionUpdate` | `SessionResumptionUpdate` | Resume handle for reconnects. |
-
-> Audio transcriptions are delivered **inside `serverContent`** (see § 9), not
-> as separate top-level frames.
+| `setupComplete` | `BidiGenerateContentSetupComplete` | Sent once after `setup` succeeds. Gate all subsequent sends on this. |
+| `serverContent` | `BidiGenerateContentServerContent` | Streamed model output (`modelTurn`), `inputTranscription` / `outputTranscription` / `interimInputTranscription`, `interrupted`, `generationComplete`, `turnComplete`. |
+| `toolCall` | `BidiGenerateContentToolCall` | Requests client execution of one or more `FunctionCall`s. |
+| `toolCallCancellation` | `BidiGenerateContentToolCallCancellation` | Cancels previously issued `FunctionCall.id`s (typically on user barge-in). |
+| `goAway` | `GoAway` | Connection will close soon (`timeLeft`, typically ~60s before the 10-minute WebSocket limit). |
+| `sessionResumptionUpdate` | `SessionResumptionUpdate` | Checkpoint `newHandle` and `lastConsumedClientMessageIndex` for transparent reconnects. |
+| `voiceActivity` | `VoiceActivity` | Server VAD `ACTIVITY_START` / `ACTIVITY_END` signal (when `setup.explicitVadSignal = true`). |
+| `usageMetadata` | `UsageMetadata` | Token counts across prompt, candidate, thought, cached, and tool-use modalities. |
 
 ---
 
-## 3. Lifecycle
+## 3. Session Lifecycle
 
-```
-Client                                  Server
-  │                                       │
-  ├── ClientMessage{ setup }  ──────────► │
-  │                                       │
-  │ ◄──────  ServerMessage{ setupComplete }
-  │                                       │
-  ├── realtimeInput / clientContent ────► │
-  │   (audio frames, text, etc.)          │
-  │                                       │
-  │ ◄──────  serverContent (audio chunks, modelTurn parts ...)
-  │ ◄──────  serverContent { generationComplete: true }
-  │ ◄──────  serverContent { turnComplete: true }
-  │                                       │
-  │ ◄──────  toolCall { functionCalls[] }
-  ├── toolResponse { functionResponses[] } ► │
-  │                                       │
-  │ ◄──────  serverContent ...
-  │ ◄──────  goAway { timeLeft }   (eventually)
-  │                                       │
-  │       (close & reconnect using sessionResumptionUpdate.newHandle)
+```text
+Client                                                Server
+  |-- ClientMessage { setup } -----------------------> |
+  | <------------------ ServerMessage { setupComplete }|
+  |-- contextUpdate / clientContent / realtimeInput -> |
+  | <-------- serverContent (modelTurn, transcripts) --|
+  | <-------- serverContent { generationComplete } ----|
+  | <-------- serverContent { turnComplete } ----------|
+  | <-------- toolCall { functionCalls[] } ------------|
+  |-- toolResponse { functionResponses[] } ----------> |
+  | <-------- sessionResumptionUpdate { newHandle } ---|
+  | <-------- goAway { timeLeft: "60s" } --------------|
+  |   (reconnect with setup.sessionResumption.handle)  |
 ```
 
-**Rules:**
-
-1. The first frame **must** be `setup`. Do not send anything else until you
-   receive `setupComplete`.
-2. Use **`clientContent`** for turn-based, history-affecting messages
-   (e.g. a typed user message). Sending it interrupts any current model
-   generation.
-3. Use **`realtimeInput`** for continuous audio/video. It does **not** go
-   into history. Turn boundaries come from VAD (or from explicit
-   `activityStart`/`activityEnd` if VAD is disabled).
-4. Reply to `toolCall` with `toolResponse` (never with `clientContent`).
-5. On `goAway`, reconnect using the most recent
-   `sessionResumptionUpdate.newHandle`.
+**Core protocol rules:**
+1. **First frame**: Must be `setup`. Wait for `setupComplete` before sending any
+   `realtimeInput`, `clientContent`, `toolResponse`, or `contextUpdate`.
+2. **Connection vs. session limits**: A single WebSocket connection lasts up to
+   **10 minutes** (`goAway` arrives ~60 seconds before termination). Without
+   context compression, session context is capped at **15 minutes**; enable
+   `contextWindowCompression.slidingWindow` + `sessionResumption` to extend
+   sessions indefinitely across reconnects.
+3. **Mid-session instruction updates**: In `gemini-3.8-live`, `role: "system"`
+   in `clientContent` is **not supported**; always use `contextUpdate`.
+4. **Initial history seeding**: In `gemini-3.8-live`, set
+   `setup.historyConfig.initialHistoryInClientContent = true` if you will send
+   prior conversation turns via `clientContent` after `setupComplete`.
 
 ---
 
 ## 4. `BidiGenerateContentSetup` (`setup`)
 
-Initial-and-only-once configuration for the session.
-
-Field                      | Type                             | Notes
--------------------------- | -------------------------------- | -----
-`model`                    | `string` (required)              | `projects/{p}/locations/{l}/publishers/google/models/{m}`.
-`generationConfig`         | `GenerationConfig`               | Unsupported sub-fields here: `responseLogprobs`, `responseMimeType`, `logprobs`, `responseSchema`, `stopSequence`, `routingConfig`, `audioTimestamp`.
-`systemInstruction`        | `Content`                        | Text-only parts.
-`tools[]`                  | repeated `Tool`                  | Function declarations and built-ins (Search, code execution).
-`sessionResumption`        | `SessionResumptionConfig`        | `{ handle?: string, transparent?: bool }`. Provide `handle` to resume; omit to start a new resumable session.
-`contextWindowCompression` | `ContextWindowCompressionConfig` | `{ triggerTokens?: int64, slidingWindow?: { targetTokens?: int64 } }`.
-`realtimeInputConfig`      | `RealtimeInputConfig`            | See below.
-`inputAudioTranscription`  | `AudioTranscriptionConfig`       | `{}`.
-`outputAudioTranscription` | `AudioTranscriptionConfig`       | `{}`.
-
-### `RealtimeInputConfig`
-
-Field                        | Type                         | Notes
----------------------------- | ---------------------------- | -----
-`automaticActivityDetection` | `AutomaticActivityDetection` | Unset → server-side VAD enabled by default.
-`activityHandling`           | enum                         | `START_OF_ACTIVITY_INTERRUPTS` (default) \| `NO_INTERRUPTION`.
-`turnCoverage`               | enum                         | Default `TURN_INCLUDES_ALL_INPUT`. Also `TURN_INCLUDES_ONLY_ACTIVITY`, `TURN_INCLUDES_AUDIO_ACTIVITY_AND_ALL_VIDEO`.
-
-### `AutomaticActivityDetection`
-
-| Field | Type | Notes |
+| JSON Field | Type | Notes |
 | --- | --- | --- |
-| `disabled` | `bool` | If true, you must send `activityStart` / `activityEnd` yourself. |
-| `startOfSpeechSensitivity` | enum | `START_SENSITIVITY_HIGH` \| `LOW`. |
-| `endOfSpeechSensitivity` | enum | `END_SENSITIVITY_HIGH` \| `LOW`. |
-| `prefixPaddingMs` | `int32` | Min speech duration to commit start-of-speech. |
-| `silenceDurationMs` | `int32` | Min silence to commit end-of-speech. |
+| `model` | `string` (required) | `projects/{project}/locations/{location}/publishers/google/models/{model_id}`. |
+| `generationConfig` | `GenerationConfig` | Response modality, sampling, `speechConfig`, `mediaResolution`, `enableAffectiveDialog`. |
+| `systemInstruction` | `Content` | Developer instructions (`parts[].text` only). |
+| `tools[]` | repeated `Tool` | `functionDeclarations`, `googleSearch`, `codeExecution`, `urlContext`, `retrieval`, etc. Cannot mix `googleSearch` with `functionDeclarations`. |
+| `sessionResumption` | `SessionResumptionConfig` | `{ handle?: string, transparent?: bool }`. Set `transparent: true` for lossless buffer replay. |
+| `contextWindowCompression` | `ContextWindowCompressionConfig` | `{ triggerTokens?: int64, slidingWindow?: { targetTokens?: int64 } }`. Required for sessions >15 min. |
+| `realtimeInputConfig` | `RealtimeInputConfig` | VAD sensitivity, barge-in (`activityHandling`), and `turnCoverage`. |
+| `inputAudioTranscription` | `AudioTranscriptionConfig` | Enables `serverContent.inputTranscription` (and `interimInputTranscription`). Supports `languageCodes`, `customVocabulary`, `mode`. |
+| `outputAudioTranscription` | `AudioTranscriptionConfig` | Enables `serverContent.outputTranscription`. |
+| `explicitVadSignal` | `bool` | If `true`, server emits top-level `voiceActivity` messages on speech start/end. |
+| `proactivity` | `ProactivityConfig` | `{ proactiveAudio?: bool }`. Always on in `gemini-3.8-live`; configurable on `gemini-live-2.5-flash-native-audio`. |
+| `historyConfig` | `HistoryConfig` | `{ initialHistoryInClientContent?: bool }`. Set `true` when seeding history in `gemini-3.8-live`. |
+| `safetySettings[]` | repeated `SafetySetting` | `{ category, threshold, method? }`. |
+| `labels` | `map<string, string>` | Billing/reporting resource labels. |
 
-### `GenerationConfig` — Live-API-relevant subset
+### `GenerationConfig` (Live API subset)
 
-Fields most often used in `setup.generationConfig`:
-
-| Field | Type | Notes |
+| JSON Field | Type | Notes |
 | --- | --- | --- |
-| `responseModalities[]` | repeated enum | `TEXT` \| `AUDIO`. Pick **one** per session (mixing not supported). Default `AUDIO`. |
-| `temperature` | `float` | 0.0–2.0. |
-| `topP`, `topK`, `maxOutputTokens` | various | Standard sampling / length controls. |
-| `speechConfig` | `SpeechConfig` | Voice / language — only effective when `responseModalities=[AUDIO]`. See below. |
-| `mediaResolution` | enum | `MEDIA_RESOLUTION_LOW` \| `MEDIUM` \| `HIGH`. Controls token-cost vs. quality of input images / video frames. |
-| `thinkingConfig` | `ThinkingConfig` | `{ thinkingBudget?: int }`. Only on models that support thinking (e.g. Gemini 2.5 Flash). Set `thinkingBudget: 0` to disable. |
+| `responseModalities[]` | repeated enum | `AUDIO` (default) or `TEXT`. Pick one primary output mode per session. |
+| `temperature`, `topP`, `topK`, `maxOutputTokens`, `seed` | numeric | Standard sampling controls (`temperature` 0.0–2.0). |
+| `speechConfig` | `SpeechConfig` | Voice and language settings when outputting audio. |
+| `mediaResolution` | enum | `MEDIA_RESOLUTION_LOW` (64 tokens), `MEDIA_RESOLUTION_MEDIUM` (256 tokens), `MEDIA_RESOLUTION_HIGH` (256 tokens + zoomed reframing). |
+| `enableAffectiveDialog` | `bool` | Emotion-aware responses. Always enabled by default on `gemini-3.8-live`; opt-in on `2.5` native-audio. |
 
 > **Unsupported in Live `setup.generationConfig`:** `responseLogprobs`,
-> `responseMimeType`, `logprobs`, `responseSchema`, `stopSequence`,
+> `responseMimeType`, `logprobs`, `responseSchema`, `stopSequences`,
 > `routingConfig`, `audioTimestamp`.
 
-### `SpeechConfig`
+### `SpeechConfig` & `VoiceConfig`
 
-Controls the **voice** the model speaks with. Only meaningful when
-`responseModalities` includes `AUDIO`.
-
-| Field | Type | Notes |
+| JSON Field | Type | Notes |
 | --- | --- | --- |
-| `voiceConfig` | `VoiceConfig` | Single-speaker voice. The Live API supports **only single-speaker** output. |
-| `languageCode` | `string` | BCP-47 (e.g. `en-US`, `de-DE`, `ja-JP`). Output language. Native-audio models auto-detect / switch on their own; for non-native-audio models, set this explicitly. See [Languages supported](#languages-supported). |
+| `voiceConfig.prebuiltVoiceConfig.voiceName` | `string` | Case-sensitive name from the 30 prebuilt voices below (e.g., `"Aoede"`, `"Puck"`, `"Charon"`). |
+| `languageCode` | `string` | Optional BCP-47 output language/accent code (e.g., `"en-US"`, `"en-IN"`, `"ja-JP"`). Native-audio models auto-detect and switch languages dynamically when omitted; set explicitly to pin a specific regional accent or default session language so setup does not fall back to `"en-US"`. |
 
-> **Note on multi-speaker output:** A Live API session has exactly one
-> `prebuiltVoiceConfig.voiceName`. To approximate multiple speakers in a Live
-> session, use prompt engineering inside `systemInstruction` or `clientContent`
-> to have the single voice play different roles.
+**30 Prebuilt Voices** (case-sensitive; see [Configure language and voice](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/live-api/configure-language-voice.md.txt)):
+`Zephyr`, `Puck`, `Charon`, `Kore`, `Fenrir`, `Leda`, `Orus`, `Aoede`,
+`Callirrhoe`, `Autonoe`, `Enceladus`, `Iapetus`, `Umbriel`, `Algieba`,
+`Despina`, `Erinome`, `Algenib`, `Rasalgethi`, `Laomedeia`, `Achernar`,
+`Alnilam`, `Schedar`, `Gacrux`, `Pulcherrima`, `Achird`, `Zubenelgenubi`,
+`Vindemiatrix`, `Sadachbia`, `Sadaltager`, `Sulafat`.
 
-#### `VoiceConfig`
+### `AudioTranscriptionConfig`
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `prebuiltVoiceConfig` | `PrebuiltVoiceConfig` | Selects a named built-in voice. |
+Pass `{}` to enable default verbatim transcription, or customize:
 
-#### `PrebuiltVoiceConfig`
+- `languageCodes[]`: BCP-47 hints (e.g., `["en-US", "es-US"]`); omit for
+  auto-detection.
+- `customVocabulary[]`: Up to 1,000 domain-specific terms, product names, or
+  acronyms to bias speech recognition (`gemini-3.8-live` and
+  `gemini-3.5-transcribe-live-preview`).
+- `mode`: `VERBATIM` (default) or `SMART` (disfluency removal and formatting).
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `voiceName` | `string` | Name of the prebuilt voice. **30 voices supported.** See [Voices supported](#voices-supported) below for the full list and references. |
+### `RealtimeInputConfig` and `AutomaticActivityDetection`
 
-##### Voices supported
-
-The Live API supports **30 prebuilt voices**. Names are case-sensitive.
-
-| Voice | Style | Voice | Style | Voice | Style |
-| --- | --- | --- | --- | --- | --- |
-| Zephyr | Bright | Puck | Upbeat | Charon | Informative |
-| Kore | Firm | Fenrir | Excitable | Leda | Youthful |
-| Orus | Firm | Aoede | Breezy | Callirrhoe | Easy-going |
-| Autonoe | Bright | Enceladus | Breathy | Iapetus | Clear |
-| Umbriel | Easy-going | Algieba | Smooth | Despina | Smooth |
-| Erinome | Clear | Algenib | Gravelly | Rasalgethi | Informative |
-| Laomedeia | Upbeat | Achernar | Soft | Alnilam | Firm |
-| Schedar | Even | Gacrux | Mature | Pulcherrima | Forward |
-| Achird | Friendly | Zubenelgenubi | Casual | Vindemiatrix | Gentle |
-| Sadachbia | Lively | Sadaltager | Knowledgeable | Sulafat | Warm |
-
-**Reference (authoritative voice list):**
-
--   <https://cloud.google.com/gemini-enterprise-agent-platform/models/live-api/configure-language-voice#voices-supported>
-
-> The available set may vary per model (e.g. native-audio vs. half-cascade
-> models). If a voice is rejected during `setup`, the WebSocket closes
-> instead of returning `setupComplete`.
-
-#### Languages supported
-
-The Live API supports **24 BCP-47 languages** for `speechConfig.languageCode`:
-
-`ar-EG`, `bn-BD`, `de-DE`, `en-IN` (bundled with `hi-IN`), `en-US`, `es-US`,
-`fr-FR`, `hi-IN`, `id-ID`, `it-IT`, `ja-JP`, `ko-KR`, `mr-IN`, `nl-NL`,
-`pl-PL`, `pt-BR`, `ro-RO`, `ru-RU`, `ta-IN`, `te-IN`, `th-TH`, `tr-TR`,
-`uk-UA`, `vi-VN`.
-
-Reference:
-<https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/live-api/configure-language-voice#languages-supported>
-
-> Native-audio models (e.g. `gemini-live-2.5-flash-native-audio`) can switch
-> languages mid-conversation; for those, `languageCode` is optional and the
-> model auto-detects. For non-native-audio models, set it explicitly.
-
-#### Examples
-
-Basic prebuilt voice:
-
-```json
-{
-  "setup": {
-    "model": "...",
-    "generationConfig": {
-      "responseModalities": ["AUDIO"],
-      "speechConfig": {
-        "voiceConfig": {
-          "prebuiltVoiceConfig": { "voiceName": "Aoede" }
-        }
-      }
-    }
-  }
-}
-```
-
-Voice + output language pinned to German:
-
-```json
-{
-  "setup": {
-    "model": "...",
-    "generationConfig": {
-      "responseModalities": ["AUDIO"],
-      "speechConfig": {
-        "voiceConfig": { "prebuiltVoiceConfig": { "voiceName": "Charon" } },
-        "languageCode": "de-DE"
-      }
-    }
-  }
-}
-```
-
-> **Notes** - `speechConfig` is silently ignored if `responseModalities` is
-> `["TEXT"]`. - `voiceName` is case-sensitive and model-specific. Sending an
-> unknown name typically fails the `setup` (you'll see the WebSocket close
-> instead of `setupComplete`). - `speechConfig.languageCode` controls **output**
-> TTS language. - The Live API is **single-speaker only**.
+- `automaticActivityDetection`: Configures `disabled`,
+  `startOfSpeechSensitivity` (`START_SENSITIVITY_HIGH` or `LOW`),
+  `endOfSpeechSensitivity` (`END_SENSITIVITY_HIGH` or `LOW`),
+  `prefixPaddingMs`, and `silenceDurationMs`. Server-side VAD is enabled when
+  `disabled` is unset or `false`.
+- `activityHandling`: `START_OF_ACTIVITY_INTERRUPTS` (default barge-in) or
+  `NO_INTERRUPTION`.
+- `turnCoverage`: `TURN_INCLUDES_ALL_INPUT` (default) or
+  `TURN_INCLUDES_ONLY_ACTIVITY`.
 
 ---
 
 ## 5. `BidiGenerateContentClientContent` (`clientContent`)
 
-Turn-based input. Append to history and (optionally) trigger generation.
+Appends discrete `Content` turns (`role: "user"` or `"model"`) to session
+history.
 
-| Field | Type | Notes |
+| JSON Field | Type | Notes |
 | --- | --- | --- |
-| `turns[]` | repeated `Content` | Conversation history + the latest user request. |
-| `turnComplete` | `bool` | If true, server starts generating immediately. |
+| `turns[]` | repeated `Content` | Ordered oldest -> newest. In `gemini-3.8-live`, `role: "system"` is rejected (use `contextUpdate`). |
+| `turnComplete` | `bool` | `true` starts generation immediately; `false` buffers context without generating yet. |
 
-> Sending `clientContent` while the model is speaking **interrupts** it. Do
-> not use `clientContent` to deliver `FunctionResponse`s — use
-> `toolResponse`.
+> **Seeding initial history (`gemini-3.8-live`):** Set
+> `setup.historyConfig.initialHistoryInClientContent = true` in `setup`, wait
+> for `setupComplete`, and send prior turns in `clientContent` (`turnComplete:
+> false` if seeding silently before starting live audio, or `true` to prompt an
+> immediate reply).
 
 ---
 
 ## 6. `BidiGenerateContentRealtimeInput` (`realtimeInput`)
 
-Continuous, low-latency input. Does not populate history. End-of-turn is
-derived from VAD (or activity events).
+Continuous, low-latency streaming input. Set **one** payload field per frame:
 
-| Field            | Type                    | Notes                        |
-| ---------------- | ----------------------- | ---------------------------- |
-| `audio`          | `Blob`                  | Typed realtime audio. PCM    |
-:                  :                         : 16-bit, 16 kHz mono input    :
-:                  :                         : (`audio/pcm;rate=16000`).    :
-| `video`          | `Blob`                  | Typed realtime video frame   |
-:                  :                         : (`image/jpeg`/`png`/`webp`), :
-:                  :                         : should be sent at 1 fps.     :
-| `text`           | `string`                | Realtime text input.         |
-| `mediaChunks[]`  | repeated `Blob`         | **Deprecated.** Combined     |
-:                  :                         : audio/video chunks. Prefer   :
-:                  :                         : the typed `audio` / `video`  :
-:                  :                         : / `text` fields instead.     :
-| `audioStreamEnd` | `bool`                  | Mic turned off. Only valid   |
-:                  :                         : with auto-VAD enabled.       :
-| `activityStart`  | `ActivityStart` (empty) | Only when auto-VAD is        |
-:                  :                         : **disabled**.                :
-| `activityEnd`    | `ActivityEnd` (empty)   | Only when auto-VAD is        |
-:                  :                         : **disabled**.                :
+| JSON Field | Type | Notes |
+| --- | --- | --- |
+| `audio` | `Blob` | `mimeType: "audio/pcm;rate=16000"` (16-bit signed, 16 kHz, mono, little-endian PCM, ~20–100 ms chunks). |
+| `video` | `Blob` | Sampled image frames (`image/jpeg`, `image/png`, `image/webp`) at ~1 fps. Do not send MP4/WebM containers. |
+| `text` | `string` | Low-latency text input streamed into the active session. |
+| `audioStreamEnd` | `bool` | Flushes cached audio when the mic is muted/stopped (auto-VAD enabled only). |
+| `activityStart` / `activityEnd` | `{}` | Manual utterance boundaries (only valid when `automaticActivityDetection.disabled: true`). |
+| `mediaChunks[]` | repeated `Blob` | **Deprecated.** Use `audio` or `video` instead. |
 
-**Audio formats**
-
-- Input: `audio/pcm;rate=16000` (16 kHz, 16-bit signed PCM, mono, little-endian).
-- Output: 24 kHz, 16-bit signed PCM, mono.
+**Audio I/O formats:** Input is **16 kHz** 16-bit signed mono PCM
+(`audio/pcm;rate=16000`); model audio output in `serverContent.modelTurn` is
+**24 kHz** 16-bit signed mono PCM (`audio/pcm;rate=24000`).
 
 ---
 
-## 7. `BidiGenerateContentToolResponse` (`toolResponse`)
+## 7. `BidiGenerateContentToolResponse` (`toolResponse`) and Function Calling
 
-| Field                 | Type               | Notes                         |
-| --------------------- | ------------------ | ----------------------------- |
-| `functionResponses[]` | repeated           | Match `FunctionCall.id` from  |
-:                       : `FunctionResponse` : the server. `id` is optional. :
+Declare functions in `setup.tools[].functionDeclarations[]` (or update via
+`contextUpdate`). When the server sends `toolCall`, reply via `toolResponse`
+(never `clientContent`):
 
----
-
-## 8. `BidiGenerateContentSetupComplete` (`setupComplete`)
-
-| Field | Type | Notes |
-| --- | --- | --- |
-| `sessionId` | `string` | Server-assigned session identifier. |
-
-Receipt of this message is the gate for sending any other client frame.
-
----
-
-## 9. `BidiGenerateContentServerContent` (`serverContent`)
-
-Primary streaming-output channel.
-
-| Field | Type | Notes |
-| --- | --- | --- |
-| `modelTurn` | `Content` | Streamed model output parts (text and/or `inlineData` audio). |
-| `generationComplete` | `bool` | Model has finished generating; playback may still be flushing. |
-| `turnComplete` | `bool` | Logical end of turn. |
-| `interrupted` | `bool` | Generation was interrupted by client input — drop any queued audio playback. |
-| `groundingMetadata` | `GroundingMetadata` | When grounding (e.g. Google Search) is used. |
-| `inputTranscription` | `Transcription` | `{ text?: string }` — transcription of the user's spoken input. Requires `inputAudioTranscription` set in `setup`. |
-| `outputTranscription` | `Transcription` | `{ text?: string }` — transcription of the model's spoken output. Requires `outputAudioTranscription` set in `setup`. |
-
-**Playback note:** audio chunks arrive inside `modelTurn.parts[].inlineData`
-with mimeType `audio/pcm;rate=24000`. Concatenate as they stream. On
-`interrupted: true`, **flush** the playback queue.
-
----
-
-## 10. `BidiGenerateContentToolCall` (`toolCall`)
-
-| Field | Type | Notes |
-| --- | --- | --- |
-| `functionCalls[]` | repeated `FunctionCall` | Each has `id`, `name`, `args`. Reply with a matching `FunctionResponse.id`. |
-
----
-
-## 11. `BidiGenerateContentToolCallCancellation` (`toolCallCancellation`)
-
-| Field | Type | Notes |
-| --- | --- | --- |
-| `ids[]` | repeated `string` | IDs of previously-issued tool calls to cancel. Typically caused by user interruption. Stop the work; do not send `toolResponse` for these. |
-
----
-
-## 12. `GoAway`, `SessionResumptionUpdate`, `UsageMetadata`
-
-### `GoAway`
-
-| Field | Type | Notes |
-| --- | --- | --- |
-| `timeLeft` | `Duration` (string) | Time until the connection terminates with `ABORTED`. Reconnect using the latest `SessionResumptionUpdate.newHandle`. |
-
-### `SessionResumptionUpdate`
-
-| Field | Type | Notes |
-| --- | --- | --- |
-| `newHandle` | `string` | Handle to resume; empty if `resumable=false`. |
-| `resumable` | `bool` | Whether the session is currently resumable. |
-| `lastConsumedClientMessageIndex` | `int64` | Set only when `SessionResumptionConfig.transparent=true` — enables transparent reconnect. |
-
-### `UsageMetadata`
-
-| Field | Type |
+| Message / Field | Values & Behavior |
 | --- | --- |
-| `totalTokenCount` | `int32` |
-| `textCount` | `int32` |
-| `imageCount` | `int32` |
-| `videoDurationSeconds` | `int32` |
-| `audioDurationSeconds` | `int32` |
+| `FunctionDeclaration.behavior` | `NON_BLOCKING` (Live API default: model keeps speaking/listening while tool executes asynchronously) \| `BLOCKING` (`gemini-3.8-live`: pauses conversation until `toolResponse` arrives; canceled via `toolCallCancellation` if user barges in). |
+| `FunctionResponse.id` | Must match the originating `FunctionCall.id`. |
+| `FunctionResponse.scheduling` | Controls `NON_BLOCKING` delivery: `WHEN_IDLE` (default — waits until model finishes speaking), `INTERRUPT` (interrupts model output; if user is currently speaking in `gemini-3.8-live`, waits for user to finish), or `SILENT` (adds to context without generating). Note: `gemini-3.8-live-extended-thinking-preview` does not support explicit `FunctionResponse.scheduling`. |
+| `FunctionResponse.parts[]` | Optional multimodal blobs/URIs (`inlineData` / `fileData`) alongside `response` JSON. |
+
+> **Critical `gemini-3.8-live` anti-retry rule:** `gemini-3.8-live` actively
+> retries or sweeps parameters 2–5x when a tool returns an empty or ambiguous
+> payload like `{}` or `{"results": []}`. Always return structured status fields
+> (`status`, `retryable: false`, and an explanatory `message` on empty/error
+> results, or `status: "ok"` on success) and cap retries in `systemInstruction`.
 
 ---
 
-## 13. End-to-end JSON examples
+## 8. `BidiGenerateContentContextUpdate` (`contextUpdate`)
 
-### Setup
+Updates session preamble mid-stream in order with other inputs
+(`gemini-3.8-live`):
+
+| JSON Field | Type | Behavior |
+| --- | --- | --- |
+| `systemInstruction` | `Content` | Replaces `setup.systemInstruction`. Omit to keep existing instructions. |
+| `tools` | `{ tools?: Tool[] }` | Wrapper message: omit `tools` to keep existing tools; set `"tools": {"tools": [...]}` to replace tools; set `"tools": {}` (or `{"tools": []}`) to clear all tools. |
+
+> Updating `systemInstruction` or `tools` invalidates the server prefix cache;
+> send `contextUpdate` only when instructions or tools actually change.
+
+---
+
+## 9. Server Messages (`setupComplete`, `serverContent`, `toolCall`, `voiceActivity`)
+
+### `BidiGenerateContentSetupComplete` (`setupComplete`)
+
+- `{ "sessionId": "..." }` — confirms session initialization; gate all client
+  sends on receiving this message.
+
+### `BidiGenerateContentServerContent` (`serverContent`)
+
+| JSON Field | Type | Notes |
+| --- | --- | --- |
+| `modelTurn` | `Content` | Streamed model parts (`inlineData` 24 kHz PCM audio, `text`, or `thought: true` reasoning parts). |
+| `generationComplete` | `bool` | Model finished generating tokens/audio for this turn (client playback buffer may still be draining). |
+| `turnComplete` | `bool` | Logical end of the turn. |
+| `turnCompleteReason` | enum | Reason turn ended (e.g., `NEED_MORE_INPUT`, `MALFORMED_FUNCTION_CALL`, `RESPONSE_REJECTED`, or safety enums). |
+| `interrupted` | `bool` | User barged in — immediately stop audio playback, clear queued audio/unrendered transcript buffers, and close the active bubble. |
+| `inputTranscription` | `Transcription` | `{ text, finished }`. Finalized/chunked user speech transcript. |
+| `interimInputTranscription` | `Transcription` | `{ text, finished }`. Low-latency interim hypothesis updated while the user is still speaking. |
+| `outputTranscription` | `Transcription` | `{ text, finished }`. Streamed transcript of model speech. |
+| `speechState` | enum | `SPEECH` \| `NON_SPEECH` transitions on `realtimeInput.audio`. |
+| `interactionStatus` | enum | Sent alongside `turnComplete`: `IN_PROGRESS` (background tool/reasoning still active) \| `IDLE` (all processing done). |
+| `groundingMetadata` | object | Search / grounding citations when grounding tools are active. |
+
+### `BidiGenerateContentToolCall` (`toolCall`) and `BidiGenerateContentToolCallCancellation` (`toolCallCancellation`)
+
+- `toolCall.functionCalls[]`: `{ id, name, args }`.
+- `toolCallCancellation.ids[]`: Stop in-flight work for these `id`s and do
+  **not** send `toolResponse` for them.
+
+### `VoiceActivity` (`voiceActivity`)
+
+- `{ "type": "ACTIVITY_START" | "ACTIVITY_END", "audioOffset": "3.240s" }` —
+  emitted when `setup.explicitVadSignal = true`.
+
+---
+
+## 10. Lifecycle and Accounting (`GoAway`, `SessionResumptionUpdate`, `UsageMetadata`)
+
+- **`GoAway`**: `{ "timeLeft": "60s" }`. Proactively open a new WebSocket and
+  resume using the latest `SessionResumptionUpdate.newHandle`.
+- **`SessionResumptionUpdate`**: Carries `newHandle`, `resumable`, and
+  `lastConsumedClientMessageIndex`. When `setup.sessionResumption.transparent =
+  true`, prune buffered client messages up to `lastConsumedClientMessageIndex`.
+- **`UsageMetadata`**:
+  - Token counters: `promptTokenCount`, `candidatesTokenCount`,
+    `totalTokenCount`, `toolUsePromptTokenCount`, `thoughtsTokenCount`,
+    `cachedContentTokenCount`.
+  - Per-modality breakdowns (`ModalityTokenCount[]` with `modality` and
+    `tokenCount`): `promptTokensDetails`, `cacheTokensDetails`,
+    `candidatesTokensDetails`, `toolUsePromptTokensDetails`.
+  - `trafficType`: `ON_DEMAND`, `PROVISIONED_THROUGHPUT`,
+    `ON_DEMAND_PRIORITY`, etc.
+
+---
+
+## 11. End-to-End JSON Wire Examples
+
+### Session `setup` (`gemini-3.8-live` with transparent resumption, custom vocabulary & async tool)
 
 ```json
 {
@@ -413,436 +348,157 @@ with mimeType `audio/pcm;rate=24000`. Concatenate as they stream. On
       }
     },
     "systemInstruction": {
-      "parts": [{ "text": "You are a concise voice assistant." }]
+      "parts": [{ "text": "You are a concise voice assistant. Retry failed tools at most once." }]
     },
-    "realtimeInputConfig": {
-      "automaticActivityDetection": { "disabled": false }
-    },
-    "sessionResumption": {},
-    "outputAudioTranscription": {}
-  }
-}
-```
-
-### Setup complete (server)
-
-```json
-{ "setupComplete": { "sessionId": "abc-123" } }
-```
-
-### Streaming user audio (realtime)
-
-```json
-{
-  "realtimeInput": {
-    "audio": {
-      "mimeType": "audio/pcm;rate=16000",
-      "data": "<base64-pcm-bytes>"
-    }
-  }
-}
-```
-
-### Typed user message (turn-based)
-
-```json
-{
-  "clientContent": {
-    "turns": [{ "role": "user", "parts": [{ "text": "Hello!" }] }],
-    "turnComplete": true
-  }
-}
-```
-
-### Streaming model output (server)
-
-```json
-{
-  "serverContent": {
-    "modelTurn": {
-      "role": "model",
-      "parts": [{
-        "inlineData": {
-          "mimeType": "audio/pcm;rate=24000",
-          "data": "<base64-pcm-bytes>"
+    "tools": [{
+      "functionDeclarations": [{
+        "name": "lookup_order",
+        "description": "Looks up order status by ID.",
+        "behavior": "NON_BLOCKING",
+        "parametersJsonSchema": {
+          "type": "object",
+          "properties": { "order_id": { "type": "string" } },
+          "required": ["order_id"]
         }
       }]
+    }],
+    "sessionResumption": { "transparent": true },
+    "contextWindowCompression": {
+      "triggerTokens": "100000",
+      "slidingWindow": { "targetTokens": "50000" }
+    },
+    "inputAudioTranscription": {
+      "customVocabulary": ["Cloud Run", "GKE", "AlloyDB"]
+    },
+    "outputAudioTranscription": {},
+    "historyConfig": { "initialHistoryInClientContent": true }
+  }
+}
+```
+
+### Mid-session `contextUpdate`
+
+```json
+{
+  "contextUpdate": {
+    "systemInstruction": {
+      "parts": [{ "text": "Switch to Spanish and keep answers under two sentences." }]
     }
   }
 }
 ```
 
-### Tool call / response
+### Async `toolCall` & structured `toolResponse`
 
 ```json
-// Server → client
+// Server -> client
 {
   "toolCall": {
     "functionCalls": [
-      { "id": "call_42", "name": "get_weather", "args": { "city": "Paris" } }
+      { "id": "call_1", "name": "lookup_order", "args": { "order_id": "ORD-99" } }
     ]
   }
 }
 
-// Client → server
+// Client -> server
 {
   "toolResponse": {
-    "functionResponses": [
-      {
-        "id": "call_42",
-        "name": "get_weather",
-        "response": { "tempC": 18, "summary": "Partly cloudy" }
+    "functionResponses": [{
+      "id": "call_1",
+      "name": "lookup_order",
+      "scheduling": "WHEN_IDLE",
+      "response": {
+        "status": "ok",
+        "retryable": false,
+        "order": { "id": "ORD-99", "eta": "2026-11-08" }
       }
-    ]
+    }]
   }
 }
 ```
 
-### GoAway + resumption
-
-```json
-{ "goAway": { "timeLeft": "10s" } }
-{ "sessionResumptionUpdate": { "newHandle": "ses_xyz", "resumable": true } }
-```
-
-Reconnect with:
-
-```json
-{ "setup": { "model": "...", "sessionResumption": { "handle": "ses_xyz" } } }
-```
-
 ---
 
-## 14. Full input examples — audio, video, text
+## 12. Realtime vs. Add-Context Input Cookbook
 
-There are **two distinct ways** to send user input. Pick one based on intent:
+Choose the input envelope based on whether you are streaming live media or
+appending discrete turns:
 
-|                       | Part 1 — Realtime input  | Part 2 — Add-context      |
-:                       : (`realtimeInput`)        : input (`clientContent`)   :
-| --------------------- | ------------------------ | ------------------------- |
-| **Goal**              | Stream live mic / camera | Append a discrete turn to |
-:                       : continuously             : the conversation          :
-| **Latency**           | Lowest possible;         | Normal request/response   |
-:                       : sub-second               :                           :
-| **Added to history?** | **No** (transient        | **Yes** (persistent       |
-:                       : signals)                 : conversation)             :
-| **Turn boundary**     | VAD (auto), or explicit  | Explicit `turnComplete:   |
-:                       : `activityStart`/`End`    : true`                     :
-| **Effect on model**   | Streamed; auto-triggers  | Setting `turnComplete`    |
-:                       : a turn when VAD fires    : triggers generation;      :
-:                       :                          : **interrupts** any        :
-:                       :                          : ongoing model output      :
-| **Field carriers**    | `audio` / `video` /      | `turns[].parts[].text` /  |
-:                       : `text`                   : `inlineData` / `fileData` :
-| **Typical use**       | Live voice + screen      | Typed chat, uploading an  |
-:                       : sharing, push-to-talk    : image/clip, replaying     :
-:                       :                          : history on resume         :
+| Aspect | `realtimeInput` | `clientContent` |
+| --- | --- | --- |
+| **Use case** | Live mic, camera/screen frames (~1 fps), push-to-talk | Typed chat turns, seeding history, discrete audio/image uploads |
+| **Turn boundary** | Server VAD (default) or `activityStart` / `activityEnd` | Explicit `turnComplete: true` |
+| **Barge-in effect** | Controlled by `realtimeInputConfig.activityHandling` | Immediately interrupts active model output |
 
-> You may use both in the same session — e.g. send a `clientContent` system
-> nudge once, then continue streaming `realtimeInput`. But within a single
-> logical user turn, pick one.
-
-The two parts below give every supported variant for **audio**, **video**, and
-**text** in each mode.
-
----
-
-# Part 1 — Realtime input (`realtimeInput`)
-
-Continuous, low-latency input that does **not** populate conversation
-history. End-of-turn comes from server-side VAD by default, or from explicit
-`activityStart` / `activityEnd` events when auto-VAD is disabled in `setup`.
-
-## 1.A Realtime audio
-
-Required format: **PCM, 16-bit signed, 16 kHz, mono, little-endian**, base64
-encoded. MIME type: `audio/pcm;rate=16000`. Send one frame per chunk
-(~20–100 ms is typical).
-
-### 1.A.1 Continuous mic
+### A. `realtimeInput` payloads
 
 ```json
-{
-  "realtimeInput": {
-    "audio": {
-      "mimeType": "audio/pcm;rate=16000",
-      "data": "<base64 PCM chunk>"
-    }
-  }
-}
-```
+// 1. Continuous mic chunk (16 kHz, 16-bit mono PCM)
+{ "realtimeInput": { "audio": { "mimeType": "audio/pcm;rate=16000", "data": "<base64-pcm>" } } }
 
-When the mic turns off (and server-side VAD is enabled), commit end-of-stream:
-
-```json
+// 2. Mic muted / stream paused (auto-VAD enabled)
 { "realtimeInput": { "audioStreamEnd": true } }
-```
 
-### 1.A.2 Manual VAD (auto-VAD disabled)
-
-Required `setup`:
-
-```json
-{
-  "setup": {
-    "model": "...",
-    "realtimeInputConfig": { "automaticActivityDetection": { "disabled": true } }
-  }
-}
-```
-
-Then explicitly frame each utterance:
-
-```json
+// 3. Manual VAD utterance (requires automaticActivityDetection.disabled = true in setup)
 { "realtimeInput": { "activityStart": {} } }
-{ "realtimeInput": { "audio": { "mimeType": "audio/pcm;rate=16000", "data": "..." } } }
-{ "realtimeInput": { "audio": { "mimeType": "audio/pcm;rate=16000", "data": "..." } } }
-{ "realtimeInput": { "activityEnd":   {} } }
+{ "realtimeInput": { "audio": { "mimeType": "audio/pcm;rate=16000", "data": "<base64-pcm>" } } }
+{ "realtimeInput": { "activityEnd": {} } }
+
+// 4. Camera / screen frame (~1 fps JPEG/PNG/WebP)
+{ "realtimeInput": { "video": { "mimeType": "image/jpeg", "data": "<base64-jpeg>" } } }
+
+// 5. Realtime text
+{ "realtimeInput": { "text": "Focus on the top-right chart." } }
 ```
 
-## 1.B Realtime video
-
-Video = a **stream of sampled image frames** (should be sent at 1 fps). Each
-frame is JPEG / PNG / WebP. The model does **not** consume an encoded container
-(mp4/webm) — sample frames client-side and send each as an inline image.
-
-### 1.B.1 Continuous camera
+### B. `clientContent` payloads
 
 ```json
-{
-  "realtimeInput": {
-    "video": {
-      "mimeType": "image/jpeg",
-      "data": "<base64 JPEG frame>"
-    }
-  }
-}
-```
-
-## 1.C Realtime text
-
-```json
-{ "realtimeInput": { "text": "Switch to a calmer tone." } }
-```
-
-## 1.D Combined realtime audio + video (+ text)
-
-Typical "talk-to-the-screen" flow. Send each modality in its own frame:
-
-```json
-{ "realtimeInput": { "video": { "mimeType": "image/jpeg",          "data": "<frame_t0>" } } }
-{ "realtimeInput": { "audio": { "mimeType": "audio/pcm;rate=16000", "data": "<pcm_t0>"   } } }
-{ "realtimeInput": { "video": { "mimeType": "image/jpeg",          "data": "<frame_t1>" } } }
-{ "realtimeInput": { "audio": { "mimeType": "audio/pcm;rate=16000", "data": "<pcm_t1>"   } } }
-{ "realtimeInput": { "text":  "Focus on the chart in the upper-right." } }
-{ "realtimeInput": { "audio": { "mimeType": "audio/pcm;rate=16000", "data": "<pcm_t2>"   } } }
-{ "realtimeInput": { "audioStreamEnd": true } }
-```
-
-## 1.E Realtime quick reference
-
-| Modality             | Field                                             |
-| -------------------- | ------------------------------------------------- |
-| Audio chunk          | `realtimeInput.audio` (`audio/pcm;rate=16000`)    |
-| Video frame          | `realtimeInput.video` (`image/jpeg`/`png`/`webp`) |
-| Text                 | `realtimeInput.text`                              |
-| Combined audio+video | `realtimeInput.mediaChunks[]` (**deprecated** —   |
-:                      : prefer the typed `audio` / `video` fields)        :
-| Mic-off signal       | `realtimeInput.audioStreamEnd: true`              |
-| Manual turn boundary | `realtimeInput.activityStart` / `activityEnd`     |
-:                      : (auto-VAD disabled)                               :
-
----
-
-# Part 2 — Add-context input (`clientContent`)
-
-Discrete, **history-bearing** turns. Use this when you want the message to be
-permanently part of the conversation context the model sees on subsequent
-turns. Setting `turnComplete: true` triggers generation immediately and
-**interrupts** any ongoing model output.
-
-> Do **not** use `clientContent` to reply to a `toolCall` — use `toolResponse`.
-
-## 2.A Add-context text
-
-### 2.A.1 Single user turn
-
-```json
+// 1. Seeded multi-turn history (requires historyConfig.initialHistoryInClientContent = true on 3.8-live)
 {
   "clientContent": {
     "turns": [
-      { "role": "user", "parts": [{ "text": "What's the capital of France?" }] }
+      { "role": "user", "parts": [{ "text": "Hi, my name is Sam." }] },
+      { "role": "model", "parts": [{ "text": "Hello Sam! How can I help?" }] }
     ],
-    "turnComplete": true
+    "turnComplete": false
   }
 }
-```
 
-### 2.A.2 Multi-turn history (e.g. on resume)
-
-```json
-{
-  "clientContent": {
-    "turns": [
-      { "role": "user",  "parts": [{ "text": "Hi, my name is Sam." }] },
-      { "role": "model", "parts": [{ "text": "Nice to meet you, Sam!" }] },
-      { "role": "user",  "parts": [{ "text": "What's my name?" }] }
-    ],
-    "turnComplete": true
-  }
-}
-```
-
-### 2.A.3 Streamed turn (don't generate yet — more parts coming)
-
-```json
-{ "clientContent": { "turns": [{ "role": "user", "parts": [{ "text": "Once upon" }] }] } }
-{ "clientContent": { "turns": [{ "role": "user", "parts": [{ "text": " a time..." }] }], "turnComplete": true } }
-```
-
-## 2.B Add-context audio
-
-A pre-recorded clip delivered as a discrete history-bearing turn.
-
-### 2.B.1 Audio clip alone
-
-```json
-{
-  "clientContent": {
-    "turns": [{
-      "role": "user",
-      "parts": [{
-        "inlineData": {
-          "mimeType": "audio/pcm;rate=16000",
-          "data": "<base64 of full clip>"
-        }
-      }]
-    }],
-    "turnComplete": true
-  }
-}
-```
-
-### 2.B.2 Audio clip with accompanying text prompt
-
-```json
+// 2. Discrete user text + inline image + Cloud Storage URI
 {
   "clientContent": {
     "turns": [{
       "role": "user",
       "parts": [
-        { "text": "Transcribe this and summarize:" },
-        { "inlineData": { "mimeType": "audio/pcm;rate=16000", "data": "..." } }
+        { "text": "Compare this screenshot with the reference diagram:" },
+        { "inlineData": { "mimeType": "image/jpeg", "data": "<base64-jpeg>" } },
+        { "fileData": { "mimeType": "application/pdf", "fileUri": "gs://my-bucket/spec.pdf" } }
       ]
     }],
     "turnComplete": true
   }
 }
 ```
-
-## 2.C Add-context video / image
-
-### 2.C.1 Single image
-
-```json
-{
-  "clientContent": {
-    "turns": [{
-      "role": "user",
-      "parts": [
-        { "text": "What's in this picture?" },
-        { "inlineData": { "mimeType": "image/jpeg", "data": "<base64 image>" } }
-      ]
-    }],
-    "turnComplete": true
-  }
-}
-```
-
-### 2.C.2 Multiple frames as a single turn (sampled clip)
-
-```json
-{
-  "clientContent": {
-    "turns": [{
-      "role": "user",
-      "parts": [
-        { "text": "Here are 3 frames from a video. What's happening?" },
-        { "inlineData": { "mimeType": "image/jpeg", "data": "<frame_0>" } },
-        { "inlineData": { "mimeType": "image/jpeg", "data": "<frame_1>" } },
-        { "inlineData": { "mimeType": "image/jpeg", "data": "<frame_2>" } }
-      ]
-    }],
-    "turnComplete": true
-  }
-}
-```
-
-### 2.C.3 Image by URI (`fileData`)
-
-```json
-{
-  "clientContent": {
-    "turns": [{
-      "role": "user",
-      "parts": [
-        { "text": "Describe this image." },
-        { "fileData": { "mimeType": "image/jpeg", "fileUri": "gs://my-bucket/cat.jpg" } }
-      ]
-    }],
-    "turnComplete": true
-  }
-}
-```
-
-## 2.D Combined add-context multimodal turn
-
-Text + image + audio in a single user turn:
-
-```json
-{
-  "clientContent": {
-    "turns": [{
-      "role": "user",
-      "parts": [
-        { "text": "Compare what I'm saying with what I'm showing:" },
-        { "inlineData": { "mimeType": "image/jpeg",          "data": "<image>" } },
-        { "inlineData": { "mimeType": "audio/pcm;rate=16000", "data": "<clip>"  } }
-      ]
-    }],
-    "turnComplete": true
-  }
-}
-```
-
-## 2.E Add-context quick reference
-
-| Modality             | Field                        | Notes                  |
-| -------------------- | ---------------------------- | ---------------------- |
-| Text                 | `turns[].parts[].text`       | One or more `text`     |
-:                      :                              : parts per turn.        :
-| Inline audio         | `turns[].parts[].inlineData` | Full clip, base64.     |
-:                      : (`audio/pcm;rate=16000`)     :                        :
-| Inline image / video | `turns[].parts[].inlineData` | Multiple parts allowed |
-: frame                : (`image/jpeg`/`png`/`webp`)  : for sampled clips.     :
-| Remote file          | `turns[].parts[].fileData`   | GCS URI                |
-:                      : (`fileUri`)                  :                        :
-| Trigger generation   | `turnComplete: true`         | Omit to keep streaming |
-:                      :                              : more parts.            :
-| History order        | `turns[]` ordered oldest →   | `role` is `"user"` or  |
-:                      : newest                       : `"model"`.             :
 
 ---
 
-## 15. Common pitfalls
+## 13. Common Pitfalls
 
-- **Sending data before `setupComplete`** — server will close the connection.
-- **Mixing `clientContent` and `realtimeInput`** for the same logical turn —
-  pick one mode. `clientContent` interrupts ongoing generation.
-- **Ignoring `interrupted: true`** — leftover queued audio will play over the
-  user's next utterance.
-- **Replying to `toolCall` with `clientContent`** — must be `toolResponse`.
--   **Forgetting `FunctionResponse.id`** — request rejected.
-- **Wrong audio format** — input must be 16 kHz PCM, output is 24 kHz PCM.
--   **No reconnect handling** — sessions have a max duration; always honor
-    `goAway` and persist the latest `SessionResumptionUpdate.newHandle`.
+- **Sending binary protobuf frames** — the WebSocket accepts UTF-8 JSON text
+  frames only (`MessageToJson` / `Parse`).
+- **Using the `global` endpoint** — Live API models require a regional endpoint
+  such as `us-central1`.
+- **Sending frames before `setupComplete`** — causes immediate connection close.
+- **Using `role: "system"` in `clientContent` on `gemini-3.8-live`** — rejected;
+  use `contextUpdate` instead.
+- **Seeding history without `historyConfig.initialHistoryInClientContent: true`**
+  — required on `gemini-3.8-live`.
+- **Returning `{}` in `FunctionResponse.response`** — causes `gemini-3.8-live`
+  to retry/sweep tool arguments; always return `status`, `retryable`, and
+  `message`.
+- **Combining `googleSearch` and `functionDeclarations`** — unsupported in the
+  same `setup.tools` list.
+- **Ignoring `interrupted: true` or `Transcription.finished`** — flush queued
+  24 kHz playback audio immediately on `interrupted: true`, and close/rotate UI
+  transcript bubbles when `finished: true` arrives.
