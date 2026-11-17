@@ -1,7 +1,7 @@
 ---
 name: cloud-databases-onboarding
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: Databases
 description: >-
   Guides users through discovering their database requirements, recommends a
@@ -100,8 +100,8 @@ Limit your actions to creating and validating draft artifacts for user review.
         onboarding skill"` under the `default_tags` block or as a resource
         label/tag.
     *   **gcloud CLI Generation**: When drafting `gcloud` CLI commands or shell
-        scripts, you MUST follow the instructions in the `gcloud` skill
-        (`../gcloud/SKILL.md`). Specifically:
+        scripts, you MUST follow the instructions in the `gcloud` skill.
+        Specifically:
         *   Always use `gcloud beta` command group for database provisioning
             (e.g., `gcloud beta <group> <resource> create`).
         *   Validate leaf-level syntax using `gcloud help <leaf_command>` prior
@@ -135,5 +135,5 @@ Limit your actions to creating and validating draft artifacts for user review.
 
 ## Supporting Resources & Documentation
 
-- [Google Cloud Databases Overview](https://cloud.google.com/products/databases.md.txt)
--   [gcloud CLI Skill](../gcloud/SKILL.md)
+- [Google Cloud Databases Overview](https://cloud.google.com/products/databases)
+-   Use the `gcloud` skill for CLI command formatting and validation.

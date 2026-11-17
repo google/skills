@@ -206,7 +206,7 @@ modifications. Do NOT apply changes to production directly:
     configuration files or shell scripts to provision the resources.
 
     -   When generating `gcloud` CLI commands or shell scripts, you MUST follow
-        and apply the `gcloud` skill instructions (`../../gcloud/SKILL.md`):
+        and apply the `gcloud` skill instructions:
         *   Always use `gcloud beta` command group for database provisioning
             (e.g., `gcloud beta <group> <resource> create`).
         *   Validate leaf-level command syntax using `gcloud help
