@@ -140,6 +140,7 @@ This command gives you an option to also remove obsolete skills.
   - [**BigFrames (BigQuery DataFrame) basics**](./skills/cloud/bigquery-bigframes)
   - [**BigQuery Asset Impact Analysis**](./skills/cloud/datalineage-bigquery-asset-impact-analysis)
   - [**BigQuery Basics**](./skills/cloud/bigquery-basics)
+  - [**BigQuery Migration Data Exporter**](./skills/cloud/bigquery-migration-data-exporter)
   - [**BigQuery Migration Data Loader**](./skills/cloud/bigquery-migration-data-loader)
   - [**BigQuery Migration Metadata Extraction**](./skills/cloud/bigquery-migration-metadata-extractor)
   - [**BigQuery Migration Service (BQMS) SQL Translator**](./skills/cloud/bigquery-migration-sql-translator)
