@@ -1,0 +1,51 @@
+name: "Trunk-Based Push-to-Deploy"
+description: "A simple and fast pattern where every commit to the main or develop branch is instantly built, tested, and deployed to a shared development environment on Cloud Run or GKE."
+
+applicability:
+  triggers: ["git_commit", "push"]
+  deployment_style: "continuous_deployment"
+  use_case_keywords: ["rapid iteration", "vibe coding", "development environment", "trunk-based"]
+
+stages:
+  # In this pattern, CI and CD are a single, unified stage executed by Cloud Build.
+  ci_cd:
+    id: "trunk_based_flow"
+    type: "cloud-build"
+    name: "Trunk-Based CI and CD Flow"
+    details: "A single process triggered by a commit. It handles linting, testing, building, pushing, and deploying the application."
+    state: "create"
+    # The following steps will be translated into a single cloudbuild.yaml file.
+    steps:
+      - id: "lint_step"
+        type: "linter"
+        name: "Run Linter"
+        details: "Runs a static code analysis tool appropriate for the project."
+        state: "create"
+
+      - id: "test_step"
+        type: "test"
+        name: "Run Unit Tests"
+        details: "Executes the project's unit test suite."
+        state: "create"
+
+      - id: "build_and_push_step"
+        type: "docker"
+        name: "Build and Push Container"
+        details: "Builds a container image and pushes it to Artifact Registry, tagged with the commit SHA."
+        state: "create"
+
+      - id: "deploy_step"
+        type: "gcloud-deploy"
+        name: "Deploy to Cloud Run or GKE"
+        details: "Deploys the newly pushed container image to a shared development environment on Cloud Run or GKE."
+        state: "create"
+
+tradeoffs:
+  pros:
+    - "Extremely fast feedback loop from commit to deployment."
+    - "Simplifies the release process, removing overhead."
+    - "Ideal for development and testing environments where speed is critical."
+  cons:
+    - "Can lead to an unstable development environment if tests are not robust."
+    - "Not suitable for production without adding quality gates and approvals."
+

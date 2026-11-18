@@ -1,0 +1,61 @@
+name: "Trunk-Based CI and Tag-Based CD"
+description: "A pattern where every push to the main branch triggers code quality checks (linting and testing). Deployment is only initiated when a Git tag is pushed, triggering a final container build and a release creation in Cloud Deploy."
+
+applicability:
+  triggers: ["git_push", "git_tag"]
+  deployment_style: "continuous_delivery"
+  use_case_keywords: ["trunk-based-ci", "tag-based-cd", "lint-test-only", "cloud-deploy", "rollbacks", "canary deployments"]
+
+stages:
+  # CI stage runs on every commit to the main branch.
+  ci:
+    id: "ci_pipeline"
+    type: "cloud-build"
+    name: "CI Pipeline (Main Branch)"
+    details: "Runs automatically on each push to the main branch. Focuses on code quality and correctness."
+    trigger:
+      event: "push"
+      branch: "main"
+    steps:
+      - id: "lint_step"
+        type: "linter"
+        name: "Run Linter"
+        details: "Runs static code analysis tools to ensure code health."
+        state: "create"
+
+      - id: "test_step"
+        type: "test"
+        name: "Run Unit Tests"
+        details: "Executes the unit test suite to verify code changes."
+        state: "create"
+
+  # CD stage is triggered by a formal Git tag.
+  cd:
+    id: "cd_pipeline"
+    type: "cloud-build"
+    name: "Tag-Based CD Release"
+    details: "Initiated by pushing a Git tag (e.g., v1.0.0). Builds the production artifact and starts the deployment process."
+    trigger:
+      event: "push"
+      tag: "^v.*"
+    steps:
+      - id: "build_and_push_image"
+        type: "docker"
+        name: "Build and Push Image"
+        details: "Builds a production container image and pushes it to Artifact Registry, tagged with the Git tag."
+        state: "create"
+
+      - id: "create_cloud_deploy_release"
+        type: "cloud-deploy"
+        name: "Create Cloud Deploy Release"
+        details: "Creates a release in Cloud Deploy, which triggers the first rollout to the initial environment."
+        state: "create"
+
+tradeoffs:
+  pros:
+    - "Decouples deployment from integration, allowing for controlled releases."
+    - "Minimizes unnecessary builds by only pushing images when a release is intended."
+    - "Establishes a clear mapping between Git versions and deployed artifacts."
+  cons:
+    - "Slower path to deployment compared to continuous deployment."
+    - "Relies on manual tagging which can be bypassed if not enforced."
