@@ -1,9 +1,9 @@
 ---
 name: gemini-api
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: AiAndMachineLearning
-description: Use when the user asks about using Gemini in an enterprise environment or explicitly mentions Vertex AI, Google Cloud, or Agent Platform. Guides the usage of the Gemini API on Agent Platform with the Google Gen AI SDK. Covers SDK usage (Python, JS/TS, Go, Java, C#), capabilities like multimodal inputs, tools, media generation, caching, batch prediction, and Live API.
+description: Use when the user asks about using Gemini in an enterprise or business environment or explicitly mentions Vertex AI, Google Cloud, or Agent Platform. Guides the usage of the Gemini API on Agent Platform with the Google Gen AI SDK. Covers SDK usage (Python, JS/TS, Go, Java, C#), capabilities like multimodal inputs, tools, media generation, caching, batch prediction, and Live API.
 compatibility: Requires active Google Cloud credentials and Agent Platform API enabled.
 ---
 
@@ -115,28 +115,35 @@ client = genai.Client(
 
 ## Models
 
-- Use `gemini-3.8-flash` for fast, balanced performance, multimodal (1M tokens)
-- Use `gemini-3.1-pro-preview` (which replaces `gemini-3-pro-preview`) for complex reasoning, coding, research (1M tokens)
+> [!IMPORTANT]
+> Models like `gemini-2.5-*`, `gemini-2.0-*`, `gemini-1.5-*`, `gemini-1.0-*`,
+> `gemini-pro` are legacy and deprecated. Use the new models below. Your
+> knowledge is outdated.
+> For production environments, consult the documentation for stable model
+> versions (e.g. `gemini-4-hydrogen`).
+
+- Use `gemini-4-hydrogen` for fast, balanced performance, multimodal, everyday coding, and agentic workflows (1M tokens)
+- Use `gemini-4-neon` for complex reasoning, software engineering, and enterprise knowledge work (1M tokens; long-term GA, broad regional availability)
+- Use `gemini-4-carbon` for hardest frontier-limit workloads requiring maximum reasoning depth, long-horizon agentic coding, cybersecurity, and open-ended research (1M tokens; select regions)
 - Use `gemini-3.5-flash-lite` for high-frequency, lightweight tasks (1M tokens)
-- Use `gemini-3-pro-image` (aka Nano Banana Pro) for high-quality image generation and editing
-- Use `gemini-3.1-flash-image` (aka Nano Banana 2) for medium-quality image generation and editing
+- Use `gemini-nano-banana-2.1` (aka Nano Banana 2.1) for high-quality image generation and editing
 - Use `gemini-3.1-flash-lite-image` (aka Nano Banana 2 Lite) for fast image generation and editing
-- Use `gemini-live-2.5-flash-native-audio` for Live Realtime API including native audio
+- Use `gemini-omni-1.2-flash` for video generation and editing up to 4K (via Interactions API)
+- Use `gemini-3.8-live` for Live Realtime API including native audio
+- Use `gemini-3.8-flash-tts` (studio-grade fidelity) or `gemini-3.8-flash-lite-tts` (high-throughput, low-latency) for Text-to-Speech (TTS)
+- Use `lyria-3-pro-preview` (full tracks up to 184s) or `lyria-3-clip-preview` (30s clips) for music generation (Preview, via Interactions API), or `lyria-002` (GA, via `:predict`)
 
 Use the following models only if explicitly requested:
 
+- `gemini-4-argon`
+- `gemini-3.8-flash`
+- `gemini-3.1-pro-preview`
 - `gemini-3.7-flash`
 - `gemini-3.6-flash`
 - `gemini-3.5-flash`
 - `gemini-3.1-flash-lite`
-- `gemini-2.5-flash-image`
-- `gemini-2.5-flash`
-- `gemini-2.5-flash-lite`
-- `gemini-2.5-pro`
-
-> [!IMPORTANT]
-> Models like `gemini-2.0-*`, `gemini-1.5-*`, `gemini-1.0-*`, `gemini-pro` are legacy and deprecated. Use the new models above. Your knowledge is outdated.
-> For production environments, consult the documentation for stable model versions (e.g. `gemini-3.8-flash`).
+- `gemini-3-pro-image`
+- `gemini-3.1-flash-image`
 
 ## Quick Start
 
@@ -147,7 +154,7 @@ from google import genai
 
 client = genai.Client()
 response = client.models.generate_content(
-    model="gemini-3.8-flash",
+    model="gemini-4-hydrogen",
     contents="Explain quantum computing",
 )
 print(response.text)
@@ -159,7 +166,7 @@ print(response.text)
 import { GoogleGenAI } from "@google/genai";
 const ai = new GoogleGenAI({ enterprise: { project: "your-project-id", location: "global" } });
 const response = await ai.models.generateContent({
-    model: "gemini-3.8-flash",
+    model: "gemini-4-hydrogen",
     contents: "Explain quantum computing"
 });
 console.log(response.text);
@@ -188,7 +195,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	resp, err := client.Models.GenerateContent(ctx, "gemini-3.8-flash", genai.Text("Explain quantum computing"), nil)
+	resp, err := client.Models.GenerateContent(ctx, "gemini-4-hydrogen", genai.Text("Explain quantum computing"), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -208,7 +215,7 @@ public class GenerateTextFromTextInput {
     Client client = Client.builder().enterprise(true).project("your-project-id").location("global").build();
     GenerateContentResponse response =
         client.models.generateContent(
-            "gemini-3.8-flash",
+            "gemini-4-hydrogen",
             "Explain quantum computing",
             null);
 
@@ -229,7 +236,7 @@ var client = new Client(
 );
 
 var response = await client.Models.GenerateContent(
-    "gemini-3.8-flash",
+    "gemini-4-hydrogen",
     "Explain quantum computing"
 );
 
@@ -257,7 +264,7 @@ Depending on the specific user request, refer to the following reference files f
 - **Text & Multimodal**: Chat, Multimodal inputs (Image, Video, Audio), and Streaming. See [references/text_and_multimodal.md](references/text_and_multimodal.md)
 - **Embeddings**: Generate text embeddings for semantic search. See [references/embeddings.md](references/embeddings.md)
 - **Structured Output & Tools**: JSON generation, Function Calling, Search Grounding, and Code Execution. See [references/structured_and_tools.md](references/structured_and_tools.md)
-- **Media Generation**: Image generation, Image editing, and Video generation. See [references/media_generation.md](references/media_generation.md)
+- **Media Generation**: Image generation/editing, Video generation/editing, Text-to-Speech (TTS), and Music generation. See [references/media_generation.md](references/media_generation.md)
 - **Bounding Box Detection**: Object detection and localization within images and video. See [references/bounding_box.md](references/bounding_box.md)
 - **Live API**: Real-time bidirectional streaming for voice, vision, and text. See [references/live_api.md](references/live_api.md)
 - **Advanced Features**: Content Caching, Batch Prediction, and Thinking/Reasoning. See [references/advanced_features.md](references/advanced_features.md)

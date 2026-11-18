@@ -1,7 +1,8 @@
 # Media Generation
 
 ## Image Generation
-Generate images using `gemini-3.1-flash-image`.
+
+Generate images using `gemini-nano-banana-2.1`.
 
 ```python
 from google import genai
@@ -10,29 +11,9 @@ from google.genai import types
 client = genai.Client()
 
 response = client.models.generate_content(
-    model="gemini-3.1-flash-image",
+    model="gemini-nano-banana-2.1",
     contents="A dog reading a newspaper",
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif part.inline_data is not None:
-        image = part.as_image()
-        image.save("generated_image.png")
-```
-
-For high-resolution images, use `gemini-3-pro-image`.
-
-```python
-from google import genai
-from google.genai import types
-
-client = genai.Client()
-
-response = client.models.generate_content(
-    model="gemini-3-pro-image",
-    contents="A dog reading a newspaper",
+    # Optional: specify aspect ratio and resolution
     config=types.GenerateContentConfig(
         image_config=types.ImageConfig(aspect_ratio="16:9", image_size="2K")
     ),
@@ -59,7 +40,7 @@ prompt = "A small white ceramic bowl with lemons and limes"
 image = Image.open("fruit.png")
 
 # Create the chat
-chat = client.chats.create(model="gemini-3.1-flash-image")
+chat = client.chats.create(model="gemini-nano-banana-2.1")
 
 # Send the image and ask for it to be edited
 response = chat.send_message([prompt, image])
@@ -78,15 +59,18 @@ chat.send_message("Make the bowl blue")
 
 ## Video Generation with Gemini Omni
 
-`gemini-omni-1.1-flash-preview` (Preview) generates and edits video (with synchronized audio) at 720p from text, images, and reference media. Unlike Veo, Omni uses the **Interactions API** (`client.interactions.create`), not `generate_content`/`generate_videos`.
+`gemini-omni-1.2-flash` generates and edits video (with synchronized audio) at
+up to 4K resolution from text, images, and reference media. Unlike Veo, Omni
+uses the **Interactions API** (`client.interactions.create`), not
+`generate_content`/`generate_videos`.
 
 Key configuration:
 
-- **Task** (`interactions.VideoConfig.task`): `text_to_video`, `image_to_video`, `reference_to_video`, or `edit`. Set this to match your inputs and desired behavior.
-- **Response format** (`interactions.VideoResponseFormat`): `aspect_ratio` (`16:9` or `9:16`), `duration` (`3s`-`10s`), and `delivery`. These can also be specified directly in the text prompt.
+- **Task** (`interactions.VideoConfig.task`): `text_to_video`, `image_to_video`, `reference_to_video`, `edit`, `upscale` or `extend`. Set this to match your inputs and desired behavior.
+- **Response format** (`interactions.VideoResponseFormat`): `aspect_ratio` (`16:9` or `9:16`), `duration` (`3s`-`15s`), and `delivery`. These can also be specified directly in the text prompt.
 - **Delivery**: To save output to Cloud Storage, set `delivery="uri"` and `gcs_uri="gs://<GCS_BUCKET>"`. Otherwise, video bytes are returned inline (base64).
 
-Notes on output: audio is generated alongside the video, resolution is 720p, and every video includes [C2PA metadata](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/content-credentials) and a [SynthID watermark](https://deepmind.google/technologies/synthid/).
+Notes on output: audio is generated alongside the video, supported resolutions are `360p`, `720p`, `1080p`, and `4K`, and every video includes [C2PA metadata](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/content-credentials) and a [SynthID watermark](https://deepmind.google/technologies/synthid/).
 
 Responses are returned as `interaction.steps`; collect the `content` from each `model_output` step. This helper extracts and saves the video bytes:
 
@@ -97,7 +81,7 @@ from google.genai import interactions
 
 client = genai.Client()
 
-omni_model = "gemini-omni-1.1-flash-preview"
+omni_model = "gemini-omni-1.2-flash"
 
 
 def save_video(interaction, path="output.mp4"):
@@ -181,7 +165,9 @@ save_video(interaction)
 
 ### Video editing
 
-Add, remove, or alter objects in a source video, or restyle it. The source video must be under 10 seconds; you can also supply reference images to guide the edit.
+Add, remove, or alter objects in a source video, or restyle it. The source
+video cannot be over 15 seconds; you can also supply reference images to guide
+the edit.
 
 ```python
 prompt = "Change the dog to a cat, remove the backpack, and add a propeller hat."
@@ -239,7 +225,10 @@ save_video(interaction2)
 ```
 
 ## Video Generation with Veo
-Generate video using the Veo model. Usage of Veo can be costly, so check pricing for Veo. Start with the fast model (`veo-3.1-fast-generate-001`) since the result quality is usually sufficient, and swap to the larger model if needed.
+Generate video using the Veo model. Usage of Veo can be costly, so check
+pricing for Veo. Start with the fast model (`veo-3.1-fast-generate-001`) or
+the low-cost preview model (`veo-3.1-lite-generate-001`) since the result
+quality is usually sufficient, and swap to `veo-3.1-generate-001` if needed.
 
 ```python
 import time
@@ -272,4 +261,64 @@ while not operation.done:
 
 if operation.response:
     print(operation.result.generated_videos[0].video.uri)
+```
+
+## Text-to-Speech (TTS)
+
+Generate single-speaker or multi-speaker audio using `gemini-3.8-flash-tts`
+(studio-grade fidelity, 132 languages) or `gemini-3.8-flash-lite-tts`
+(high-throughput, low-latency, 103 languages). Requires `google-genai>=2.33.0`.
+Supports turn-level `speech_metadata` (`style`) and inline vocal tags
+(`<laugh>`, `<sigh>`, `<short pause>`).
+
+```python
+from google import genai
+
+client = genai.Client()
+
+response = client.models.generate_content(
+    model="gemini-3.8-flash-tts",
+    contents=[{
+        "role": "user",
+        "parts": [{
+            "text": "Have a wonderful day!",
+            "speech_metadata": {"style": "cheerful and friendly"},
+        }],
+    }],
+    config={
+        "response_modalities": ["AUDIO"],
+        "speech_config": {"voice_config": {"voice": "Kore"}},
+    },
+)
+
+# inline_data.data is already decoded WAV bytes
+with open("out.wav", "wb") as f:
+    f.write(response.candidates[0].content.parts[0].inline_data.data)
+```
+
+## Music Generation with Lyria
+
+Generate music tracks from text and optional image prompts using
+`lyria-3-pro-preview` (full tracks up to 184s) or `lyria-3-clip-preview`
+(30s clips) via the **Interactions API** (`location="global"`, outputs
+`audio/mp3`). For GA text-to-music via the `:predict` REST endpoint, use
+`lyria-002` (32.8s WAV).
+
+```python
+import base64
+from google import genai
+
+client = genai.Client()
+
+interaction = client.interactions.create(
+    model="lyria-3-clip-preview",
+    input="Upbeat synthwave track with a driving bassline and retro arpeggios.",
+)
+
+for step in interaction.steps:
+    if step.type == "model_output":
+        for item in step.content:
+            if item.type == "audio":
+                with open("music.mp3", "wb") as f:
+                    f.write(base64.b64decode(item.data))
 ```

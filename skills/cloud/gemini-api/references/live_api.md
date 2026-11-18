@@ -9,7 +9,7 @@ from google.genai import types
 
 async def generate_content():
     client = genai.Client()
-    model_id = "gemini-live-2.5-flash-native-audio"
+    model_id = "gemini-3.8-live"
 
     config = types.LiveConnectConfig(
         response_modalities=[types.LiveModality.TEXT], # Change to AUDIO for voice responses

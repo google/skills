@@ -3,7 +3,10 @@
 ## Content Caching
 Cache large documents or contexts to reduce cost and latency.
 
-Only use explicit caching if asked directly. Implicit caching is enabled by default and automatically provides cost savings when cache hits occur.
+Only use explicit caching if asked directly (not supported on `gemini-4-carbon`,
+`gemini-4-neon`, `gemini-4-argon`, or `gemini-4-hydrogen`; use a supported model
+such as `gemini-3.8-flash`). Implicit caching is enabled by default and
+automatically provides cost savings when cache hits occur.
 
 ```python
 from google import genai
@@ -50,7 +53,7 @@ from google.genai import types
 client = genai.Client()
 
 job = client.batches.create(
-    model="gemini-3.8-flash",
+    model="gemini-4-hydrogen",
     src="gs://your-bucket/prompts.jsonl",
     config=types.CreateBatchJobConfig(dest="gs://your-bucket/outputs"),
 )
@@ -67,13 +70,20 @@ while job.state not in completed_states:
 
 ### Thinking (Reasoning)
 
-Thinking is on by default for `gemini-3.1-pro-preview` (default `HIGH` / dynamic) and `gemini-3.8-flash` (default `MEDIUM`). `gemini-3.5-flash-lite` defaults to `MINIMAL`.
+Thinking is on by default for `gemini-4-carbon` (default `MEDIUM`),
+`gemini-4-neon` (default `MEDIUM`), `gemini-4-argon` (default `MEDIUM`), and
+`gemini-4-hydrogen` (default `HIGH`). `gemini-3.5-flash-lite` defaults to
+`MINIMAL`.
 It can be adjusted by using the `thinking_level` parameter.
 
-- **`MINIMAL`:** Constrains the model to use as few tokens as possible for thinking and is best used for low-complexity tasks that wouldn't benefit from extensive reasoning. (Not supported for `gemini-3.1-pro-preview`)
+- **`MINIMAL`:** Constrains the model to use as few tokens as possible for
+  thinking and is best used for low-complexity tasks that wouldn't benefit from
+  extensive reasoning. (Not supported for `gemini-4-carbon`, `gemini-4-neon`,
+  `gemini-4-argon`, or `gemini-4-hydrogen`)
 - **`LOW`**: Constrains the model to use fewer tokens for thinking and is suitable for simpler tasks where extensive reasoning is not required.
 - **`MEDIUM`**: Offers a balanced approach suitable for tasks of moderate complexity that benefit from reasoning but don't require deep, multi-step planning.
 - **`HIGH`**: Maximizes reasoning depth. The model may take significantly longer to reach a first token, but the output will be more thoroughly vetted.
+- **`XHIGH`**: Provides even deeper reasoning than `HIGH` on supported models such as `gemini-4-hydrogen`.
 
 ```python
 from google import genai
@@ -81,7 +91,7 @@ from google.genai import types
 
 client = genai.Client()
 response = client.models.generate_content(
-    model="gemini-3.1-pro-preview",
+    model="gemini-4-carbon",
     contents="solve x^2 + 4x + 4 = 0",
     config=types.GenerateContentConfig(
         thinking_config=types.ThinkingConfig(
@@ -133,7 +143,7 @@ async def run():
 
             # Send request to the model with MCP function declarations
             response = await client.aio.models.generate_content(
-                model="gemini-3.8-flash",
+                model="gemini-4-hydrogen",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     tools=[
