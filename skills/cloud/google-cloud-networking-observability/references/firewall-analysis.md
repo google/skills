@@ -73,4 +73,5 @@ gcloud logging read 'logName="projects/{project_id}/logs/compute.googleapis.com%
 
 ## Reference Documentation
 
--   [Firewall Rules Logging](https://docs.cloud.google.com/firewall/docs/firewall-rules-logging.md.txt)
+-   [VPC Firewall Rules Logging overview](https://docs.cloud.google.com/firewall/docs/vpc-firewall-rules-logging-overview.md.txt)
+-   [Use VPC Firewall Rules Logging](https://docs.cloud.google.com/firewall/docs/manage-vpc-firewall-rules-logging.md.txt)
