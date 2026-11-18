@@ -5,9 +5,10 @@ description: >-
   the Data Manager API and its associated client libraries. Use this skill when the user wants to upload audience
   members, remove specific users, or clear/replace an entire audience for Customer Match, mobile device ID audiences, or any
   other audience use case supported by the Data Manager API. Don't use for uploading events or
-  conversions (use the data-manager-api-event-ingestion skill).
+  conversions (use the data-manager-api-event-ingestion skill), or for debugging errors, checking
+  request status, or investigating low match rates (use the data-manager-api-troubleshooting skill).
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   category: GoogleAds
 ---
 
@@ -100,7 +101,9 @@ Implement the ingestion logic using the following checkpoints:
     option on the payload to allow developers to validate schemas without
     actually applying changes.
 -   [ ] **Send Request**: Execute the appropriate method and record the returned
-    `request_id` for later diagnostics:
+    `request_id` for later diagnostics. Keep the request payload, or a mapping
+    from each member's position to your own record ID, with the `request_id`.
+    Diagnostics identify failed members by their position in the request.
     *   **Add**: `ingest_audience_members`
     *   **Remove**: `remove_audience_members`
     *   **Remove All**: `remove_all_audience_members`
@@ -113,7 +116,11 @@ Implement the ingestion logic using the following checkpoints:
     response (HTTP 200 OK returning a `request_id`) only indicates the payload
     was received. To check if the records actually succeeded, partially
     succeeded, or failed to process, query `client.retrieve_request_status`
-    using the `request_id`. Skipping this step is a common user mistake.
+    using the `request_id`, starting at least 30 minutes after sending. Skip
+    this step when `validate_only` is `true`, because validation-only requests
+    don't have diagnostics. Skipping this step for real requests is a common
+    user mistake. To read the results or debug failures, use the
+    `data-manager-api-troubleshooting` skill.
 
 ## Critical Gotchas
 
@@ -133,57 +140,6 @@ Implement the ingestion logic using the following checkpoints:
 *   Field names on `UserIdentifier` are `email_address` and `phone_number`. Do
     not use the Google Ads API field names `hashed_email` and
     `hashed_phone_number`.
-*   Do not call the diagnostics endpoint (`retrieve_request_status`) if
-    `validate_only` is set to `true`.
-
-## Error Handling & Troubleshooting
-
-### Inspecting Error Payloads & Ingestion Warnings
-
-> [!IMPORTANT]
-> Refer to [Understand API Errors](https://developers.google.com/data-manager/api/devguides/concepts/understand-errors.md.txt)
-> for a detailed guide on how to understand the structure of errors and warnings
-> returned by the API.
-
-### Retrieving Request Status (Diagnostics)
-
-Periodically poll for status using exponential backoff, starting at least 30
-minutes after sending the request.
-
-1.  Call `client.retrieve_request_status` using
-    `RetrieveRequestStatusRequest(request_id=...)`.
-2.  Loop through `request_status_per_destination` in the response to inspect
-    each target's `request_status`.
-3.  If processing is complete and `request_status` is `SUCCESS`,
-    `PARTIAL_SUCCESS`, or `FAILED`, inspect diagnostic values:
-    *   **Audience Status**: Check the status specific to your request:
-        *   **Ingest**: Check the data-type-specific status nested under
-            `audience_members_ingestion_status` (e.g.,
-            `composite_data_ingestion_status`).
-        *   **Remove Individual Members**: Check the data-type-specific status
-            nested under `audience_members_removal_status` (e.g.,
-            `composite_data_removal_status`).
-        *   **Remove All Members**: There are no nested status fields or record
-            counts available to check for this request type.
-        *   **Record Count**: If applicable (ingest or remove individual
-            members), check `record_count` (nested inside the data-type-specific
-            status object) which includes both success and failure.
-        *   **Identifier Counts**: If applicable (ingest or remove individual
-            members), check the data-type-specific count field nested inside the
-            status object (e.g., `data_type_counts` if uploading or removing
-            composite data, or `mobile_id_count` if uploading or removing
-            mobile IDs). Refer to the [Diagnostics
-            Guide](https://developers.google.com/data-manager/api/devguides/diagnostics.md.txt)
-            for other count fields.
-        *   **Match Rate Range**: For uploads of `user_data` and
-            `composite_data`, check `upload_match_rate_range` nested inside the
-            status object.
-    *   **Error Details**: If status is `FAILED` or `PARTIAL_SUCCESS`, inspect
-        each error's `reason` and `record_count` under
-        `error_info.error_counts`.
-    *   **Warning Details**: Inspect each warning's `reason` and `record_count`
-        under `warning_info.warning_counts` (even if the destination status is
-        `SUCCESS`).
 
 ## API Reference
 

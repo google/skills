@@ -238,6 +238,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Data Manager API Audience Ingestion**](./skills/ads/data-manager-api-audience-ingestion)
   - [**Data Manager API Event Ingestion**](./skills/ads/data-manager-api-event-ingestion)
   - [**Data Manager API Setup**](./skills/ads/data-manager-api-setup)
+  - [**Data Manager API Troubleshooting**](./skills/ads/data-manager-api-troubleshooting)
   - [**Google Ads API Account Performance Diagnostics Skill**](./skills/ads/google-ads-api-account-diagnostics)
   - [**Google Ads API MCP Server Installation**](./skills/ads/google-ads-api-mcp-setup)
   - [**Google Ads API Quickstart**](./skills/ads/google-ads-api-quickstart)
