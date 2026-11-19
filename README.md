@@ -161,6 +161,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Spanner Basics**](./skills/cloud/spanner-basics)
   - [**Spanner Graph Query Tuning Best Practices**](./skills/cloud/spanner-graph-query-tuning)
   - [**Spanner Graph Schema Design & Topology Best Practices**](./skills/cloud/spanner-graph-schema-best-practices)
+  - [**Spanner Relational-to-Property-Graph Schema Conversion**](./skills/cloud/spanner-relational-to-graph)
 - **Developer tools**
   - [**Cloud Build Basics**](./skills/cloud/cloud-build-basics)
   - [**Cloud Deploy Pipelines**](./skills/cloud/google-cicd-release-orchestration)
