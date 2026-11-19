@@ -42,9 +42,9 @@ plus faithfulness for "is what it said true").
 from agentplatform import types
 
 PROJECT = "my-project"  # EDIT: your project ID
-LOCATION = "us-central1"
+LOCATION = "global"
 # LLMMetric needs the full resource name; short names fail with 400.
-JUDGE = f"projects/{PROJECT}/locations/{LOCATION}/publishers/google/models/gemini-2.5-flash"
+JUDGE = f"projects/{PROJECT}/locations/{LOCATION}/publishers/google/models/gemini-4-hydrogen"
 ```
 
 Cases are EvalCase-shaped JSONL lines with `eval_case_id`, `prompt`,
@@ -532,7 +532,7 @@ METRICS["faithfulness"] = lambda: types.StepBasedLLMMetric(
 
 ```shell
 python3 scripts/run_metrics.py --cases cases.jsonl --metrics_file metrics.py \
-    --metrics faithfulness --project my-project \
+    --metrics faithfulness --project my-project --location global \
     --out results/faithfulness_v1.json
 ```
 

@@ -1,7 +1,7 @@
 ---
 name: agent-platform-autorater-customization
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   category: AiAndMachineLearning
 description: >-
   Customizes an autorater (evaluation metric) for an AI agent so its grades
@@ -57,7 +57,9 @@ environment.
     evaluations and register metrics. Don't grant broader roles such as
     `roles/aiplatform.admin`; ask the user to request the narrower role if it
     is missing.
-6.  **Region.** Use `us-central1` unless the user needs another region (see
+6.  **Region.** Use `us-central1` unless the user needs another region (use
+    `global` for `gemini-4-hydrogen` judge models unless
+    `allow_cross_region_model` is enabled; see
     https://cloud.google.com/about/locations).
 
 ## Working with the user
