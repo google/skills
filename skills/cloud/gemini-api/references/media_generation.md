@@ -1,8 +1,16 @@
 # Media Generation
 
-## Image Generation
+## Contents
 
-Generate images using `gemini-nano-banana-2.1`.
+- [Image Generation and Editing (Nano Banana)](#image-generation-and-editing-nano-banana) (L11-L53)
+- [Video Generation and Editing with Gemini Omni](#video-generation-and-editing-with-gemini-omni) (L55-L155)
+- [Video Generation with Veo](#video-generation-with-veo) (L157-L187)
+- [Text-to-Speech (TTS)](#text-to-speech-tts) (L189-L268)
+- [Music Generation with Lyria](#music-generation-with-lyria) (L270-L291)
+
+## Image Generation and Editing (Nano Banana)
+
+Use `gemini-nano-banana-2.1` for high-resolution/pro image generation and editing, or `gemini-3.1-flash-lite-image` for fast, lightweight generation (do not use deprecated `imagen-3.0*` models). Configure `types.ImageConfig` with `aspect_ratio` (e.g., `"1:1"`, `"16:9"`, `"9:16"`, `"4:3"`, `"3:4"`) and `image_size` (`"1K"`, `"2K"`, or `"4K"`).
 
 ```python
 from google import genai
@@ -12,8 +20,7 @@ client = genai.Client()
 
 response = client.models.generate_content(
     model="gemini-nano-banana-2.1",
-    contents="A dog reading a newspaper",
-    # Optional: specify aspect ratio and resolution
+    contents="A futuristic city at sunset",
     config=types.GenerateContentConfig(
         image_config=types.ImageConfig(aspect_ratio="16:9", image_size="2K")
     ),
@@ -27,234 +34,150 @@ for part in response.parts:
         image.save("generated_image.png")
 ```
 
-## Image Editing
-It is recommended to use chat mode for editing images.
+For iterative image editing, use multi-turn chat (`client.chats.create`):
 
 ```python
 from google import genai
 from PIL import Image
 
 client = genai.Client()
-
-prompt = "A small white ceramic bowl with lemons and limes"
-image = Image.open("fruit.png")
-
-# Create the chat
 chat = client.chats.create(model="gemini-nano-banana-2.1")
 
-# Send the image and ask for it to be edited
-response = chat.send_message([prompt, image])
+response = chat.send_message(["Add lemons and limes to this ceramic bowl", Image.open("bowl.png")])
+for i, part in enumerate(response.parts):
+    if part.inline_data is not None:
+        part.as_image().save(f"edited_{i}.png")
 
-# Get the text and the image generated
-for i, part in enumerate(response.candidates[0].content.parts):
-    if part.text is not None:
-        print(part.text)
-    elif part.inline_data is not None:
-        image = part.as_image()
-        image.save(f"generated_image_{i}.png")
-
-# Continue iterating
-chat.send_message("Make the bowl blue")
+# Continue refining in subsequent turns
+followup = chat.send_message("Now change the bowl color to cobalt blue")
 ```
 
-## Video Generation with Gemini Omni
+## Video Generation and Editing with Gemini Omni
 
-`gemini-omni-1.2-flash` generates and edits video (with synchronized audio) at
-up to 4K resolution from text, images, and reference media. Unlike Veo, Omni
-uses the **Interactions API** (`client.interactions.create`), not
-`generate_content`/`generate_videos`.
+`gemini-omni-1.2-flash` generates and edits video with synchronized audio at up to 4K via the **Interactions API** (`client.interactions.create` — **not** `generate_content` or `generate_videos`). Every output includes [C2PA metadata](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/content-credentials.md.txt) and a [SynthID watermark](https://deepmind.google/technologies/synthid/).
 
-Key configuration:
-
-- **Task** (`interactions.VideoConfig.task`): `text_to_video`, `image_to_video`, `reference_to_video`, `edit`, `upscale` or `extend`. Set this to match your inputs and desired behavior.
-- **Response format** (`interactions.VideoResponseFormat`): `aspect_ratio` (`16:9` or `9:16`), `duration` (`3s`-`15s`), and `delivery`. These can also be specified directly in the text prompt.
-- **Delivery**: To save output to Cloud Storage, set `delivery="uri"` and `gcs_uri="gs://<GCS_BUCKET>"`. Otherwise, video bytes are returned inline (base64).
-
-Notes on output: audio is generated alongside the video, supported resolutions are `360p`, `720p`, `1080p`, and `4K`, and every video includes [C2PA metadata](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/content-credentials) and a [SynthID watermark](https://deepmind.google/technologies/synthid/).
-
-Responses are returned as `interaction.steps`; collect the `content` from each `model_output` step. This helper extracts and saves the video bytes:
+- **Task (`interactions.VideoConfig.task`)**: `"text_to_video"`, `"image_to_video"` (first frame), `"reference_to_video"` (style/subject guide images, audio, or video), `"edit"` (source video <= 15s + optional ref images), `"upscale"`, or `"extend"`.
+- **Format (`interactions.VideoResponseFormat`)**: `aspect_ratio` (`"16:9"` or `"9:16"`), `duration` (`"3s"` to `"15s"`, e.g. `"10s"`), `resolution` (lowercase `"360p"`, `"720p"`, `"1080p"`, or `"4k"`), `delivery` (`"uri"` with `gcs_uri="gs://your-bucket/..."`, or omit for inline base64 bytes).
 
 ```python
 import base64
+import time
 from google import genai
 from google.genai import interactions
 
 client = genai.Client()
-
 omni_model = "gemini-omni-1.2-flash"
 
 
-def save_video(interaction, path="output.mp4"):
-    contents = []
-    for step in interaction.steps:
-        if step.type == "model_output":
-            contents.extend(step.content)
+def save_video(interaction, path: str = "output.mp4") -> None:
+    contents = [c for step in interaction.steps if step.type == "model_output" for c in step.content]
     with open(path, "wb") as f:
         f.write(base64.b64decode(contents[0].data))
-```
 
-### Text-to-video
 
-```python
-prompt = "A hard-shell suitcase rolling down a city street at sunset, cinematic tracking shot."
-
+# 1. Text-to-video (up to 4K; set delivery="uri" + gcs_uri="gs://..." to write to GCS)
 interaction = client.interactions.create(
     model=omni_model,
-    input=prompt,
+    input="A hard-shell suitcase rolling down a city street at sunset, cinematic tracking shot.",
     generation_config=interactions.GenerationConfig(
         video_config=interactions.VideoConfig(task="text_to_video")
     ),
     response_format=interactions.VideoResponseFormat(
         aspect_ratio="16:9",
-        duration="9s",
-        # delivery="uri",
-        # gcs_uri="gs://<GCS_BUCKET>",
+        duration="10s",
+        resolution="4k",
     ),
 )
-
 save_video(interaction)
 ```
 
-### Image-to-video
-
-Provide a starting image as the literal first frame. Pass images inline as base64 or by Cloud Storage `uri`.
-
 ```python
-prompt = "The suitcase stands up, unzips, and colorful travel stickers pop out around it."
-
+# 2. Image-to-video (first frame via inline base64 or {"type": "image", "mime_type": ..., "uri": "gs://..."})
 with open("suitcase.png", "rb") as f:
     img_b64 = base64.b64encode(f.read()).decode("utf-8")
 
-interaction = client.interactions.create(
+i2v = client.interactions.create(
     model=omni_model,
     input=[
-        {"type": "text", "text": prompt},
+        {"type": "text", "text": "The suitcase stands up, unzips, and travel stickers pop out."},
         {"type": "image", "mime_type": "image/png", "data": img_b64},
     ],
     generation_config=interactions.GenerationConfig(
         video_config=interactions.VideoConfig(task="image_to_video")
     ),
 )
+save_video(i2v, "i2v.mp4")
 
-save_video(interaction)
-```
-
-### Reference-to-video
-
-Supply reference images (e.g., a character and a product) to guide generation. Reference media acts as a style/subject guide rather than the literal first frame. Video and audio reference inputs are not currently supported.
-
-```python
-prompt = "A woman walks up to the arcade game and starts playing. 9:16 aspect ratio. 7 second video."
-
-images_input = []
-for img_path in ["woman.jpeg", "arcade-game.png"]:
+# 3. Reference-to-video (multiple subject/style reference images)
+ref_inputs = []
+for img_path, mime in [("woman.jpeg", "image/jpeg"), ("arcade-game.png", "image/png")]:
     with open(img_path, "rb") as f:
-        img_b64 = base64.b64encode(f.read()).decode("utf-8")
-        images_input.append({"type": "image", "mime_type": "image/jpeg", "data": img_b64})
+        ref_inputs.append({"type": "image", "mime_type": mime, "data": base64.b64encode(f.read()).decode("utf-8")})
 
-interaction = client.interactions.create(
+r2v = client.interactions.create(
     model=omni_model,
-    input=[{"type": "text", "text": prompt}, *images_input],
+    input=[{"type": "text", "text": "The woman walks up to the arcade game and starts playing."}, *ref_inputs],
     generation_config=interactions.GenerationConfig(
         video_config=interactions.VideoConfig(task="reference_to_video")
     ),
+    response_format=interactions.VideoResponseFormat(aspect_ratio="9:16", duration="7s"),
 )
+save_video(r2v, "r2v.mp4")
 
-save_video(interaction)
-```
-
-### Video editing
-
-Add, remove, or alter objects in a source video, or restyle it. The source
-video cannot be over 15 seconds; you can also supply reference images to guide
-the edit.
-
-```python
-prompt = "Change the dog to a cat, remove the backpack, and add a propeller hat."
-
-interaction = client.interactions.create(
+# 4. Video editing (source video <= 15s + optional reference image)
+edited = client.interactions.create(
     model=omni_model,
     input=[
-        {"type": "text", "text": prompt},
-        {"type": "image", "mime_type": "image/png", "uri": "gs://cloud-samples-data/generative-ai/image/chair-cat.png"},
-        {"type": "video", "mime_type": "video/mp4", "uri": "gs://cloud-samples-data/generative-ai/video/dog_day1.mp4"},
+        {"type": "text", "text": "Change the dog to a cat, remove the backpack, and add a propeller hat."},
+        {"type": "image", "mime_type": "image/png", "uri": "gs://your-bucket/ref-cat.png"},
+        {"type": "video", "mime_type": "video/mp4", "uri": "gs://your-bucket/source_dog.mp4"},
     ],
-    generation_config=interactions.GenerationConfig(
-        video_config=interactions.VideoConfig(task="edit")
-    ),
+    generation_config=interactions.GenerationConfig(video_config=interactions.VideoConfig(task="edit")),
 )
+save_video(edited, "edited.mp4")
 
-save_video(interaction)
-```
-
-### Async generation
-
-Set `background=True` to generate a video you can check on later, then poll with `client.interactions.get`.
-
-```python
-import time
-
-initial = client.interactions.create(model=omni_model, input=prompt, background=True)
-
-interaction = initial
-while interaction.status not in ["completed", "failed"]:
+# 5. Async background generation & polling
+bg = client.interactions.create(model=omni_model, input="Ocean waves crashing on basalt cliffs.", background=True)
+while bg.status not in ("completed", "failed"):
     time.sleep(10)
-    interaction = client.interactions.get(id=initial.id)
+    bg = client.interactions.get(id=bg.id)
+if bg.status == "completed":
+    save_video(bg, "async.mp4")
 
-if interaction.status == "completed":
-    save_video(interaction)
-```
-
-### Multi-turn editing (chat)
-
-Iteratively refine a video by passing the previous `interaction.steps` back into `input`, followed by the new user turn.
-
-```python
-interaction1 = client.interactions.create(
+# 6. Multi-turn iterative refinement (pass prior interaction.steps + new user_input)
+turn2 = client.interactions.create(
     model=omni_model,
-    input="A claymation ball character rolling and then being stopped by a wall, stop motion.",
+    input=interaction.steps + [
+        {"type": "user_input", "content": [{"type": "text", "text": "Restyle this video as stop-motion claymation."}]}
+    ],
 )
-
-turn2_input = interaction1.steps + [
-    {"type": "user_input", "content": [{"type": "text", "text": "Now make the same video in a doodle style."}]}
-]
-
-interaction2 = client.interactions.create(model=omni_model, input=turn2_input)
-
-save_video(interaction2)
+save_video(turn2, "turn2.mp4")
 ```
 
 ## Video Generation with Veo
-Generate video using the Veo model. Usage of Veo can be costly, so check
-pricing for Veo. Start with the fast model (`veo-3.1-fast-generate-001`) or
-the low-cost preview model (`veo-3.1-lite-generate-001`) since the result
-quality is usually sufficient, and swap to `veo-3.1-generate-001` if needed.
+
+Start with `veo-3.1-fast-generate-001` (fast, cost-efficient default) or `veo-3.1-lite-generate-001` (low-cost preview), and upgrade to `veo-3.1-generate-001` when needed. Veo runs asynchronously via `client.models.generate_videos` + `client.operations.get` (never `generate_content`).
 
 ```python
 import time
 from google import genai
 from google.genai import types
-from PIL import Image
 
 client = genai.Client()
 
-image = Image.open("image.png")  # Optional initial image
-
-# Video generation is an async operation
 operation = client.models.generate_videos(
     model="veo-3.1-fast-generate-001",
-    prompt="a cat reading a book",
-    image=image,
+    prompt="A cat floating in space",
+    # image=Image.open("first_frame.png"),  # Optional starting PIL image
     config=types.GenerateVideosConfig(
-        person_generation="dont_allow",
         aspect_ratio="16:9",
+        duration_seconds=6,  # Veo 3.1 supports 4, 6, or 8 seconds
         number_of_videos=1,
-        duration_seconds=5,
-        output_gcs_uri="gs://your-bucket/your-prefix",
+        person_generation="dont_allow",
+        output_gcs_uri="gs://your-bucket/veo-outputs",
     ),
 )
 
-# Poll for completion
 while not operation.done:
     time.sleep(20)
     operation = client.operations.get(operation)
@@ -265,44 +188,88 @@ if operation.response:
 
 ## Text-to-Speech (TTS)
 
-Generate single-speaker or multi-speaker audio using `gemini-3.8-flash-tts`
-(studio-grade fidelity, 132 languages) or `gemini-3.8-flash-lite-tts`
-(high-throughput, low-latency, 103 languages). Requires `google-genai>=2.33.0`.
-Supports turn-level `speech_metadata` (`style`) and inline vocal tags
-(`<laugh>`, `<sigh>`, `<short pause>`).
+Synthesize single- or multi-speaker WAV audio with `gemini-3.8-flash-tts` (studio fidelity, 132 languages) or `gemini-3.8-flash-lite-tts` (low latency, 103 languages; requires `google-genai>=2.33.0`). Expressive style is controlled via `types.SpeechMetadata(style=...)` (plus `speaker=...` with `multi_speaker_voice_config`) and inline vocal tags (`<laugh>`, `<sigh>`, `<short pause>`).
 
 ```python
 from google import genai
+from google.genai import types
 
 client = genai.Client()
 
 response = client.models.generate_content(
     model="gemini-3.8-flash-tts",
-    contents=[{
-        "role": "user",
-        "parts": [{
-            "text": "Have a wonderful day!",
-            "speech_metadata": {"style": "cheerful and friendly"},
-        }],
-    }],
-    config={
-        "response_modalities": ["AUDIO"],
-        "speech_config": {"voice_config": {"voice": "Kore"}},
-    },
+    contents=[
+        types.Content(
+            role="user",
+            parts=[
+                types.Part(
+                    text="Have a wonderful day! <short pause> Welcome aboard.",
+                    speech_metadata=types.SpeechMetadata(style="cheerful and friendly"),
+                )
+            ],
+        )
+    ],
+    config=types.GenerateContentConfig(
+        response_modalities=["AUDIO"],
+        speech_config=types.SpeechConfig(
+            voice_config=types.VoiceConfig(
+                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Kore")
+            )
+        ),
+    ),
 )
 
-# inline_data.data is already decoded WAV bytes
+# inline_data.data contains decoded WAV bytes
 with open("out.wav", "wb") as f:
     f.write(response.candidates[0].content.parts[0].inline_data.data)
+
+# Multi-speaker TTS (mutually exclusive with voice_config; provide exactly 2 speakers)
+dialogue = client.models.generate_content(
+    model="gemini-3.8-flash-tts",
+    contents=[
+        types.Content(
+            role="user",
+            parts=[
+                types.Part(
+                    text="Welcome to the show!",
+                    speech_metadata=types.SpeechMetadata(speaker="Alex", style="cheerful"),
+                ),
+                types.Part(
+                    text="Thanks for having me.",
+                    speech_metadata=types.SpeechMetadata(speaker="Sam", style="warm"),
+                ),
+            ],
+        )
+    ],
+    config=types.GenerateContentConfig(
+        response_modalities=["AUDIO"],
+        speech_config=types.SpeechConfig(
+            multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
+                speaker_voice_configs=[
+                    types.SpeakerVoiceConfig(
+                        speaker="Alex",
+                        voice_config=types.VoiceConfig(
+                            prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Kore")
+                        ),
+                    ),
+                    types.SpeakerVoiceConfig(
+                        speaker="Sam",
+                        voice_config=types.VoiceConfig(
+                            prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Puck")
+                        ),
+                    ),
+                ]
+            )
+        ),
+    ),
+)
+with open("dialogue.wav", "wb") as f:
+    f.write(dialogue.candidates[0].content.parts[0].inline_data.data)
 ```
 
 ## Music Generation with Lyria
 
-Generate music tracks from text and optional image prompts using
-`lyria-3-pro-preview` (full tracks up to 184s) or `lyria-3-clip-preview`
-(30s clips) via the **Interactions API** (`location="global"`, outputs
-`audio/mp3`). For GA text-to-music via the `:predict` REST endpoint, use
-`lyria-002` (32.8s WAV).
+Generate `audio/mp3` music from text (and optional image) prompts via `client.interactions.create` (`location="global"`) using `lyria-3-pro-preview` (full tracks up to 184s) or `lyria-3-clip-preview` (30s clips). For GA `:predict` WAV output (32.8s), use `lyria-002`.
 
 ```python
 import base64

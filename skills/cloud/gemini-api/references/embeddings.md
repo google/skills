@@ -1,77 +1,54 @@
 # Text and Multimodal Embeddings
 
-Generate embeddings for text or multimodal content (images and videos) to perform semantic search, clustering, and other NLP tasks. Text and multimodal embedding vectors share the same semantic space, which allows you to use them interchangeably for cross-modal applications like searching for an image using a text query, or searching for a video using an image.
+Generate embeddings across text, images, documents, audio, and video in a single shared semantic space using `gemini-embedding-2` and `client.models.embed_content`. Do not use deprecated legacy models (`text-embedding-004`, `multimodal-embedding-001`, `multimodalembedding@001`).
 
-## Basic Usage (Text)
+**Key `types.EmbedContentConfig` options**:
+- `output_dimensionality` (`int`, e.g., `768`, `1536`, `3072`): Truncates output vectors to the target dimension.
+- `task_type` (`str`): e.g., `"RETRIEVAL_DOCUMENT"`, `"RETRIEVAL_QUERY"`, `"SEMANTIC_SIMILARITY"`, `"CLASSIFICATION"`, `"CLUSTERING"`.
+- `title` (`str`): Optional document title (valid only when `task_type="RETRIEVAL_DOCUMENT"`).
+- `auto_truncate` (`bool`), `document_ocr` (`bool`), `audio_track_extraction` (`bool`): Gemini platform controls for long inputs, PDFs, and video audio tracks.
 
 ```python
 from google import genai
 from google.genai import types
 
 client = genai.Client()
-response = client.models.embed_content(
+
+# 1. Text embeddings (batch list of strings)
+text_resp = client.models.embed_content(
     model="gemini-embedding-2",
     contents=[
-        "How do I get a driver's license/learner's permit?",
-        "How long is my driver's license valid for?",
+        "How do I get a driver's license?",
+        "How long is my driver's license valid?",
     ],
-    # Optional Parameters
-    config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT", output_dimensionality=768),
+    config=types.EmbedContentConfig(
+        task_type="RETRIEVAL_DOCUMENT",
+        output_dimensionality=768,
+    ),
 )
-print(response.embeddings)
-```
+text_vectors = [emb.values for emb in text_resp.embeddings]
 
-## Multimodal Embeddings (Image and Video)
-
-To generate embeddings for images and videos, use the `types.Part.from_uri` method to point the model to a Google Cloud Storage (GCS) URI containing the media file, and provide the appropriate MIME type.
-
-### Image Embeddings
-
-For images, provide the GCS URI of the image and set the MIME type (e.g., `image/jpeg`).
-
-```python
-from google import genai
-from google.genai import types
-
-client = genai.Client()
-response = client.models.embed_content(
+# 2. Image embedding from Cloud Storage (or use types.Part.from_bytes for local files)
+image_resp = client.models.embed_content(
     model="gemini-embedding-2",
     contents=types.Part.from_uri(
-        file_uri="gs://github-repo/embeddings/getting_started_embeddings/gms_images/GGOEACBA104999.jpg",
-        mime_type="image/jpeg"
+        file_uri="gs://your-bucket/product.jpg",
+        mime_type="image/jpeg",
     ),
     config=types.EmbedContentConfig(output_dimensionality=768),
 )
+image_vector = image_resp.embeddings[0].values
 
-image_embedding = response.embeddings[0].values
-print(f"Length of image embedding: {len(image_embedding)}")
-```
-
-### Video Embeddings
-
-Generating embeddings for a video works similarly. However, instead of a single vector, the API returns a list of embedding vectors—one representing each frame segment or interval of the processed video.
-
-```python
-from google import genai
-from google.genai import types
-
-client = genai.Client()
-response = client.models.embed_content(
+# 3. Video embeddings (returns one embedding vector per processed video segment)
+video_resp = client.models.embed_content(
     model="gemini-embedding-2",
     contents=types.Part.from_uri(
-        file_uri="gs://github-repo/embeddings/getting_started_embeddings/UCF-101-subset/BrushingTeeth/v_BrushingTeeth_g01_c02.mp4",
-        mime_type="video/mp4"
+        file_uri="gs://your-bucket/video.mp4",
+        mime_type="video/mp4",
     ),
     config=types.EmbedContentConfig(output_dimensionality=768),
 )
-
-# Extract embedding values for each video segment
-video_embeddings =[emb.values for emb in response.embeddings]
-
-print(f"Number of video segment embeddings returned: {len(video_embeddings)}")
-print(f"First segment embedding length: {len(video_embeddings[0])}")
+video_segment_vectors = [emb.values for emb in video_resp.embeddings]
 ```
 
-### Cross-Modal Search
-
-Because these vectors share a semantic space, you can calculate the dot product or cosine similarity between different types of embeddings. For example, you can calculate the similarity between a text query embedding ("A music concert") and a pre-computed database of image or video embeddings to build a robust multimodal semantic search engine.
+Because text, image, and video vectors share the same embedding space, compute cosine similarity or dot products directly across modalities (for example, matching a `"RETRIEVAL_QUERY"` text vector against stored image or video segment vectors).

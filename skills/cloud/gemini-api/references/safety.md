@@ -42,7 +42,7 @@ else:
     print(response.text)
 
 # Inspect safety ratings for each category
-for rating in response.candidates[0].safety_ratings:
+for rating in response.candidates[0].safety_ratings or []:
     print(f"Category: {rating.category}")
     print(f"Is Blocked: {rating.blocked}")
     print(f"Probability: {rating.probability}")
