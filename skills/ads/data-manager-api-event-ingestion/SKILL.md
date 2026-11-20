@@ -2,7 +2,7 @@
 name: data-manager-api-event-ingestion
 description: >-
   Guides developers through implementing event and conversion ingestion to
-  Google products using the Data Manager API /v1/events/ingest endpoint
+  Google products using the Data Manager API /v1/events:ingest endpoint
   and its associated client libraries. Use this skill when the user wants to upload
   offline conversions, enhanced conversions for leads, click conversions, call
   conversions, Google Analytics web or app events, or any other event ingestion
@@ -11,7 +11,7 @@ description: >-
   errors, checking request status, or investigating missing conversions (use
   the data-manager-api-troubleshooting skill).
 metadata:
-  version: "1.3.0"
+  version: "1.3.1"
   category: GoogleAds
 ---
 # Data Manager API Event Ingestion
@@ -83,7 +83,8 @@ to find the right guide rather than guessing.
 
 #### Google Ads
 
-*   **Offline conversions, enhanced conversions for leads** (migrating from the Google Ads API):
+*   **Offline conversions, enhanced conversions for leads** (migrating from the
+    Google Ads API):
     [Google Ads Offline Conversions Migration Field Mappings](https://developers.google.com/data-manager/api/devguides/events/google-ads/offline/upgrade/field-mappings.md.txt)
 *   **Store sales conversions** (migrating from the Google Ads API):
     [Google Ads Store Sales Migration Field Mappings](https://developers.google.com/data-manager/api/devguides/events/google-ads/store-sales/upgrade/field-mappings.md.txt)
@@ -92,12 +93,14 @@ to find the right guide rather than guessing.
 
 #### Google Analytics
 
-*   **Recommended and custom GA4 events** (migrating from the Google Analytics Measurement Protocol):
+*   **Recommended and custom GA4 events** (migrating from the Google Analytics
+    Measurement Protocol):
     [Google Analytics Measurement Protocol Migration Field Mappings](https://developers.google.com/data-manager/api/devguides/events/analytics/measurement-protocol/upgrade/field-mappings.md.txt)
 
 #### Floodlight
 
-*   **Floodlight offline conversions** (migrating from the Campaign Manager 360 API):
+*   **Floodlight offline conversions** (migrating from the Campaign Manager 360
+    API):
     [Campaign Manager 360 Offline Conversions Migration Field Mappings](https://developers.google.com/data-manager/api/devguides/events/cm360/offline/upgrade/field-mappings.md.txt)
 
 ### Step 4: Implementation
