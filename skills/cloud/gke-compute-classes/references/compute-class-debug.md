@@ -83,7 +83,8 @@ Check **Autoscaler Visibility logs**
 ## Symptom 6: ImageType Fragmentation Bug (Pre-1.33.5)
 
 -   **Symptom:** Autoscaler creates hundreds of tiny, fragmented node pools.
--   **Cause:** Explicitly defining `imageType: UBUNTU_CONTAINERD` (or COS) on
+-   **Cause:** Explicitly defining `imageType` (`ubuntu_containerd` or
+    `cos_containerd`) on
     versions older than 1.33.5-gke.1862000 (and 1.34.1-gke.2541000).
 -   **Fix:** Upgrade cluster or temporarily remove `imageType`.
 
@@ -124,7 +125,8 @@ Check **Autoscaler Visibility logs**
 
 ## Symptom 11: List Loops / Backoff
 
--   **Cause:** >10 priorities. Unobtainable shapes enter a 5-minute cooldown.
+-   **Cause:** A long priority list (more than about 10 rules; keep ladders
+    to 6–8). Unobtainable shapes enter a 5-minute cooldown.
     Long lists expire upper-tier cooldowns before reaching the bottom, causing
     an infinite loop.
 -   **Fix:** Trim list; remove redundant rules.

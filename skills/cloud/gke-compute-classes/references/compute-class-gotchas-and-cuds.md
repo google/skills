@@ -30,8 +30,10 @@
 
 ## Provisioning Nuance
 
--   **DWS FlexStart:** Queued (~3 min). `maxRunDurationSeconds` doesn't help
-    obtainability.
+-   **DWS FlexStart:** Queued (~3 min). If `capacityCheckWaitTimeSeconds` is
+    unset, GKE falls back once the initial provisioning attempt fails; set it
+    (GKE 1.33.1-gke.1788000+) to keep retrying before falling back.
+    `maxRunDurationSeconds` doesn't help obtainability.
 -   **ComputeClass ≠ Full Node API:** node pool auto-creation doesn't support
     every `gcloud node-pools create` flag. If missing, use a **Manual Pool**
     bound to the ComputeClass.

@@ -19,7 +19,7 @@ When verifying behavior or investigating edge cases, clone the repository or fet
 | **Manual `priorities[].nodepools` bypass** | `pkg/backoff/npc_backoff.go` | `len(rule.NodePoolNames()) > 0` | Manual node pool rules bypass `npcCrdBackoff` and rely strictly on standard GCE MIG backoffs. |
 | **Zonal stockout backoff tracking** | `pkg/backoff/npc_backoff.go` | `rules map[int]map[string]bool` | GKE 1.36.3-gke.1244000+ tracks stockouts per zone (`ruleIdx -> zone -> isBackedOff`). |
 | **Regional quota backoff handling** | `pkg/backoff/npc_backoff.go` | `if strings.Contains(errorInfo.ErrorCode, "QUOTA") { zone = "" }` | Quota errors apply rule-wide / regionally across all zones. |
-| **DWS Flex Start queuing delay** | `pkg/cloudprovider/gke/gke_cloud_provider_impl.go` | `DefaultFlexStartCapacityCheckWaitTime = 15 * time.Minute` | Queued capacity waits up to 15m for capacity checks (max 30m provisioning wait). |
+| **DWS Flex Start queuing delay** | `pkg/cloudprovider/gke/gke_cloud_provider_impl.go` | `DefaultFlexStartCapacityCheckWaitTime = 15 * time.Minute` | The 15m constant is a code failsafe, not the effective default: GKE falls back once the initial attempt fails (~3 min) unless `capacityCheckWaitTimeSeconds` extends the wait (max 30m provisioning wait). |
 
 ---
 
@@ -42,7 +42,7 @@ When verifying behavior or investigating edge cases, clone the repository or fet
 | **Machine family selection (NAP)** | `pkg/autoprovisioning/machineselection/machine_selection.go` | `Selector.selectMachineGroup`, `podFamily.go` | Evaluates ComputeClass priorities, pod family fallbacks, accelerator inference, and default families. |
 | **Default disk type assignment** | `pkg/cloudprovider/gke/machinetypes/machine_family.go` | `family.DefaultDiskType()` | C3, C4, N4 default to `hyperdisk-balanced`; E2, N1, N2 default to `pd-balanced` / `pd-standard`. |
 | **`dynamic-rwo` CSI StorageClass bypass** | `pkg/processors/storage_node_affinity_processor.go` | `StorageNodeAffinityPodListProcessor.Process` | `type: dynamic` skips `disk-type.gke.io/*` nodeSelector injection, allowing pods to span C4 (Hyperdisk) and N2 (PD). |
-| **ComputeClass taint inheritance** | `pkg/autoprovisioning/injection.go` | `appendTaintsWithOverride`, `IsCustomComputeClass` | Custom ComputeClasses do not receive automatic `cloud.google.com/compute-class` taints; user taints are appended. |
+| **ComputeClass taint inheritance** | `pkg/podrequirements/pod_requirements.go`, `pkg/autoprovisioning/injection.go` | workload-separation taints; user-taint merge | Auto-created pools for a custom ComputeClass get the `cloud.google.com/compute-class` taint through workload separation (GKE adds the matching toleration to Pods that select the class); `nodePoolConfig.taints` and per-rule taints are merged afterwards, the user value winning on a key+effect collision (`nodePoolConfig.taints` entries with system label keys such as `cloud.google.com/*` are dropped, so only per-rule `priorities[].taints` can collide with the `cloud.google.com/compute-class` taint). |
 | **GPU taints vs selector labels** | `pkg/autoprovisioning/injection.go` | `nvidia.com/gpu:NoSchedule` | Accelerator label is `cloud.google.com/gke-accelerator`; node taint is `nvidia.com/gpu:NoSchedule`. |
 | **Native minimumCapacity injection** | `pkg/computeclass/processors/min_capacity_pod_list_processor.go` | `minCapacityPodListProcessor.Process` | Simulates node floors using synthetic fake pods with `FakePodAntiAffinityHostPort = 10250`. |
 
