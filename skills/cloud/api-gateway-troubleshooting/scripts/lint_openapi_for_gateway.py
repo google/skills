@@ -65,13 +65,13 @@ _FINDINGS = {
         'Remove the port from {field} {value}, because API Gateway does not'
         ' allow custom ports in {field}.')),
     'API_KEY_IN_LOGICAL_OR': ('ERROR', 'LIMITS', (
-        'Use one requirement instead of these alternatives (logical OR),'
-        ' because API Gateway does not support alternatives when one is an API'
-        ' key.')),
+        'Put the API key in every alternative (logical OR), because API'
+        ' Gateway supports alternatives with an API key only if every'
+        ' alternative has one.')),
     'API_KEY_IN_LOGICAL_OR:oas2': ('WARNING', 'LIMITS', (
-        'Use one requirement instead of these alternatives (logical OR),'
-        ' because API Gateway does not support alternatives when one is an API'
-        ' key.')),
+        'Put the API key in every alternative (logical OR), because API'
+        ' Gateway supports alternatives with an API key only if every'
+        ' alternative has one.')),
     'OAUTH_LOGICAL_AND': ('ERROR', 'LIMITS', (
         'Keep one of the OAuth2 schemes {names} or make them alternatives,'
         ' because API Gateway does not support a logical AND of OAuth2'
@@ -499,9 +499,14 @@ class Linter:
       objects = [r for r in _list(requirements) if isinstance(r, dict)]
       alternatives = [r for r in objects if r]
       kinds = set()
+      with_api_key = 0
       for alternative in alternatives:
-        kinds.update(types.get(name) for name in alternative)
-      if len(alternatives) > 1 and 'apiKey' in kinds:
+        alternative_kinds = {types.get(name) for name in alternative}
+        kinds.update(alternative_kinds)
+        with_api_key += 'apiKey' in alternative_kinds
+      if len(alternatives) == len(objects) and (
+          0 < with_api_key < len(alternatives)
+      ):
         self._add('API_KEY_IN_LOGICAL_OR' + variant, location)
       if len(alternatives) < len(objects) and 'oauth2' in kinds:
         self._add('OPTIONAL_SECURITY_WITH_OAUTH' + variant, location)
