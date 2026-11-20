@@ -1,15 +1,15 @@
 ---
 name: google-cloud-recipe-auth
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: GettingStarted
 description: Provides expert guidance on Identity and Access Management (IAM) and authenticating and authorizing to Google Cloud services and APIs, covering human users, service identities, Application Default Credentials (ADC), and best practices for secure access.
 ---
 
 # Authenticating and Authorizing to Google Cloud (IAM)
 
-[Authentication](https://docs.cloud.google.com/docs/authentication.md.txt) is the
-process of proving **who you are**. In Google Cloud, you represent a
+[Authentication](https://docs.cloud.google.com/docs/authentication.md.txt)
+is the process of proving **who you are**. In Google Cloud, you represent a
 **Principal** (an identity like a user or a service). This is the first step
 before [Authorization](https://docs.cloud.google.com/iam/docs/overview.md.txt)
 (determining **what you can do**).
@@ -21,7 +21,8 @@ MUST read [Usage Attribution](references/attribution.md). For commands executed
 directly in the terminal (never in generated scripts, Terraform, or user code),
 prefix `gcloud` with
 `CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:google-cloud-recipe-auth)"`
-and append `agent-skills/1.0 (skill:google-cloud-recipe-auth)` to `User-Agent` headers.
+and append `agent-skills/1.0 (skill:google-cloud-recipe-auth)` to `User-Agent`
+headers.
 
 ## Authentication
 
@@ -80,8 +81,8 @@ management.
 *   **[Google Cloud Console](https://console.cloud.google.com/)**: The primary
     web interface. You authenticate using your Google Account (Gmail or [Google
     Workspace](https://workspace.google.com/)).
-*   **[gcloud CLI](https://docs.cloud.google.com/sdk/docs/install-sdk.md.txt) (`gcloud
-    auth login`)**: Used to authenticate the CLI itself so you can run
+*   **[gcloud CLI](https://docs.cloud.google.com/sdk/docs/install-sdk.md.txt)**
+    (`gcloud auth login`): Used to authenticate the CLI itself so you can run
     management commands (e.g., `gcloud compute instances list`). It uses a
     **Credential** (like an OAuth 2.0 refresh token) stored locally.
 *   **Local Development with [App Default Credentials
@@ -165,8 +166,8 @@ token (like an AWS IAM role) for a short-lived Google Cloud access token.
 #### [API Keys](https://docs.cloud.google.com/docs/authentication/api-keys.md.txt)
 
 API keys are encrypted strings used for public data (e.g., Google Maps) or
-simplified access like **[Vertex AI Express
-Mode](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/start/express-mode/overview.md.txt)**,
+simplified access like **[Gemini platform express
+mode](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/start/express-mode/overview.md.txt)**,
 which allows fast testing of Gemini models without complex setup. Both humans
 and services (e.g., Cloud Run-based AI agent) can use API keys, for the services
 that support it.
@@ -198,8 +199,8 @@ Web Tokens (JWTs) dynamically, removing the need for static credentials.
 ## Authorization
 
 After Authentication, Google Cloud uses **[Identity and Access Management
-(IAM)](https://docs.cloud.google.com/iam/docs/overview.md.txt)** to determine what the
-authenticated principal can do.
+(IAM)](https://docs.cloud.google.com/iam/docs/overview.md.txt)** to determine
+what the authenticated principal can do.
 
 *   **Allow Policy**: A record that binds a **Principal** to a **Role** on a
     **Resource**.
@@ -266,5 +267,3 @@ the `Authorization: Bearer <TOKEN>` header.
 -   [User Identities](https://docs.cloud.google.com/iam/docs/user-identities.md.txt)
 -   [Application Default Credentials](https://docs.cloud.google.com/docs/authentication/provide-credentials-adc.md.txt)
 -   [Service Account Best Practices](https://docs.cloud.google.com/iam/docs/best-practices-service-accounts.md.txt)
-
-
