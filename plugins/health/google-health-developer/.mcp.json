@@ -1,0 +1,12 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "HealthDevelopers": {
+      "type": "streamable-http",
+      "url": "https://healthdevelopers.googleapis.com/mcp",
+      "headers": {
+        "X-Goog-Api-Client": "google-health-developer/1.0.0 agent-skills/1.0 (plugin:google-health-developer)"
+      }
+    }
+  }
+}

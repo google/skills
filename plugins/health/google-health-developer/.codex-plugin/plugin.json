@@ -1,0 +1,44 @@
+{
+  "name": "google-health-developer",
+  "version": "1.0.0",
+  "description": "Search and retrieve official Google Health API documentation on developers.google.com/health through the Google Health Developer MCP server.",
+  "author": {
+    "name": "Google LLC",
+    "url": "https://developers.google.com/health"
+  },
+  "homepage": "https://github.com/google/skills/tree/main/plugins/health/google-health-developer",
+  "repository": "https://github.com/google/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "google-health",
+    "health",
+    "wearables",
+    "fitness",
+    "mcp",
+    "documentation",
+    "api"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Google Health Developer",
+    "shortDescription": "Google Health API MCP",
+    "longDescription": "Search and retrieve official Google Health API documentation on developers.google.com/health through the Google Health Developer MCP server.",
+    "developerName": "Google LLC",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Google Health REST & gRPC APIs",
+      "OAuth 2.0 scopes & consent flows",
+      "Wearables & fitness data schemas",
+      "Fitbit Web API migration docs"
+    ],
+    "websiteURL": "https://developers.google.com/health",
+    "supportURL": "https://developers.google.com/health/support",
+    "privacyPolicyURL": "https://policies.google.com/privacy",
+    "termsOfServiceURL": "https://policies.google.com/terms",
+    "defaultPrompt": [
+      "Which OAuth scopes does the Google Health API use, and which data types map to each scope?",
+      "Show me how to fetch daily sleep stages and heart rate metrics using the Google Health REST API",
+      "How do I set up webhook subscriptions in the Google Health API to receive updates when new sleep or workout data arrives?"
+    ]
+  }
+}
