@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "HealthDevelopers": {
+      "serverUrl": "https://healthdevelopers.googleapis.com/mcp",
+      "headers": {
+        "X-Goog-Api-Client": "google-health-developer/1.0.0 agent-skills/1.0 (plugin:google-health-developer)"
+      }
+    }
+  }
+}

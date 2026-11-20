@@ -1,0 +1,13 @@
+{
+  "name": "google-health-developer",
+  "version": "1.0.0",
+  "description": "Search and retrieve official Google Health API documentation on developers.google.com/health through the Google Health Developer MCP server.",
+  "mcpServers": {
+    "HealthDevelopers": {
+      "httpUrl": "https://healthdevelopers.googleapis.com/mcp",
+      "headers": {
+        "X-Goog-Api-Client": "google-health-developer/1.0.0 agent-skills/1.0 (plugin:google-health-developer)"
+      }
+    }
+  }
+}
