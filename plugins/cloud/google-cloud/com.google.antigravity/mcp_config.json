@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "developer-knowledge": {
+      "authProviderType": "google_credentials"
+    },
+    "autocloud": {
+      "authProviderType": "google_credentials",
+      "timeoutSeconds": 1200
+    }
+  }
+}

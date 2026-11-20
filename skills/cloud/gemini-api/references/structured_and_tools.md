@@ -1,7 +1,15 @@
 # Structured Output and Tools
 
+## Contents
+
+- [Structured Output (JSON Schema)](#structured-output-json-schema) (L10-L36)
+- [Function Calling](#function-calling) (L38-L92)
+- [Search Grounding](#search-grounding) (L94-L132)
+- [Code Execution & URL Context](#code-execution--url-context) (L134-L161)
+
 ## Structured Output (JSON Schema)
-Enforce a specific JSON schema using standard Python type hints or Pydantic models.
+
+Enforce a JSON schema by passing a Pydantic `BaseModel` or Python type annotation (e.g., `list[Movie]`) to `response_schema` with `response_mime_type="application/json"`.
 
 ```python
 from google import genai
@@ -16,21 +24,23 @@ class Recipe(BaseModel):
 
 client = genai.Client()
 response = client.models.generate_content(
-    model="gemini-3.8-flash",
+    model="gemini-4-hydrogen",
     contents="List a few popular cookie recipes.",
     config=types.GenerateContentConfig(
         response_mime_type="application/json",
-        response_json_schema=list[Recipe],
+        response_schema=list[Recipe],
     ),
 )
-# response.text is guaranteed to be valid JSON matching the schema
-print(response.text)
-# Returns list of Recipe objects
-print(response.parsed)
+print(response.text)    # Valid JSON string matching the schema
+print(response.parsed)  # Parsed list[Recipe] instances
 ```
 
 ## Function Calling
-Let the model output function calls that you can execute.
+
+Declare Python functions with type annotations and docstrings in `GenerateContentConfig(tools=[...])`.
+
+- **Automatic Function Calling (default when passing Python callables)**: `generate_content` (or `chat.send_message`) automatically executes the Python function and returns the final natural-language answer in `response.text` (leaving `response.function_calls` empty on the final turn).
+- **Manual Function Calling (`response.function_calls`)**: Set `automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)` to inspect `response.function_calls`, run the function yourself, and return `types.Part.from_function_response`.
 
 ```python
 from google import genai
@@ -38,60 +48,90 @@ from google.genai import types
 
 
 def get_current_weather(location: str) -> str:
-    """Example method. Returns the current weather.
-    Args: location: The city and state, e.g. San Francisco, CA
-    """
-    if "boston" in location.lower():
-        return "Snowing"
-    return "Sunny"
+    """Returns the current weather for a city and state (e.g., Boston, MA)."""
+    return "Snowing" if "boston" in location.lower() else "Sunny"
 
 
 client = genai.Client()
+
+# Option A: Manual inspection & execution via response.function_calls
+manual_config = types.GenerateContentConfig(
+    tools=[get_current_weather],
+    automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+)
 response = client.models.generate_content(
-    model="gemini-3.8-flash",
+    model="gemini-4-hydrogen",
     contents="What is the weather like in Boston?",
-    config=types.GenerateContentConfig(tools=[get_current_weather]),
+    config=manual_config,
 )
 
 if response.function_calls:
-    print("Function calls requested by the model:")
-    for function_call in response.function_calls:
-        print(f"- Function: {function_call.name}")
-        print(f"- Args: {dict(function_call.args)}")
-else:
-    print("The model responded directly:")
-    print(response.text)
+    call = response.function_calls[0]
+    result = get_current_weather(**dict(call.args))
+    followup = client.models.generate_content(
+        model="gemini-4-hydrogen",
+        contents=[
+            types.Content(role="user", parts=[types.Part.from_text(text="What is the weather like in Boston?")]),
+            response.candidates[0].content,
+            types.Content(
+                role="user",
+                parts=[types.Part.from_function_response(name=call.name, response={"result": result})],
+            ),
+        ],
+        config=manual_config,
+    )
+    print(followup.text)
+
+# Option B: Automatic execution (SDK calls get_current_weather and returns final text)
+auto_response = client.models.generate_content(
+    model="gemini-4-hydrogen",
+    contents="What is the weather like in Boston?",
+    config=types.GenerateContentConfig(tools=[get_current_weather]),
+)
+print(auto_response.text)
 ```
 
 ## Search Grounding
-Ground the model's responses in Google Search or your own data with Agent Search (formerly known as Vertex AI Search).
+
+Ground responses in Google Search (or enterprise data via Agent Search, formerly Vertex AI Search) and read `grounding_metadata` from `response.candidates[0]`.
 
 ```python
 from google import genai
 from google.genai import types
 
 client = genai.Client()
-
 response = client.models.generate_content(
-    model="gemini-3.8-flash",
+    model="gemini-4-hydrogen",
     contents="When is the next total solar eclipse in the US?",
     config=types.GenerateContentConfig(
         tools=[types.Tool(google_search=types.GoogleSearch())],
     ),
 )
 print(response.text)
-# Search details
-print(f"Search Query: {response.candidates[0].grounding_metadata.web_search_queries}")
-# Inspect grounding metadata
-print(response.candidates[0].grounding_metadata.search_entry_point.rendered_content)
-# Urls used for grounding
-print(
-    f"Search Pages: {', '.join([site.web.title for site in response.candidates[0].grounding_metadata.grounding_chunks])}"
+metadata = response.candidates[0].grounding_metadata
+print("Search Queries:", metadata.web_search_queries)
+print("Pages:", [chunk.web.title for chunk in (metadata.grounding_chunks or []) if chunk.web])
+
+# Ground on enterprise data via Agent Search (Vertex AI Search) datastore or engine
+enterprise_resp = client.models.generate_content(
+    model="gemini-4-hydrogen",
+    contents="What is our parental leave policy?",
+    config=types.GenerateContentConfig(
+        tools=[
+            types.Tool(
+                retrieval=types.Retrieval(
+                    vertex_ai_search=types.VertexAISearch(
+                        datastore="projects/your-project-id/locations/global/collections/default_collection/dataStores/your-datastore-id"
+                    )
+                )
+            )
+        ]
+    ),
 )
+print(enterprise_resp.text)
 ```
 
-## Code Execution
-Allow the model to run Python code to calculate answers precisely.
+## Code Execution & URL Context
 
 ```python
 from google import genai
@@ -99,35 +139,23 @@ from google.genai import types
 
 client = genai.Client()
 
-response = client.models.generate_content(
-    model="gemini-3.8-flash",
+# Server-side Python code execution
+code_resp = client.models.generate_content(
+    model="gemini-4-hydrogen",
     contents="Calculate the 20th fibonacci number.",
     config=types.GenerateContentConfig(
         tools=[types.Tool(code_execution=types.ToolCodeExecution())],
     ),
 )
-print(response.executable_code)
-print(response.code_execution_result)
-```
+print(code_resp.executable_code, code_resp.code_execution_result)
 
-## Url Context
-You can use the URL context tool to provide Gemini with URLs as additional context for your prompt. The model can then retrieve content from the URLs and use that content to inform and shape its response.
-
-```python
-from google import genai
-from google.genai import types
-
-client = genai.Client()
-
-response = client.models.generate_content(
-    model="gemini-3.8-flash",
-    contents="Compare recipes from http://example.com and http://example2.com",
+# Retrieve and ground on public web URLs supplied in the prompt
+url_resp = client.models.generate_content(
+    model="gemini-4-hydrogen",
+    contents="Compare https://example.com and https://www.iana.org/domains/reserved",
     config=types.GenerateContentConfig(
         tools=[types.Tool(url_context=types.UrlContext())],
     ),
 )
-
-print(response.text)
-# get URLs retrieved for context
-print(response.candidates[0].url_context_metadata)
+print(url_resp.text, url_resp.candidates[0].url_context_metadata)
 ```

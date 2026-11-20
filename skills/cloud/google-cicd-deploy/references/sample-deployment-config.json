@@ -1,0 +1,63 @@
+{
+  "active_runtime": "Cloud Run",
+  "default_environment": "dev",
+  "fail_on_push_error": true,
+  "common_gcp_settings": {
+    "project_id": "my-gcp-project",
+    "region": "us-central1"
+  },
+  "cloud_run": {
+    "dev": {
+      "project_id": "my-gcp-project",
+      "region": "us-central1",
+      "artifact_registry": "us-central1-docker.pkg.dev/my-gcp-project/my-app-images-dev",
+      "service_name": "<app-name>-dev",
+      "public_access": true,
+      "container_port": 8080
+    },
+    "prod": {
+      "project_id": "my-gcp-project",
+      "region": "us-central1",
+      "artifact_registry": "us-central1-docker.pkg.dev/my-gcp-project/my-app-images-prod",
+      "service_name": "<app-name>-prod",
+      "public_access": false,
+      "container_port": 8080,
+      "require_confirmation": true,
+      "binary_authorization": "default",
+      "binary_authorization_policy": "prod-policy"
+    }
+  },
+  "gke": {
+    "dev": {
+      "project_id": "my-gcp-project",
+      "cluster_location": "us-central1",
+      "cluster_name": "my-gke-cluster-dev",
+      "namespace": "dev",
+      "artifact_registry": "us-central1-docker.pkg.dev/my-gcp-project/my-app-images-dev",
+      "manifest_path": "./kubernetes-manifests/"
+    },
+    "prod": {
+      "project_id": "my-gcp-project",
+      "cluster_location": "us-central1",
+      "cluster_name": "my-gke-cluster-prod",
+      "namespace": "prod",
+      "artifact_registry": "us-central1-docker.pkg.dev/my-gcp-project/my-app-images-prod",
+      "manifest_path": "./release/kubernetes-manifests.yaml",
+      "require_confirmation": true
+    }
+  },
+  "developer_connect_and_cloud_build": {
+    "build_mode": "Developer Connect + Cloud Build",
+    "developer_connect": {
+      "location": "us-central1",
+      "connection_id": "my-devconnect-connection"
+    },
+    "cloud_build_trigger": {
+      "project_id": "my-gcp-project",
+      "region": "us-central1",
+      "service_account": "projects/my-gcp-project/serviceAccounts/cloudbuild-runner@my-gcp-project.iam.gserviceaccount.com",
+      "default_branch": "^main$",
+      "auto_run_trigger": true
+    }
+  }
+}

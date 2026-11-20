@@ -1,0 +1,45 @@
+{
+  "name": "google-cloud",
+  "version": "2.0.0",
+  "description": "Google Cloud guidance for coding agents: first-project onboarding, authentication and credential selection, safety-critical validation for gcloud CLI commands, and the Cloud Operator Agent for designing, operating and troubleshooting infrastructure in your projects. Includes the Google Developer Knowledge MCP server for grounded, up-to-date Google Cloud documentation and the Autocloud MCP server.",
+  "author": {
+    "name": "Google LLC",
+    "url": "https://cloud.google.com"
+  },
+  "homepage": "https://github.com/google/skills/tree/main/plugins/cloud/google-cloud",
+  "repository": "https://github.com/google/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "google-cloud",
+    "gcloud",
+    "authentication",
+    "onboarding",
+    "cloud-operator"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Google Cloud",
+    "shortDescription": "Google Cloud guidance & tools",
+    "longDescription": "Google Cloud guidance for coding agents: first-project onboarding, authentication and credential selection, safety-critical validation for gcloud CLI commands, and the Cloud Operator Agent for designing, operating and troubleshooting infrastructure in your projects.",
+    "developerName": "Google LLC",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Google Cloud onboarding",
+      "Authentication guidance",
+      "gcloud command safety",
+      "Google developer documentation",
+      "Cloud Operator Agent"
+    ],
+    "websiteURL": "https://cloud.google.com",
+    "supportURL": "https://cloud.google.com/support",
+    "privacyPolicyURL": "https://policies.google.com/privacy",
+    "termsOfServiceURL": "https://policies.google.com/terms",
+    "defaultPrompt": [
+      "Help me set up a new Google Cloud project, link billing, and configure local authentication.",
+      "Configure Application Default Credentials (ADC) and IAM permissions for my local development environment.",
+      "Search official Google Cloud documentation using Developer Knowledge and validate my gcloud CLI commands."
+    ],
+    "logo": "./assets/logo.svg",
+    "composerIcon": "./assets/logo.svg"
+  }
+}

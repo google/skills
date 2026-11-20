@@ -1,7 +1,7 @@
 ---
 name: google-cloud-networking-observability
 metadata:
-  version: "1.0.7"
+  version: "1.0.8"
   category: Compute
 description: >-
   Investigates Google Cloud networking issues by analyzing GCP logs, metrics, and diagnostics. Use when investigating dropped network traffic, packet drops, drop reasons, VPC Flow Logs (including Private Service Connect / PSC, serverless / App Engine Direct VPC, and cost estimation), Cloud NAT, firewall or threat logs, VPN metrics/tunnels, or Connectivity Tests for path diagnostics. Don't use for generic VM management or non-observability tasks.

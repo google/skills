@@ -136,7 +136,9 @@ def main():
 
   t0 = time.time()
   result = client.evals.evaluate(
-      dataset=types.EvaluationDataset(eval_cases=cases), metrics=metrics
+      dataset=types.EvaluationDataset(eval_cases=cases),
+      metrics=metrics,
+      config={"allow_cross_region_model": True},
   )
   result_names = [getattr(m, "name", None) or n for m, n in zip(metrics, names)]
   per_case = collect(cases, result, result_names)
@@ -148,7 +150,9 @@ def main():
     ]
     if failed:
       again = client.evals.evaluate(
-          dataset=types.EvaluationDataset(eval_cases=failed), metrics=metrics
+          dataset=types.EvaluationDataset(eval_cases=failed),
+          metrics=metrics,
+          config={"allow_cross_region_model": True},
       )
       for cid, per in collect(failed, again, result_names).items():
         for name, m in per.items():

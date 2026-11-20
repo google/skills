@@ -109,6 +109,11 @@
       "description": "Connect and interact with Cloud Firestore."
     },
     {
+      "name": "google-cloud",
+      "source": "./plugins/cloud/google-cloud",
+      "description": "Google Cloud guidance for coding agents: first-project onboarding, authentication and credential selection, safety-critical validation for gcloud CLI commands, and the Cloud Operator Agent for designing, operating and troubleshooting infrastructure in your projects. Includes the Google Developer Knowledge MCP server for grounded, up-to-date Google Cloud documentation and the Autocloud MCP server."
+    },
+    {
       "name": "google-cloud-developer",
       "source": "./plugins/cloud/google-cloud-developer",
       "description": "Core Google Cloud guidance for coding agents: first-project onboarding, authentication and credential selection, and safety-critical validation for gcloud CLI commands. Includes the Google Developer Knowledge MCP server for grounded, up-to-date Google Cloud documentation."

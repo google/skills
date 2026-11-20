@@ -1,265 +1,112 @@
 ---
 name: gemini-api
 metadata:
-  version: "1.0.2"
+  version: "1.0.4"
   category: AiAndMachineLearning
-description: Use when the user asks about using Gemini in an enterprise environment or explicitly mentions Vertex AI, Google Cloud, or Agent Platform. Guides the usage of the Gemini API on Agent Platform with the Google Gen AI SDK. Covers SDK usage (Python, JS/TS, Go, Java, C#), capabilities like multimodal inputs, tools, media generation, caching, batch prediction, and Live API.
-compatibility: Requires active Google Cloud credentials and Agent Platform API enabled.
+description: >-
+  Integrates Gemini models on Gemini platform (formerly Gemini Enterprise Agent
+  Platform and Vertex AI) using the unified Google Gen AI SDK across Python,
+  TypeScript/JavaScript, Go, Java, and C#. Use for Google Cloud AI workloads:
+  text/multimodal generation, structured JSON, function calling, Search
+  grounding, code execution, URL context, Nano Banana images, Gemini Omni and
+  Veo video, TTS, Lyria music, embeddings, caching, batch, thinking, safety,
+  Live API, or model tuning. Don't use for server-managed stateful agent
+  sessions (gemini-interactions-api), Managed Agent CRUD (gemini-agents-api),
+  raw BidiGenerateContent WebSocket scaffolding/audio debugging
+  (gemini-live-api), open-model SFT or tuning job management
+  (agent-platform-tuning, agent-platform-tuning-management), or OpenMaaS,
+  OpenAI SDK, numeric endpoints, and 429 DSQ debugging
+  (agent-platform-inference).
+compatibility: Requires active Google Cloud credentials, billing enabled, and the Gemini platform API (aiplatform.googleapis.com) enabled.
 ---
 
+# Gemini API in Gemini platform
+
 > [!IMPORTANT]
-> Agent Platform (full name Gemini Enterprise Agent Platform) was previously named "Vertex AI" and many web resources use the legacy branding.
+> **Gemini platform** was formerly named **Gemini Enterprise Agent Platform** and **Vertex AI**.
 
-# Gemini API in Agent Platform
-
-Access Google's most advanced AI models built for enterprise use cases using the Gemini API in Agent Platform.
-
-Provide these key capabilities:
-
-- **Text generation** - Chat, completion, summarization
-- **Multimodal understanding** - Process images, audio, video, and documents
-- **Function calling** - Let the model invoke your functions
-- **Structured output** - Generate valid JSON matching your schema
-- **Context caching** - Cache large contexts for efficiency
-- **Embeddings** - Generate text embeddings for semantic search
-- **Live Realtime API** - Bidirectional streaming for low latency Voice and Video interactions
-- **Batch Prediction** - Handle massive async dataset prediction workloads
-
-## Attribution
+## Usage Attribution
 
 **MUST READ**: Before executing any `gcloud`, REST API, or MCP command, you
-MUST read [Usage Attribution](references/attribution.md). For commands executed
-directly in the terminal (never in generated scripts, Terraform, or user code),
-prefix `gcloud` with
-`CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:gemini-api)"`
-and append `agent-skills/1.0 (skill:gemini-api)` to `User-Agent` headers.
+MUST read and follow the instructions in
+[Usage Attribution](references/attribution.md).
 
-## Core Directives
+## Core Directives & Prerequisites
 
-- **Unified SDK**: ALWAYS use the Gen AI SDK (`google-genai` for Python, `@google/genai` for JS/TS, `google.golang.org/genai` for Go, `com.google.genai:google-genai` for Java, `Google.GenAI` for C#).
-- **Legacy SDKs**: DO NOT use `google-cloud-aiplatform`, `@google-cloud/vertexai`, or `google-generativeai`.
+- **Unified Gen AI SDK ONLY**: Python `google-genai` (`pip install "google-genai>=2.33.0,<3"`), TS/JS `@google/genai` (`npm install @google/genai`), Go `google.golang.org/genai` (`go get google.golang.org/genai`), Java `com.google.genai:google-genai:2.6.0`, C# `Google.GenAI` (`dotnet add package Google.GenAI`).
+- **NEVER use deprecated SDKs**: `google-cloud-aiplatform` (`vertexai`), `@google-cloud/vertexai`, `cloud.google.com/go/vertexai`, `google-cloud-vertexai`, or `google-generativeai` ([Migration Guide](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/deprecations/genai-vertexai-sdk.md.txt)).
+- **Prerequisites**: Active billing ([Pricing](https://cloud.google.com/pricing)), `roles/aiplatform.user`, API enabled (`gcloud config set project {project_id}`, `gcloud services enable aiplatform.googleapis.com`), ADC (`gcloud auth application-default login`).
+- **Efficiency**: Model IDs and SDK signatures here and in `references/` are verified against the current SDK. Respond directly if answered below; otherwise read **only** the matching line range in [Reference Routing](#reference-routing) without reading unrelated references or running speculative repo/web searches unless inspecting user files or unlisted APIs.
 
-## SDKs
+## Authentication & Python Quick Start
 
-- **Python**: Install `google-genai` with `pip install google-genai`
-- **JavaScript/TypeScript**: Install `@google/genai` with `npm install @google/genai`
-- **Go**: Install `google.golang.org/genai` with `go get google.golang.org/genai`
-- **C#/.NET**: Install `Google.GenAI` with `dotnet add package Google.GenAI`
-- **Java**:
-  - groupId: `com.google.genai`, artifactId: `google-genai`
-  - Latest version can be found here: https://central.sonatype.com/artifact/com.google.genai/google-genai/versions (let's call it `LAST_VERSION`)
-  - Install in `build.gradle`:
-
-    ```
-    implementation("com.google.genai:google-genai:${LAST_VERSION}")
-    ```
-
-  - Install Maven dependency in `pom.xml`:
-
-    ```xml
-    <dependency>
-	    <groupId>com.google.genai</groupId>
-	    <artifactId>google-genai</artifactId>
-	    <version>${LAST_VERSION}</version>
-	</dependency>
-    ```
-
-> [!WARNING]
-> Legacy SDKs like `google-cloud-aiplatform`, `@google-cloud/vertexai`, and `google-generativeai` are deprecated. Migrate to the new SDKs above urgently by following the [Migration Guide](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/deprecations/genai-vertexai-sdk.md.txt).
-
-## Authentication & Configuration
-
-Prefer environment variables over hard-coding parameters when creating the client. Initialize the client without parameters to automatically pick up these values.
-
-### Application Default Credentials (ADC)
-Set these variables for standard [Google Cloud authentication](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/start/gcp-auth.md.txt):
+Prefer environment variables ([GCP Auth](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/start/gcp-auth.md.txt), [Locations](https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations.md.txt), [Express Mode](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/start/api-keys.md.txt)):
 
 ```bash
+# ADC ('global' default; Live API and Tuning require regional, e.g. 'us-central1')
 export GOOGLE_CLOUD_PROJECT='your-project-id'
-# Note: global location is supported for standard inference; regional endpoint (e.g. us-central1) required for Live API
 export GOOGLE_CLOUD_LOCATION='global'
 export GOOGLE_GENAI_USE_ENTERPRISE=true
+# Express Mode API key (mutually exclusive with project/location — unset GOOGLE_CLOUD_PROJECT & GOOGLE_CLOUD_LOCATION):
+# export GOOGLE_API_KEY='your-api-key' GOOGLE_GENAI_USE_ENTERPRISE=true
+# Explicit Express Mode: enterprise=True+api_key (Py); enterprise:true+apiKey (TS/Java/C#); BackendEnterprise+APIKey (Go) — omit project/location
 ```
-
-- By default, use `location="global"` to access the global endpoint, which provides automatic routing to regions with available capacity.
-- If a user explicitly asks to use a specific region (e.g., `us-central1`, `europe-west4`), specify that region in the `GOOGLE_CLOUD_LOCATION` parameter instead. Reference the [supported regions documentation](https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations.md.txt) if needed.
-
-### Agent Platform in Express Mode
-Set these variables when using [Express Mode](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/start/api-keys.md.txt) with an API key:
-
-```bash
-export GOOGLE_API_KEY='your-api-key'
-export GOOGLE_GENAI_USE_ENTERPRISE=true
-```
-
-### Initialization
-Initialize the client without arguments to pick up environment variables:
 
 ```python
 from google import genai
+from google.genai import types  # Only needed when passing optional config
 
-client = genai.Client()
-```
-
-Alternatively, you can hard-code in parameters when creating the client.
-
-```python
-from google import genai
-
-client = genai.Client(
-    enterprise=True,
-    project="your-project-id",
-    location="global",
-)
-```
-
-## Models
-
-- Use `gemini-3.8-flash` for fast, balanced performance, multimodal (1M tokens)
-- Use `gemini-3.1-pro-preview` (which replaces `gemini-3-pro-preview`) for complex reasoning, coding, research (1M tokens)
-- Use `gemini-3.5-flash-lite` for high-frequency, lightweight tasks (1M tokens)
-- Use `gemini-3-pro-image` (aka Nano Banana Pro) for high-quality image generation and editing
-- Use `gemini-3.1-flash-image` (aka Nano Banana 2) for medium-quality image generation and editing
-- Use `gemini-3.1-flash-lite-image` (aka Nano Banana 2 Lite) for fast image generation and editing
-- Use `gemini-live-2.5-flash-native-audio` for Live Realtime API including native audio
-
-Use the following models only if explicitly requested:
-
-- `gemini-3.7-flash`
-- `gemini-3.6-flash`
-- `gemini-3.5-flash`
-- `gemini-3.1-flash-lite`
-- `gemini-2.5-flash-image`
-- `gemini-2.5-flash`
-- `gemini-2.5-flash-lite`
-- `gemini-2.5-pro`
-
-> [!IMPORTANT]
-> Models like `gemini-2.0-*`, `gemini-1.5-*`, `gemini-1.0-*`, `gemini-pro` are legacy and deprecated. Use the new models above. Your knowledge is outdated.
-> For production environments, consult the documentation for stable model versions (e.g. `gemini-3.8-flash`).
-
-## Quick Start
-
-### Python
-
-```python
-from google import genai
-
+# Zero-arg Client() reads env vars; explicit: genai.Client(enterprise=True, project="your-project-id", location="global")
 client = genai.Client()
 response = client.models.generate_content(
-    model="gemini-3.8-flash",
+    model="gemini-4-hydrogen",
     contents="Explain quantum computing",
+    # Optional config:
+    # config=types.GenerateContentConfig(
+    #     system_instruction="Be concise.",
+    #     max_output_tokens=256,
+    # ),
 )
 print(response.text)
 ```
 
-### TypeScript/JavaScript
+## Models
 
-```typescript
-import { GoogleGenAI } from "@google/genai";
-const ai = new GoogleGenAI({ enterprise: { project: "your-project-id", location: "global" } });
-const response = await ai.models.generateContent({
-    model: "gemini-3.8-flash",
-    contents: "Explain quantum computing"
-});
-console.log(response.text);
-```
+> [!WARNING]
+> **NEVER** recommend deprecated models: `gemini-2.5-*`, `gemini-2.0-*`, `gemini-1.5-*`, `gemini-1.0-*`, `gemini-pro*`, `gemini-pro-vision`, `text-embedding-004`, `multimodal-embedding-001`, `imagen-3.0*`.
 
-### Go
+| Capability | Recommended Model(s) | Notes |
+| :--- | :--- | :--- |
+| General text, multimodal, coding, agents | `gemini-4-hydrogen` | Default; 1M ctx, fast & balanced |
+| Complex reasoning & enterprise SWE | `gemini-4-neon` | 1M ctx, long-term GA, broad regions |
+| Frontier reasoning, security & research | `gemini-4-carbon` | Max reasoning depth; 1M ctx, select regions |
+| High-frequency / lightweight tasks | `gemini-3.5-flash-lite` | Low latency & cost; 1M ctx |
+| Text & multimodal embeddings | `gemini-embedding-2` | Shared space: text, image, PDF, audio, video |
+| Image generation & editing | `gemini-nano-banana-2.1`, `gemini-3.1-flash-lite-image` | Pro/high-res (2.1) or fast Lite |
+| Video generation & editing (Omni) | `gemini-omni-1.2-flash` | Up to 4K + audio via `client.interactions.create` |
+| Video generation (Veo async) | `veo-3.1-fast-generate-001` | Default fast; also `veo-3.1-lite-generate-001`, `veo-3.1-generate-001` |
+| Live bidirectional audio/video | `gemini-3.8-live` | `client.aio.live.connect` (regional endpoint) |
+| Text-to-Speech (TTS) | `gemini-3.8-flash-tts`, `gemini-3.8-flash-lite-tts` | Studio (132 langs) or low-latency (103 langs) |
+| Music generation | `lyria-3-pro-preview`, `lyria-3-clip-preview`, `lyria-002` | `<=184s` / `30s` (`interactions.create`); `lyria-002` (GA `:predict`) |
 
-```go
-package main
+**Use ONLY if explicitly requested** (or required by feature): `gemini-4-argon`, `gemini-3.8-flash` (explicit context caching), `gemini-3.1-pro-preview`, `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.1-flash-lite` (SFT tuning), `gemini-3-pro-image`, `gemini-3.1-flash-image`.
 
-import (
-	"context"
-	"fmt"
-	"log"
-	"google.golang.org/genai"
-)
+## Reference Routing
 
-func main() {
-	ctx := context.Background()
-	client, err := genai.NewClient(ctx, &genai.ClientConfig{
-		Backend:  genai.BackendVertexAI,
-		Project:  "your-project-id",
-		Location: "global",
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+| Task | Reference & Line Range |
+| :--- | :--- |
+| TS/JS (`L12-L32`), Go (`L34-L67`), Java (`L69-L102`), C# (`L104-L123`) | [references/sdks.md](references/sdks.md) |
+| Chat (`L11-L26`), streaming (`L28-L38`), multimodal/`media_resolution` (`L40-L89`), async `client.aio` (`L91-L111`), `count_tokens`/usage (`L113-L133`) | [references/text_and_multimodal.md](references/text_and_multimodal.md) |
+| JSON schema (`L10-L36`), function calling (`L38-L92`), Search & Agent Search grounding (`L94-L132`), code exec & URL context (`L134-L161`) | [references/structured_and_tools.md](references/structured_and_tools.md) |
+| Nano Banana images (`L11-L53`), Omni t2v (`L55-L92`), Omni i2v/ref/edit/async/multi-turn (`L55-L155`), Veo (`L157-L187`), TTS single/multi-speaker (`L189-L268`), Lyria (`L270-L291`) | [references/media_generation.md](references/media_generation.md) |
+| Text, image, and segmented video embeddings (`EmbedContentConfig`) | [references/embeddings.md](references/embeddings.md) |
+| Explicit caching (`L10-L47`), batch (`L49-L74`), thinking (`L76-L108`), MCP tools (`L110-L138`) | [references/advanced_features.md](references/advanced_features.md) |
+| Safety filters (`HarmCategory`, `HarmBlockThreshold`) & ratings | [references/safety.md](references/safety.md) |
+| Bounding box detection (`[y_min, x_min, y_max, x_max]`, `0-1000`) | [references/bounding_box.md](references/bounding_box.md) |
+| Live API WebSockets (`client.aio.live.connect`, PCM audio) | [references/live_api.md](references/live_api.md) |
+| Supervised Fine-Tuning (SFT) & Preference Tuning (`client.tunings.tune`) | [references/model_tuning.md](references/model_tuning.md) |
 
-	resp, err := client.Models.GenerateContent(ctx, "gemini-3.8-flash", genai.Text("Explain quantum computing"), nil)
-	if err != nil {
-		log.Fatal(err)
-	}
+## Official Docs & Endpoints
 
-	fmt.Println(resp.Text)
-}
-```
-
-### Java
-
-```java
-import com.google.genai.Client;
-import com.google.genai.types.GenerateContentResponse;
-
-public class GenerateTextFromTextInput {
-  public static void main(String[] args) {
-    Client client = Client.builder().enterprise(true).project("your-project-id").location("global").build();
-    GenerateContentResponse response =
-        client.models.generateContent(
-            "gemini-3.8-flash",
-            "Explain quantum computing",
-            null);
-
-    System.out.println(response.text());
-  }
-}
-```
-
-### C#/.NET
-
-```csharp
-using Google.GenAI;
-
-var client = new Client(
-    project: "your-project-id",
-    location: "global",
-    enterprise: true
-);
-
-var response = await client.Models.GenerateContent(
-    "gemini-3.8-flash",
-    "Explain quantum computing"
-);
-
-Console.WriteLine(response.Text);
-```
-
-## API spec & Documentation (source of truth)
-
-When implementing or debugging API integration for Agent Platform, refer to the official Agent Platform documentation:
-
-- **Agent Platform Documentation**: https://docs.cloud.google.com/gemini-enterprise-agent-platform/overview.md.txt
-- **REST API Reference**: https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest.md.txt
-
-The Gen AI SDK on Agent Platform uses the `v1beta1` or `v1` REST API endpoints (e.g., `https://{LOCATION}-aiplatform.googleapis.com/v1beta1/projects/{PROJECT}/locations/{LOCATION}/publishers/google/models/{MODEL}:generateContent`).
-
-> [!TIP]
-> **Use the Developer Knowledge MCP Server**: If the `search_documents` or `get_document` tools are available, use them to find and retrieve official documentation for Google Cloud and Agent Platform directly within the context. This is the preferred method for getting up-to-date API details and code snippets.
-
-## Workflows and Code Samples
-
-Reference the [Python Docs Samples repository](https://github.com/GoogleCloudPlatform/python-docs-samples/tree/main/genai) for additional code samples and specific usage scenarios.
-
-Depending on the specific user request, refer to the following reference files for detailed code samples and usage patterns (Python examples):
-
-- **Text & Multimodal**: Chat, Multimodal inputs (Image, Video, Audio), and Streaming. See [references/text_and_multimodal.md](references/text_and_multimodal.md)
-- **Embeddings**: Generate text embeddings for semantic search. See [references/embeddings.md](references/embeddings.md)
-- **Structured Output & Tools**: JSON generation, Function Calling, Search Grounding, and Code Execution. See [references/structured_and_tools.md](references/structured_and_tools.md)
-- **Media Generation**: Image generation, Image editing, and Video generation. See [references/media_generation.md](references/media_generation.md)
-- **Bounding Box Detection**: Object detection and localization within images and video. See [references/bounding_box.md](references/bounding_box.md)
-- **Live API**: Real-time bidirectional streaming for voice, vision, and text. See [references/live_api.md](references/live_api.md)
-- **Advanced Features**: Content Caching, Batch Prediction, and Thinking/Reasoning. See [references/advanced_features.md](references/advanced_features.md)
-- **Safety**: Adjusting Responsible AI filters and thresholds. See [references/safety.md](references/safety.md)
-- **Model Tuning**: Supervised Fine-Tuning and Preference Tuning. See [references/model_tuning.md](references/model_tuning.md)
+- [Gemini platform Overview](https://docs.cloud.google.com/gemini-enterprise-agent-platform/overview.md.txt) | [REST Reference](https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest.md.txt) (global: `https://aiplatform.googleapis.com/v1beta1/projects/{PROJECT}/locations/global/publishers/google/models/{MODEL}:generateContent`; regional: `https://{LOCATION}-aiplatform.googleapis.com/...`) | [Python Samples](https://github.com/GoogleCloudPlatform/python-docs-samples/tree/main/genai)
+- If `search_documents` / `get_document` (Developer Knowledge MCP) are available, query them when unlisted API details are needed.

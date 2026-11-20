@@ -1,0 +1,13 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "developer-knowledge": {
+      "type": "streamable-http",
+      "url": "https://developerknowledge.googleapis.com/mcp"
+    },
+    "autocloud": {
+      "type": "streamable-http",
+      "url": "https://geminicloudassist.googleapis.com/mcp/autocloud"
+    }
+  }
+}

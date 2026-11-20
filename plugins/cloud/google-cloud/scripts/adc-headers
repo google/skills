@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Headers helper for the plugin's MCP servers: Claude Code's headersHelper
+# (.mcp.json) and Codex's http_headers_helper (~/.codex/config.toml). Prints the
+# HTTP headers for one connection as a JSON object: a fresh Application Default
+# Credentials access token (gcloud auth application-default print-access-token)
+# and the quota project (x-goog-user-project): the ADC file's quota_project_id,
+# else gcloud's billing/quota_project, else the gcloud project. Google APIs
+# reject ADC user tokens without a quota project. Never prints anything but the
+# headers; errors go to stderr.
+#
+# .mcp.json names this file without an extension, so bash runs it on macOS,
+# Linux, WSL and Git Bash, and CMD on Windows finds adc-headers.cmd beside it,
+# which does the same.
+
+set -u
+
+# Values go into JSON unescaped, so only characters a project ID can have
+# (domain-scoped IDs contain ":") and an OAuth token can have are allowed.
+valid_project() {
+  case "$1" in
+    "" | *[!A-Za-z0-9.:_-]*) return 1 ;;
+  esac
+}
+
+if ! command -v gcloud >/dev/null 2>&1; then
+  echo "gcloud isn't installed or isn't on PATH: install the Google Cloud CLI, then run: gcloud auth application-default login" >&2
+  exit 1
+fi
+# gcloud.cmd ends lines with \r\n; some shells keep the \r in $(...), so strip it to keep the JSON valid.
+token="$(gcloud auth application-default print-access-token 2>/dev/null)" || token=""
+token="${token%$'\r'}"
+if [ -z "$token" ]; then
+  echo "Couldn't get a token from \"gcloud auth application-default print-access-token\". If you haven't signed in, run: gcloud auth application-default login. Otherwise, run that command yourself to see the error." >&2
+  exit 1
+fi
+case "$token" in
+  *[!A-Za-z0-9._~+/=-]*)
+    echo "\"gcloud auth application-default print-access-token\" printed something that isn't a token. Run it yourself to see why." >&2
+    exit 1
+    ;;
+esac
+
+config="${CLOUDSDK_CONFIG:-$HOME/.config/gcloud}"
+if [ -z "${CLOUDSDK_CONFIG:-}" ] && [ -n "${APPDATA:-}" ] && [ -d "$APPDATA/gcloud" ]; then
+  config="$APPDATA/gcloud" # gcloud's folder on Windows, under Git Bash
+fi
+adc="$config/application_default_credentials.json"
+quota="$(sed -n 's/.*"quota_project_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$adc" 2>/dev/null | head -n 1)"
+valid_project "$quota" || quota=""
+if [ -z "$quota" ]; then
+  quota="$(gcloud config get-value billing/quota_project 2>/dev/null)"
+  quota="${quota%$'\r'}"
+  # Values gcloud accepts for billing/quota_project that aren't project IDs.
+  case "$quota" in
+    CURRENT_PROJECT | CURRENT_PROJECT_WITH_FALLBACK | LEGACY) quota="" ;;
+  esac
+  valid_project "$quota" || quota=""
+fi
+if [ -z "$quota" ]; then
+  quota="$(gcloud config get-value project 2>/dev/null)"
+  quota="${quota%$'\r'}"
+  valid_project "$quota" || quota=""
+fi
+
+if [ -n "$quota" ]; then
+  printf '{"Authorization":"Bearer %s","x-goog-user-project":"%s"}\n' "$token" "$quota"
+else
+  printf '{"Authorization":"Bearer %s"}\n' "$token"
+fi

@@ -1,7 +1,7 @@
 ---
 name: cloud-operator-share-context
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   category: CloudInfrastructureAndServices
 description: >-
   Shares Google Cloud operating context the user or their team already have —
@@ -20,9 +20,13 @@ description: >-
 Scan agent instruction files, local memory, skills and workflows, and the
 repository's GCP docs for context the user or their team already have about
 operating in Google Cloud, show it to the user, and copy what they approve into
-the operator agent's memory. Use the cloud-operator skill's `project`,
-`agentId` and secrets rules, including asking before using their default gcloud
-project. Save the project once a call works.
+the operator agent's memory. Call `ask_cloud_operator` with `organization` set
+to `organizations/{org_id}`, never `project`. Find the organization as the
+cloud-operator skill does (`gcloud projects get-ancestors {project_id}
+--format=json`, the `id` of the entry whose `type` is `organization`; ask if
+that fails, never guess; stop if the project has no organization). Use that
+skill's `agentId` and secrets rules, including asking before using their
+default gcloud project. Save the project and its organization once a call works.
 
 ## Usage Attribution
 
@@ -99,7 +103,8 @@ anything you have that conflicts: {fact}". Then confirm in one line.
 3. If a call fails with a permission error while earlier calls worked, retry
    once in a new session with everything sent so far, in the same wording, so
    the operator skips notes it already saved. If that fails, tell the user the
-   operator refused; mention IAM only if other calls fail too.
+   operator refused; mention organization access only if other calls fail
+   too.
 4. Send `/reflect` alone, once, after the last message, without waiting on
    anything such as a conflict. The operator may save during the turn too;
    `/reflect` saves everything now.

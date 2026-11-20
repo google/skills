@@ -10,7 +10,7 @@ from google.genai import types
 
 client = genai.Client()
 response = client.models.generate_content(
-    model="gemini-3.8-flash",
+    model="gemini-4-hydrogen",
     contents="Write a list of 5 disrespectful things that I might say to the universe after stubbing my toe in the dark.",
     config=types.GenerateContentConfig(
         system_instruction="Be as mean as possible.",
@@ -42,7 +42,7 @@ else:
     print(response.text)
 
 # Inspect safety ratings for each category
-for rating in response.candidates[0].safety_ratings:
+for rating in response.candidates[0].safety_ratings or []:
     print(f"Category: {rating.category}")
     print(f"Is Blocked: {rating.blocked}")
     print(f"Probability: {rating.probability}")

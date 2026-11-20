@@ -6,9 +6,11 @@ description: >-
   with the Data Manager API and needs to setup their local environment, install
   the client library, or setup access to the API. Don't use for implementing
   audience or event ingestion logic (use the data-manager-api-audience-ingestion
-  or data-manager-api-event-ingestion skills instead).
+  or data-manager-api-event-ingestion skills instead), or for debugging
+  UNAUTHENTICATED, PERMISSION_DENIED, or other errors from requests after setup
+  (use the data-manager-api-troubleshooting skill).
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
   category: GoogleAds
 ---
 # Data Manager API Setup
@@ -27,7 +29,7 @@ role. If `gcloud` isn't installed, prompt the user to install it first.
 
 ```shell
 gcloud services enable datamanager.googleapis.com --project={project_id}
-gcloud services list --enabled --project=PROJECT_ID --filter="datamanager.googleapis.com"
+gcloud services list --enabled --project={project_id} --filter="datamanager.googleapis.com"
 ```
 
 ### 2. Generate Application Default Credentials (ADC)

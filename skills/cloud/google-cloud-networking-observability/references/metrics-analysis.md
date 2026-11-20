@@ -21,10 +21,15 @@ without querying `metricDescriptors` first:
         `perSeriesAligner=ALIGN_PERCENTILE_50` (and optional
         `crossSeriesReducer=REDUCE_MEAN` or `REDUCE_PERCENTILE_50` when
         aggregating across VMs in a region) to obtain a scalar numeric latency.
--   **Active Probing Network SLO**:
-    -   `networking.googleapis.com/cloud_netslo/active_probing/rtt`
-        (`DISTRIBUTION`, `ALIGN_PERCENTILE_50`) and
-        `networking.googleapis.com/cloud_netslo/active_probing/probe_count`.
+-   **Cross-Zone Baseline Latency & Active Probing (`networking.googleapis.com`)**:
+    -   `networking.googleapis.com/all_gcp/vm_traffic/zone_pair_median_rtt`
+        (`resource.type="networking.googleapis.com/Location"`, `GAUGE` `DOUBLE`
+        in `ns`, `ALIGN_MEAN`; labels `remote_region`, `remote_zone`,
+        `protocol`) — Google Cloud baseline VM-to-VM median RTT per zone pair.
+    -   `networking.googleapis.com/cloud_netslo/active_probing/probe_count`
+        (`resource.type="gce_zone_network_health"`, `DELTA` `INT64`,
+        `ALIGN_SUM`; labels `remote_zone`, `remote_region`,
+        `remote_location_type`, `protocol`, `result`).
 -   **VM Throughput & Packets (`resource.type="gce_instance"`)**:
     -   `compute.googleapis.com/instance/network/sent_bytes_count`,
         `received_bytes_count`, `sent_packets_count`, `received_packets_count`

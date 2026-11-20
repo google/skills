@@ -1,0 +1,52 @@
+name: "Git Tag-Triggered Release"
+description: "A pattern where every commit runs CI (lint, test, build), but a deployment is only initiated when a formal Git tag is pushed. The tag triggers a final build and creates a release in Cloud Deploy."
+
+applicability:
+  triggers: ["git_commit", "git_tag"]
+  deployment_style: "continuous_delivery"
+  use_case_keywords: ["versioned releases", "production pipeline", "staging environment", "manual promotion"]
+
+stages:
+  # The CI stage runs on every commit to verify code quality but does not produce a deployable artifact.
+  ci:
+    id: "ci_build_and_test"
+    type: "cloud-build"
+    name: "CI Build and Test"
+    details: "Listens for commits on the main branch. Runs lint, test, and builds the container to ensure it's valid, but does not push it."
+    steps:
+      - id: "lint_step"
+        type: "linter"
+        name: "Run Linter"
+        details: "Runs a static code analysis tool appropriate for the project."
+      - id: "test_step"
+        type: "test"
+        name: "Run Unit Tests"
+        details: "Executes the project's unit test suite."
+      - id: "dry_run_build_step"
+        type: "docker"
+        name: "Dry-Run Build"
+        details: "Builds the container image to validate the Dockerfile but does not push it."
+
+  # The CD stage is a distinct workflow triggered only by a Git tag.
+  cd:
+    trigger:
+      type: "git_tag"
+      details: "This stage is initiated by pushing a git tag (e.g., v1.2.0)."
+    steps:
+      - id: "build_and_push_release_artifact"
+        type: "cloud-build"
+        name: "Build and Push Release Artifact"
+        details: "Builds the final container image, signs it, and pushes it to Artifact Registry, tagged with the specific Git tag."
+      - id: "create_cloud_deploy_release"
+        type: "cloud-deploy"
+        name: "Create Cloud Deploy Release"
+        details: "Creates a new formal release in Cloud Deploy using the tagged container image, making it available for promotion to various environments."
+
+tradeoffs:
+  pros:
+    - "Strong separation between integration and deployment, preventing every commit from going to production."
+    - "Creates a clear audit trail; every release is tied to a specific version tag in Git."
+    - "Enables controlled promotions (dev -> staging -> prod) via Cloud Deploy."
+  cons:
+    - "Slower feedback loop for deployment compared to push-to-deploy."
+    - "Requires disciplined Git tagging practices from the development team."
