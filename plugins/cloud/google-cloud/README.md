@@ -30,6 +30,9 @@ Alternatively, install the plugin using the Antigravity CLI:
 agy plugin install google-cloud
 ```
 
+**Next: set up the plugin.** Before it works, sign in to Google Cloud and
+connect your Cloud Operator agent: follow [Setup](#setup).
+
 ### Claude Code
 
 1.  Add the Google plugins marketplace, then install the plugin:
@@ -42,6 +45,9 @@ agy plugin install google-cloud
     > [!NOTE] On native Windows, the plugin signs in with your Google
     > credentials through `scripts/adc-headers.cmd`, so it doesn't need WSL.
     > If the servers still don't connect, see [Troubleshooting](#troubleshooting).
+
+**Next: set up the plugin.** Before it works, sign in to Google Cloud and
+connect your Cloud Operator agent: follow [Setup](#setup).
 
 ### Codex CLI
 
@@ -57,7 +63,9 @@ agy plugin install google-cloud
     > `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`
     > instead, or add its folder to your `PATH`.
 
-1.  Add the servers to Codex's `config.toml` ([Setup](#setup)).
+**Next: set up the plugin.** Before it works, sign in to Google Cloud and
+connect your Cloud Operator agent: follow [Setup](#setup), including the Codex
+step that adds the servers to `config.toml`.
 
 --------------------------------------------------------------------------------
 
@@ -71,21 +79,25 @@ skill walks you through it.
 1.  Install the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
     (`gcloud`).
 
-1.  Sign in, set the project that calls are billed to (usually a project you
-    work in), and enable both APIs there:
+1.  Sign in twice: `gcloud auth login` for the gcloud commands the skills run
+    (for example, finding your project's organization), and
+    `gcloud auth application-default login` for the two MCP servers. Then, for
+    Developer Knowledge only, set a project to bill its calls to and turn its
+    API on there:
 
     ```bash
     gcloud auth login
     gcloud auth application-default login
     gcloud auth application-default set-quota-project <YOUR_PROJECT_ID>
-    gcloud services enable developerknowledge.googleapis.com geminicloudassist.googleapis.com --project=<YOUR_PROJECT_ID>
+    gcloud services enable developerknowledge.googleapis.com --project=<YOUR_PROJECT_ID>
     ```
 
     Your account needs `serviceusage.services.use` on that project (Owners and
-    Editors have it). Cloud Operator gives you a personal operator agent in each
-    Google Cloud organization you work in, for projects in that organization.
-    You don't need a role to create or use your own agent; your organization's
-    administrators decide whether Cloud Operator is turned on.
+    Editors have it). Cloud Operator needs neither: it gives you a personal
+    operator agent in each Google Cloud organization you work in, for projects
+    in that organization. You don't need a role to create or use your own
+    agent; your organization's administrators decide whether Cloud Operator is
+    turned on.
 
 1.  In Codex only, add the servers to `config.toml` (below).
 
@@ -97,14 +109,23 @@ skill walks you through it.
     signed in with the same account, and click **Get started**, then **Create
     agent**.
 
+1.  Start using it: ask about your projects as you normally would, for example
+    "Which Compute Engine VMs are running in project <YOUR_PROJECT_ID>?", "Why
+    did my Cloud Run deploy fail?", or "Review this Terraform before I apply
+    it". The plugin sends questions about your live resources to your operator
+    agent, and documentation questions to Developer Knowledge. If an answer
+    doesn't come from the operator, see [Troubleshooting](#troubleshooting).
+
 If `gcloud auth application-default login` says "This app is blocked", your
 organization blocks Application Default Credentials and the servers can't sign
 in; ask your admin.
 
 ### Codex: add the servers to config.toml
 
-Codex can't use the plugin's own server entries to sign in, so you add both
-servers to its configuration yourself.
+Codex reads the plugin's server entries but not their sign-in helper, so
+without these steps both servers show "Not logged in" in `codex mcp list` and
+calls fail with "Authentication required". You add both servers to its
+configuration yourself.
 
 1.  Copy the plugin's sign-in helper to a fixed path, because the installed
     plugin folder changes with each version. The commands copy it from the
@@ -116,7 +137,6 @@ servers to its configuration yourself.
     ```bash
     mkdir -p ~/.codex/bin
     cp "$(ls -dt ~/.codex/plugins/cache/*/google-cloud/*/ | head -n 1)scripts/adc-headers" ~/.codex/bin/
-    chmod +x ~/.codex/bin/adc-headers
     ```
 
     Windows (PowerShell):
@@ -158,13 +178,18 @@ servers to its configuration yourself.
     tool_timeout_sec = 1200
     ```
 
-    Put `mcp_optional_startup_grace_ms` at the top of the file, before any
-    `[section]`. These entries replace the plugin's own entries of the same
-    name. Keep the double quotes inside the single quotes: Codex runs the
-    helper through a shell, and the quotes keep a path with spaces in one
-    piece. The helper reads your credentials from gcloud's default location;
-    Codex doesn't pass `CLOUDSDK_CONFIG` or `GOOGLE_APPLICATION_CREDENTIALS` to
-    it.
+    If you set up these servers before, run `codex mcp remove autocloud` and
+    `codex mcp remove developer-knowledge` first, and keep only one
+    `mcp_optional_startup_grace_ms` line: Codex won't load a file with duplicate
+    entries. Put `mcp_optional_startup_grace_ms` at the top of the file, before
+    any `[section]`, and add the rest to what's already there: keep the
+    `[plugins."google-cloud@google-plugins"]` entry that `codex plugin add`
+    wrote, or Codex loses the plugin's skills. These entries replace the
+    plugin's own entries of the same name. Keep the double quotes inside the
+    single quotes: Codex runs the helper through a shell, and the quotes keep a
+    path with spaces in one piece. The helper reads your credentials from
+    gcloud's default location; Codex doesn't pass `CLOUDSDK_CONFIG` or
+    `GOOGLE_APPLICATION_CREDENTIALS` to it.
 
 After the restart (step 4 above), `/mcp` in the Codex CLI lists both servers'
 tools.
@@ -179,6 +204,10 @@ tools.
     whether an `autocloud` entry of your own, for example from the standalone
     Cloud Operator plugin, replaces the plugin's; remove it with
     `claude mcp remove autocloud -s <scope>`.
+-   **Setup says it can't find your project's organization:** gcloud isn't
+    signed in as you (for example, it uses a VM's service account). Run
+    `gcloud auth login`, check that `gcloud config get-value account` shows
+    your own account, then ask again.
 -   **Your agent answers Google Cloud questions itself:** uninstall the
     standalone Cloud Operator plugin, whose skill competes with this one.
 -   **Developer Knowledge fails with "Forbidden" or "requires a quota
@@ -345,3 +374,39 @@ commands.
     `gcloud projects create`, `gcloud billing projects link`,
     `gcloud services enable`. Do not auto-allow these commands; keep them gated
     behind confirmation (**Ask**) or run them manually beforehand.
+
+--------------------------------------------------------------------------------
+
+## Uninstall
+
+-   **Claude Code:**
+
+    ```bash
+    claude plugin uninstall google-cloud@google-plugins
+    ```
+
+-   **Codex:** remove the plugin, then the two servers you added to
+    `config.toml` (this deletes their sections) and the sign-in helper:
+
+    ```bash
+    codex plugin remove google-cloud@google-plugins
+    codex mcp remove autocloud
+    codex mcp remove developer-knowledge
+    rm ~/.codex/bin/adc-headers
+    ```
+
+    On Windows, delete `%USERPROFILE%\.codex\bin\adc-headers.cmd` instead.
+    You can also delete the `mcp_optional_startup_grace_ms` line at the top of
+    `config.toml`.
+
+-   **Antigravity:**
+
+    ```bash
+    agy plugin uninstall google-cloud
+    ```
+
+To remove the marketplace too, run `claude plugin marketplace remove
+google-plugins` or `codex plugin marketplace remove google-plugins` after
+removing the plugin. That also uninstalls the other plugins you installed from
+it (in Codex, remove each with `codex plugin remove` first, or their entries
+stay in `config.toml`).
