@@ -36,7 +36,7 @@ uses:
 -   **Custom class with `spec.autopilot.enabled` — billing follows the rule:**
     -   **`podFamily` rule → pod-based** (GKE 1.35.2-gke.1485000+). Same
         pay-per-request model as the built-in class, but in a class you author.
-    -   **Hardware rule (`machineFamily`, `machineType`, `gpus`) → node-based.**
+    -   **Hardware rule (`machineFamily`, `machineType`, `gpu`) → node-based.**
         You pay for the node because you pinned the shape/accelerator.
 -   A custom Autopilot class is therefore **not automatically node-based** —
     it's node-based only when its selected priority requests specific hardware.

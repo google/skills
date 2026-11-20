@@ -35,7 +35,7 @@ spec:
     location:
       zones: ['us-central1-a', 'us-central1-b', 'us-central1-c']
 
-  # 3. DWS FlexStart — accept ~3min queue if On-Demand is exhausted
+  # 3. DWS FlexStart — accept the queue wait (capacityCheckWaitTimeSeconds below) if On-Demand is exhausted
   - flexStart:
       enabled: true
     capacityCheckWaitTimeSeconds: 1800
