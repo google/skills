@@ -8,7 +8,7 @@ description: >-
   clusters. Don't use for application onboarding or deployment configuration
   (use gke-app-onboarding instead).
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: Containers
 ---
 
@@ -29,7 +29,8 @@ MUST read [Usage Attribution](references/attribution.md). For commands executed
 directly in the terminal (never in generated scripts, Terraform, or user code),
 prefix `gcloud` with
 `CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:gke-cluster-creation)"`
-and append `agent-skills/1.0 (skill:gke-cluster-creation)` to `User-Agent` headers.
+and append `agent-skills/1.0 (skill:gke-cluster-creation)` to `User-Agent`
+headers.
 
 ## Workflow
 
@@ -88,7 +89,8 @@ practices:
     (`--enable-shielded-nodes`, `--enable-secure-boot`) against rootkits and
     bootkits.
 5.  **Least Privilege (RBAC)**: Institute strict Role-Based Access Control
-    limits (`scoped-rbs-bindings`).
+    limits (`--no-enable-insecure-binding-system-authenticated`,
+    `--no-enable-insecure-binding-system-unauthenticated`).
 
 ### Cost Optimization
 
@@ -129,7 +131,8 @@ gcloud container clusters create-auto <CLUSTER_NAME> \
   --enable-dns-access \
   --enable-secret-manager \
   --secret-manager-rotation-interval=120s \
-  --scoped-rbs-bindings \
+  --no-enable-insecure-binding-system-authenticated \
+  --no-enable-insecure-binding-system-unauthenticated \
   --monitoring=SYSTEM,API_SERVER,SCHEDULER,CONTROLLER_MANAGER,STORAGE,POD,DEPLOYMENT,STATEFULSET,DAEMONSET,HPA,CADVISOR,KUBELET,DCGM \
   --quiet
 ```
@@ -258,7 +261,7 @@ Autopilot + ComputeClass or via Standard node pool with `g2-standard-4`
 gcloud container clusters create-auto <CLUSTER_NAME> \
   --region <REGION> --project <PROJECT_ID> \
   --enable-private-nodes --enable-master-authorized-networks \
-  --enable-dns-access --enable-secret-manager --scoped-rbs-bindings \
+  --enable-dns-access --enable-secret-manager --no-enable-insecure-binding-system-authenticated --no-enable-insecure-binding-system-unauthenticated \
   --quiet
 
 # 2. Apply GPU ComputeClass (see gke-compute-classes.md)

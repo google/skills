@@ -7,7 +7,7 @@ description: >-
   requests, or selecting Spot VMs and machine types. Don't use for general
   compute class provisioning or GPU Selection (use gke-compute-classes instead).
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: CloudObservabilityAndMonitoring
 ---
 
@@ -23,7 +23,8 @@ MUST read [Usage Attribution](references/attribution.md). For commands executed
 directly in the terminal (never in generated scripts, Terraform, or user code),
 prefix `gcloud` with
 `CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:gke-cost-optimization)"`
-and append `agent-skills/1.0 (skill:gke-cost-optimization)` to `User-Agent` headers.
+and append `agent-skills/1.0 (skill:gke-cost-optimization)` to `User-Agent`
+headers.
 
 ## Workflows & Optimization Strategies
 
@@ -147,8 +148,8 @@ For steady-state workloads with predictable baseline usage, purchase 1-year or
 -   Applied automatically to matching usage across the region.
 -   Purchase via Google Cloud Console > Billing > Committed use discounts.
 
-**Size the commitment to the steady-state baseline only.** A commitment bills for
-the full term whether or not you use it, so over-committing to peak usage
+**Size the commitment to the steady-state baseline only.** A commitment bills
+for the full term whether or not you use it, so over-committing to peak usage
 converts a discount into waste. Measure the floor of actual usage over a
 representative period, commit to that, and cover everything above it with the
 elastic options already in this skill:
@@ -158,8 +159,8 @@ elastic options already in this skill:
 -   **Interruption-tolerant** (batch, CI, stateless workers) → Spot VMs, which
     stack with autoscaling and need no commitment.
 
-When recommending CUDs, state the split explicitly rather than implying the whole
-footprint should be committed.
+When recommending CUDs, state the split explicitly rather than implying the
+whole footprint should be committed.
 
 ### 7. Cluster Management & Multi-Tenancy
 
@@ -171,7 +172,7 @@ footprint should be committed.
 -   **Right-size node pools (Standard)**: Use Cluster Autoscaler with
     appropriate min/max limits.
 -   **Cheap warm headroom instead of overprovisioned nodes**: Standby capacity
-    buffers (Preview, GKE 1.36.0-gke.2253000+) keep pre-initialized nodes
+    buffers (GKE 1.37.1-gke.3020000+) keep pre-initialized nodes
     suspended — you pay only disk + IP instead of full node price, with ~30s
     resume. See the **`gke-cluster-autoscaler`** skill.
 -   **Multi-tenant consolidation**: Share a single cluster across multiple

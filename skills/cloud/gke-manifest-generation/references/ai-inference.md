@@ -8,8 +8,8 @@ It includes:
 -   Workload Identity annotation for GCP authentication
 -   GPU resource allocation (`nvidia.com/gpu`) and `nodeSelector` targeting
     accelerator types
--   GCS FUSE CSI driver volume mount (`csi.storage.gke.io`) for read-only model
-    weight loading
+-   GCS FUSE CSI driver volume mount (`gcsfuse.csi.storage.gke.io`) for
+    read-only model weight loading
 -   Shared memory volume mount at `/dev/shm` (`emptyDir` with `medium: Memory`)
 -   Extended `startupProbe` failure threshold to accommodate slow model
     initialization

@@ -1,7 +1,7 @@
 ---
 name: gke-manifest-generation
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: Containers
 description: >-
   Generates and updates secure, production-ready Kubernetes YAML manifests optimized for GKE Autopilot and GKE Standard clusters. Use when creating or modifying GKE deployment manifests, configuring container security contexts, setting CPU/memory resource limits, defining readiness/liveness/startup probes, mounting secrets and volumes, configuring GKE Gateway API routes, targeting Spot VMs, or deploying AI model inference workloads (vLLM, TGI, Gemma). Don't use for live cluster operations, pod troubleshooting (use gke-workload-troubleshooting), or cluster infrastructure provisioning (use gke-cluster-creation).
@@ -21,7 +21,8 @@ MUST read [Usage Attribution](references/attribution.md). For commands executed
 directly in the terminal (never in generated scripts, Terraform, or user code),
 prefix `gcloud` with
 `CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:gke-manifest-generation)"`
-and append `agent-skills/1.0 (skill:gke-manifest-generation)` to `User-Agent` headers.
+and append `agent-skills/1.0 (skill:gke-manifest-generation)` to `User-Agent`
+headers.
 
 ## Core Rules & Verification
 
@@ -189,8 +190,8 @@ Inference Quickstart if available. If generating manually:
         `medium: Memory` to `/dev/shm`.
 3.  **Weight Loading Optimization**:
     -   Mount model weight directories (like GCS buckets) using the GKE GCS Fuse
-        CSI driver (`csi.storage.gke.io`) as `readOnly: true` for efficient
-        cold-starts.
+        CSI driver (`gcsfuse.csi.storage.gke.io`) as `readOnly: true` for
+        efficient cold-starts.
 
 --------------------------------------------------------------------------------
 
