@@ -1,9 +1,9 @@
 # MCP Traffic Security and Quotas Reference (Public Preview)
 
-- [Authentication Model per MCP Method](#authentication-model-per-mcp-method): Lines 8-35
-- [Tool Discovery Security (tools/list)](#tool-discovery-security-toolslist): Lines 37-96
-- [Shared REST and MCP Quota Enforcement](#shared-rest-and-mcp-quota-enforcement): Lines 98-104
-- [Sensitive Operations and Header Parameters on MCP](#sensitive-operations-and-header-parameters-on-mcp): Lines 106-115
+- [Authentication Model per MCP Method](#authentication-model-per-mcp-method): Lines 8-25
+- [Tool Discovery Security (tools/list)](#tool-discovery-security-toolslist): Lines 27-87
+- [Shared REST and MCP Quota Enforcement](#shared-rest-and-mcp-quota-enforcement): Lines 89-95
+- [Sensitive Operations and Header Parameters on MCP](#sensitive-operations-and-header-parameters-on-mcp): Lines 97-106
 
 ## Authentication Model per MCP Method
 
@@ -15,20 +15,10 @@ API Gateway applies distinct authentication rules to each MCP method:
 | --- | --- | --- | --- |
 | `initialize` | Unauthenticated | None | Handled directly by the gateway handshake layer; never reaches the backend. |
 | `notifications/initialized` | Unauthenticated | None | Returns `HTTP 202 Accepted`; never reaches the backend. |
-| `tools/list` | Unauthenticated by default | Exactly one JWT scheme (`oauth2` with `x-google-auth`) or one API key scheme (`apiKey`) | Configured via `x-google-api-management.mcp.tools-list.security`. `tools/list` reads an API key only from the `x-api-key` header, not from query parameters. |
+| `tools/list` | Unauthenticated by default | Exactly one JWT scheme (`oauth2` with `x-google-auth`) or one API key scheme (`apiKey`) | Configured via `x-google-api-management.mcp.tools-list.security`. An empty map (`security: {}`) leaves `tools/list` open. `tools/list` reads an API key only from the `x-api-key` header, not from query parameters. |
 | `tools/call` | Inherits operation security | JWT (`oauth2`) and API keys (`apiKey`) | Transcoded into the underlying REST request and subject to the exact `security` and `x-google-quota` rules of that OpenAPI operation. |
 
-API Gateway reports an MCP authentication failure in the HTTP status, in the JSON-RPC `error` field of the body, or in both. Check both, because one case returns HTTP `200`:
-
-| Method and scheme | Request | HTTP status | Body |
-| --- | --- | --- | --- |
-| `tools/list` with a JWT scheme | Missing or invalid token | `401`, with a `WWW-Authenticate` header | JSON-RPC error (today `-32000`) |
-| `tools/list` with a JWT scheme | Token with a wrong audience | `403`, with a `WWW-Authenticate` header | JSON-RPC error (today `-32000`) |
-| `tools/list` with an API key scheme | Missing key | `401` | JSON-RPC error, no tools |
-| `tools/list` with an API key scheme | Invalid key | `200` (current behavior) | JSON-RPC error, no tools |
-| `tools/call` | Credentials that fail the operation's `security` | `401` or `403` | A REST error (for example `{"code":401,"message":"Jwt is missing"}`) or a JSON-RPC result with `isError: true` |
-
-Today the `tools/list` JSON-RPC error has code `-32000` and the message `Tool list response is invalid or has error status code.`, which does not name the cause. The code and the message can change, so check the HTTP status and the `WWW-Authenticate` header first. For a JWT failure, the `WWW-Authenticate` header points at the protected resource metadata.
+If an MCP call fails, use the `api-gateway-mcp-server` skill. If it is not installed, see [Configure Model Context Protocol](https://docs.cloud.google.com/api-gateway/docs/mcp-configure.md.txt). Check both the HTTP status and the JSON-RPC `error` field of the body, because an invalid API key on `tools/list` returns HTTP `200` with a JSON-RPC error.
 
 If a gateway project is attached to Apigee API hub, MCP-enabled gateways are automatically published to API hub (`{api} (MCP)`) and Agent Registry.
 
@@ -59,6 +49,7 @@ x-google-api-management:
     orders-backend:
       address: https://{backend_service}-{hash}.a.run.app
       jwtAudience: https://{backend_service}-{hash}.a.run.app
+      pathTranslation: APPEND_PATH_TO_ADDRESS
 x-google-backend: orders-backend
 security:
   - agent_jwt: []

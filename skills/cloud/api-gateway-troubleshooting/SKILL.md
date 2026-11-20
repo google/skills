@@ -1,7 +1,7 @@
 ---
 name: api-gateway-troubleshooting
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   category: Serverless
 description: >-
   Diagnoses failing requests and deployment errors on Google Cloud API Gateway.
@@ -209,6 +209,7 @@ Pick the first row that matches, and load only the reference file it names.
 
 | What you see | Likely cause | Reference |
 | :--- | :--- | :--- |
+| The request path ends in `/mcp`, or the response is a JSON-RPC error | The MCP setup | Hand off to `api-gateway-mcp-server`; if it isn't installed, read the MCP troubleshooting table in [Configure MCP](https://docs.cloud.google.com/api-gateway/docs/mcp-configure.md.txt) |
 | `401` or `403` with `via_upstream` | The backend rejected the gateway: invoker role, audience, or deleted service account | [auth-errors.md](references/auth-errors.md) |
 | A `4xx` produced by the gateway whose body names a credential problem (for example `UNAUTHENTICATED`) | The API key or JWT was rejected; quote the body | [auth-errors.md](references/auth-errors.md) |
 | `500` with **no** gateway log entry, after log exclusions and a wrong scope are ruled out | The gateway's service account may be deleted or disabled | [auth-errors.md](references/auth-errors.md) |
@@ -238,10 +239,12 @@ and how to undo it. Wait for approval, then run it, or hand it to the user if
 they prefer. Keep these rules in mind:
 
 -   To change the OpenAPI document, create a new API config and deploy it with
-    `gcloud api-gateway gateways update`. Before you create the config, check
-    quota metrics with the `api-gateway-backend-security-and-rate-limiting`
-    skill, because the newest API config's quota metrics apply to every
-    gateway of the API.
+    `gcloud api-gateway gateways update`. The newest API config's quota metrics
+    apply to every gateway of the API. Before you run `api-configs create`,
+    load the `api-gateway-backend-security-and-rate-limiting` skill and run its
+    `scripts/check_quota_metrics.py`. It compares the new spec's quota metrics
+    with the API configs that gateways serve. If that skill isn't installed,
+    keep every quota metric and its limit that a running API config uses.
 -   Before you create a new API config, check the OpenAPI document with the
     linter (see [OpenAPI pre-flight check](#openapi-pre-flight-check)).
 
@@ -310,6 +313,17 @@ Report findings in this form:
 | Deep IAM analysis, such as deny policies or role discovery | `iam-helper-for-troubleshooting` |
 | Build a load balancer, Cloud Armor policy, or custom domain front end | `google-cloud-global-frontend-configuration` |
 | Deploy or reconfigure a Cloud Run backend | `cloud-run-basics` |
+
+If an API Gateway skill in this table isn't installed, give the user this
+command to install the four API Gateway skills. Until it is installed, use the
+fallback in this skill.
+
+```bash
+npx skills add google/skills --skill api-gateway-mcp-server --skill api-gateway-backend-security-and-rate-limiting --skill api-gateway-openapi-spec-authoring --skill api-gateway-troubleshooting
+```
+
+For another skill in this table, give the user the same command with
+`--skill {skill_name}`.
 
 ## Reference files
 

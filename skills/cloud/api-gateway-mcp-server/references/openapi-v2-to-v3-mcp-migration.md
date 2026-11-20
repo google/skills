@@ -1,50 +1,57 @@
+<!-- disableFinding(LINE_OVER_80) -->
+
 # OpenAPI 2.0 to 3.x Migration and MCP Extension Reference
 
-- [Why OpenAPI 3.x Is Required for MCP](#why-openapi-3x-is-required-for-mcp): Lines 11-18
-- [OpenAPI 2.0 to 3.x Extension Mapping Table](#openapi-20-to-3x-extension-mapping-table): Lines 20-34
-- [Swagger 2.0 Construct Conversion Map](#swagger-20-construct-conversion-map): Lines 36-54
-- [Configuration of x-google-api-management.mcp and x-google-mcp-tool](#configuration-of-x-google-api-managementmcp-and-x-google-mcp-tool): Lines 56-132
-- [Tool Discovery Security (tools/list) vs Tool Calls (tools/call)](#tool-discovery-security-toolslist-vs-tool-calls-toolscall): Lines 134-140
-- [How MCP tools/call Arguments Map to REST Requests](#how-mcp-toolscall-arguments-map-to-rest-requests): Lines 142-148
-- [Complete Converted Example](#complete-converted-example): Lines 150-251
+- [Why OpenAPI 3.x Is Required for MCP](#why-openapi-3x-is-required-for-mcp): Lines 13-20
+- [General OpenAPI 2.0 to 3.x Conversion](#general-openapi-20-to-3x-conversion): Lines 22-45
+- [Swagger 2.0 Construct Conversion Map](#swagger-20-construct-conversion-map): Lines 47-61
+- [Configuration of x-google-api-management.mcp and x-google-mcp-tool](#configuration-of-x-google-api-managementmcp-and-x-google-mcp-tool): Lines 63-141
+- [Tool Discovery Security (tools/list) vs Tool Calls (tools/call)](#tool-discovery-security-toolslist-vs-tool-calls-toolscall): Lines 143-149
+- [How MCP tools/call Arguments Map to REST Requests](#how-mcp-toolscall-arguments-map-to-rest-requests): Lines 151-157
+- [Complete Converted Example](#complete-converted-example): Lines 159-259
 
 ## Why OpenAPI 3.x Is Required for MCP
 
 Model Context Protocol (MCP) support in Google Cloud API Gateway (Public Preview) requires an OpenAPI 3.x specification: OpenAPI 3.0.x or 3.1.x. The examples in this reference use `openapi: 3.0.4`.
 
 - NEVER add `x-google-api-management.mcp` or `x-google-mcp-tool` to an OpenAPI 2.0 (`swagger: "2.0"`) specification. **Rationale:** MCP is not supported for OpenAPI 2.0, and the MCP extensions are defined only for OpenAPI 3.x.
-- If an existing gateway runs an OpenAPI 2.0 specification, start from the spec file in the user's repository. If there is no file, find the active config ID with `gcloud api-gateway gateways describe {gateway_id} --location={region} --project={project_id} --format="value(apiConfig.basename())"`, and print its spec with `gcloud api-gateway api-configs describe {config_id} --api={api_id} --project={project_id} --view=FULL --format=json | python3 -c 'import base64,json,sys; [print(base64.b64decode(d["document"]["contents"]).decode()) for d in json.load(sys.stdin)["openapiDocuments"]]'`. Then convert it with the [Swagger 2.0 Construct Conversion Map](#swagger-20-construct-conversion-map), and compare your result with the [Complete Converted Example](#complete-converted-example).
+- If an existing gateway runs an OpenAPI 2.0 specification, start from the spec file in the user's repository. If there is no file, find the active config ID with `gcloud api-gateway gateways describe {gateway_id} --location={region} --project={project_id} --format="value(apiConfig.basename())"`, and print its spec with `gcloud api-gateway api-configs describe {config_id} --api={api_id} --project={project_id} --view=FULL --format=json | python3 -c 'import base64,json,sys; [print(base64.urlsafe_b64decode(d["document"]["contents"]).decode()) for d in json.load(sys.stdin)["openapiDocuments"]]'`. gcloud prints the contents as URL-safe base64, so `base64.b64decode` can silently corrupt the spec. Then convert it as [General OpenAPI 2.0 to 3.x Conversion](#general-openapi-20-to-3x-conversion) describes, apply the [Swagger 2.0 Construct Conversion Map](#swagger-20-construct-conversion-map), and compare your result with the [Complete Converted Example](#complete-converted-example).
 
 References: [Supported OpenAPI versions](https://docs.cloud.google.com/api-gateway/docs/openapi-overview.md.txt) and [Modify a gateway to use OpenAPI 3.x](https://docs.cloud.google.com/api-gateway/docs/migrate-oasv3.md.txt)
 
-## OpenAPI 2.0 to 3.x Extension Mapping Table
+## General OpenAPI 2.0 to 3.x Conversion
 
-Standard OpenAPI 2.0-to-3.0 converters update standard OpenAPI fields (`swagger` -> `openapi`, `securityDefinitions` -> `components.securitySchemes`), but leave Google extensions in their legacy OpenAPI 2.0 form. You MUST manually migrate those extensions according to this table:
+For the general conversion (standard fields, backends, JWT settings, quotas, endpoints, and the API name), use the `api-gateway-openapi-spec-authoring` skill. Then add the MCP settings in this reference. If that skill is not installed, use the [General Conversion Fallback](#general-conversion-fallback).
 
-| Feature | OpenAPI 2.0 (`swagger: "2.0"`) | OpenAPI 3.x | Required Structural Change |
-| --- | --- | --- | --- |
-| Backends | Inline `x-google-backend` object with `snake_case` fields (`jwt_audience`, `path_translation`, `disable_auth`) | Root `x-google-api-management.backends.{backend_name}` map with `camelCase` fields (`jwtAudience`, `pathTranslation`, `disableAuth`) + `x-google-backend: {backend_name}` string reference | Define named backends in `x-google-api-management.backends` (setting `jwtAudience` or `disableAuth`) and set `x-google-backend` to the string name. |
-| JWT Auth | `x-google-issuer`, `x-google-jwks_uri`, `x-google-audiences` directly on the security scheme | `x-google-auth: { issuer, jwksUri, audiences, jwtLocations }` inside `components.securitySchemes.{name}` | Nest the JWT settings inside `x-google-auth`: `x-google-issuer` becomes `issuer`, `x-google-jwks_uri` becomes `jwksUri`, and the comma-separated `x-google-audiences` string becomes an `audiences` list. |
-| Quotas | `x-google-management` arrays + `x-google-quota: { metricCosts: { ... } }` | `x-google-api-management.metrics` and `quota.limits` YAML maps + `x-google-quota: { {metric_name}: {cost} }` | Move metrics and limits into `x-google-api-management` as YAML maps (preserving exact metric names), and remove `valueType`, `metricKind`, and `unit`. Set each limit's `values` to a plain integer (no `STANDARD` key), and remove the `metricCosts` wrapper. |
-| Endpoints (CORS) | `x-google-endpoints` | `servers` entry with `x-google-endpoint: { allowCors: true }` | Only one `servers` entry can carry `x-google-endpoint`. Remove the legacy `name` field. For `basePath`, see the [Swagger 2.0 Construct Conversion Map](#swagger-20-construct-conversion-map). |
-| Route Catch-All | `x-google-allow` (`all` or `configured`) | Unsupported in OpenAPI 3.x | Remove `x-google-allow`. API Gateway does not support it in OpenAPI 3.x. |
-| API Name | `x-google-api-name` | `x-google-api-management.apiName` | Move `x-google-api-name` into `x-google-api-management.apiName`. |
-| MCP Server | Unsupported | `x-google-api-management.mcp` (root) and `x-google-mcp-tool` (operation level) | Enable MCP globally or per operation. |
+MCP has no OpenAPI 2.0 form. In OpenAPI 3.x, enable it with `x-google-api-management.mcp` at the root, and customize or opt out each operation with `x-google-mcp-tool`. See [Configuration of x-google-api-management.mcp and x-google-mcp-tool](#configuration-of-x-google-api-managementmcp-and-x-google-mcp-tool).
 
-Reference: [OpenAPI 3.x extensions in API Gateway](https://docs.cloud.google.com/api-gateway/docs/oasv3-extensions.md.txt)
+### General Conversion Fallback
+
+Standard OpenAPI 2.0 to 3.0 converters change the standard fields (`swagger` to `openapi`, `securityDefinitions` to `components.securitySchemes`), but they keep the Google extensions in their OpenAPI 2.0 form. API Gateway rejects these OpenAPI 2.0 extensions in a 3.x spec. Replace or remove each of them:
+
+- `x-google-management`
+- `x-google-endpoints`
+- `x-google-api-name`
+- `x-google-allow`
+- `x-google-issuer`, `x-google-jwks_uri`, and `x-google-audiences` on a security scheme
+- `x-google-backend` as an inline object
+- `x-google-jwt-locations` on a security scheme
+
+In OpenAPI 3.x, `x-google-backend` is a string that names a backend in `x-google-api-management.backends`. JWT settings, including `jwtLocations`, go in `x-google-auth` on the security scheme. Put `x-google-quota` on each operation, because API Gateway ignores it at the root or on a path item. Use `x-google-parameter: {pattern: "**"}` on a path parameter, not `{name=**}` in the path.
+
+For the 3.x form of each extension, read these pages:
+
+- [Modify a gateway to use OpenAPI 3.x](https://docs.cloud.google.com/api-gateway/docs/migrate-oasv3.md.txt)
+- [OpenAPI 3.x extensions in API Gateway](https://docs.cloud.google.com/api-gateway/docs/oasv3-extensions.md.txt)
 
 ## Swagger 2.0 Construct Conversion Map
 
-Convert these standard Swagger 2.0 constructs as shown. Where a row says to ask the user, the choice belongs to the user.
+Convert these Swagger 2.0 constructs as shown for MCP. For the other constructs, see [General OpenAPI 2.0 to 3.x Conversion](#general-openapi-20-to-3x-conversion). Where a row says to ask the user, the choice belongs to the user.
 
 | Swagger 2.0 construct | OpenAPI 3.x for API Gateway MCP |
 | --- | --- |
-| `basePath: /v2` (with or without `host`) | `servers: [{url: "https://{managed_service}/v2", x-google-endpoint: {}}]`, where `{managed_service}` is `gcloud api-gateway apis describe {api_id} --project={project_id} --format="value(managedService)"`. REST paths stay under `/v2`. MCP stays at `https://{default_hostname}/mcp`. |
-| Root `x-google-backend: {address, path_translation}` | Named backend under `x-google-api-management.backends` (`address`, `pathTranslation`) + root `x-google-backend: {backend_name}`. For a Cloud Run backend, set `jwtAudience` to the Cloud Run service URL. |
-| `in: body` parameter | `requestBody.content.application/json.schema`. |
-| `definitions` and `#/definitions/{name}` | `components.schemas` and `#/components/schemas/{name}`. |
-| `securityDefinitions` | `components.securitySchemes`. |
-| `consumes` / `produces` | Move the media types into `requestBody.content` and `responses.content`. Use `application/json` for tool operations: `tools/call` sends the request body as JSON in `arguments.body`, and tool responses are limited to UTF-8 text. |
+| `basePath: /v2` (with or without `host`) | `servers: [{url: /v2, x-google-endpoint: {}}]`. If the API has a managed service that you chose, and not the default `*.apigateway.{project_id}.cloud.goog` service, use `url: https://{managed_service}/v2`, because a relative URL then fails with `Service name must be provided either explicitly or in OpenAPI 'host' value.` REST paths stay under `/v2`. MCP stays at `https://{default_hostname}/mcp`. |
+| `consumes` / `produces` | Use `application/json` in `requestBody.content` and `responses.content` for tool operations: `tools/call` sends the request body as JSON in `arguments.body`, and tool responses are limited to UTF-8 text. |
 | `in: formData` (`application/x-www-form-urlencoded`) | `requestBody` with that media type. Recommendation: set `x-google-mcp-tool: false`, because MCP clients pass the request body as JSON in `arguments.body`. |
 | `type: file` (file upload) | `requestBody` with `multipart/form-data` and a `type: string, format: binary` property. Recommendation: set `x-google-mcp-tool: false`, because MCP tool arguments are JSON values. |
 | `collectionFormat` array parameter | API Gateway supports only primitive types in request parameters. Ask the user: keep the array for REST and set `x-google-mcp-tool: false`, or change the parameter to a primitive type (such as a comma-separated `string`) that the backend accepts. |
@@ -59,8 +66,10 @@ You can enable MCP globally at the document root (`x-google-api-management.mcp: 
 
 - Place `x-google-mcp-tool` ONLY on individual HTTP operation objects (`get`, `post`, `put`, `patch`, `delete`). NEVER place `x-google-mcp-tool` at the path item level. **Rationale:** API Gateway rejects specifications that declare `x-google-mcp-tool` at the path level.
 - Every operation MUST have an `operationId`, with or without MCP. **Rationale:** API Gateway rejects an API config that has an operation without an `operationId`.
-- Every exposed operation MUST also have a configured backend (`x-google-backend` at root or operation level), a unique tool name that matches `[A-Za-z0-9_.-]{1,128}` (`x-google-mcp-tool.name`, or else the `operationId`), and a non-empty description (`x-google-mcp-tool.description`, operation `description`, or `summary`).
-- Keep all MCP operations in one OpenAPI document. **Rationale:** If an API config has several OpenAPI documents, API Gateway serves the MCP tools of only one of them, and the tools of the other documents are missing without an error.
+- Every operation MUST have a backend (`x-google-backend` at the root or operation level), also an operation with `x-google-mcp-tool: false`. **Rationale:** API Gateway rejects the API config with `operation name (normalized) ... has no backend configured at the operation or API level`.
+- Set an explicit `pathTranslation` on each backend. In a migration, keep the OpenAPI 2.0 behavior: `APPEND_PATH_TO_ADDRESS` for a root backend, and `CONSTANT_ADDRESS` for an operation-level backend. `APPEND_PATH_TO_ADDRESS` appends the request path to the address. `CONSTANT_ADDRESS` sends every request to the address and sends path parameters as query parameters. For a new spec, if you do not know which value the backend expects, ask the user.
+- Every exposed operation MUST also have a unique tool name that matches `[A-Za-z0-9_.-]{1,128}` (`x-google-mcp-tool.name`, or else the `operationId`), and a non-empty description (`x-google-mcp-tool.description`, operation `description`, or `summary`).
+- Keep all MCP operations in one OpenAPI document. **Rationale:** If only one document of the API config has MCP extensions, only its operations become tools. API Gateway fails to create an API config that has MCP extensions in more than one OpenAPI document, and the error does not say why.
 
 ```yaml
 openapi: 3.0.4
@@ -136,7 +145,7 @@ Reference: [Configure Model Context Protocol](https://docs.cloud.google.com/api-
 | MCP Method | Default Security | How to Configure | Critical Constraint |
 | --- | --- | --- | --- |
 | `initialize` and `notifications/initialized` | Unauthenticated | No configuration | These protocol lifecycle methods are always unauthenticated. |
-| `tools/list` | Unauthenticated by default | `x-google-api-management.mcp.tools-list.security` (+ the same scheme in the root `security` list for a JWT scheme) | Must reference **exactly one** scheme in `components.securitySchemes`: a JWT scheme (`oauth2` with `x-google-auth`) or an API key scheme (`apiKey`). For a JWT scheme, the root `security` list MUST also reference it (API Gateway rejects the config otherwise), and that root entry also requires the JWT on every REST operation without its own `security`. If the root list has an API key scheme, put the JWT in the same requirement object (AND), because API Gateway does not support alternative (OR) requirements with an API key. For an API key scheme, use `in: header` and `name: x-api-key`, because `tools/list` reads API keys only from the `x-api-key` header. Configuring `mcp` as an object also enables MCP globally for all eligible operations. |
+| `tools/list` | Unauthenticated by default, also with an empty `tools-list.security` map (`{}`) | `x-google-api-management.mcp.tools-list.security` (+ the same scheme in the root `security` list for a JWT scheme) | Must reference **exactly one** scheme in `components.securitySchemes`: a JWT scheme (`oauth2` with `x-google-auth`) or an API key scheme (`apiKey`). For a JWT scheme, the root `security` list MUST also reference it (API Gateway rejects the config otherwise), and that root entry also requires the JWT on every REST operation without its own `security`. If the root list has an API key scheme, put the JWT in the same requirement object (AND). API Gateway rejects alternative (OR) requirements in which only some alternatives have the API key. For an API key scheme, use `in: header` and `name: x-api-key`, because `tools/list` reads API keys only from the `x-api-key` header. Configuring `mcp` as an object also enables MCP globally for all eligible operations. |
 | `tools/call` | Inherits the operation's `security` requirement | Operation or root `security` block (`apiKey` and/or `oauth2` JWT) | Shares the exact same authentication and `x-google-quota` allocation as direct REST calls to that operation. |
 
 ## How MCP `tools/call` Arguments Map to REST Requests
@@ -157,7 +166,7 @@ info:
   title: Petstore API
   version: 1.4.0
 servers:
-  - url: https://{managed_service}/v2
+  - url: /v2
     x-google-endpoint: {}
 x-google-api-management:
   mcp:
@@ -242,8 +251,7 @@ paths:
 
 Values to fill in:
 
-- `{managed_service}`: `gcloud api-gateway apis describe {api_id} --project={project_id} --format="value(managedService)"`.
-- `{jwt_audience}`: the audience that callers request when they mint a token, such as `https://{managed_service}`. Do not use an IP address or an internal address, because API Gateway does not accept them in the `aud` claim. A caller gets a matching token with `gcloud auth print-identity-token --impersonate-service-account={caller_sa_email} --audiences={jwt_audience}`. The token has `iss: https://accounts.google.com` and `aud: {jwt_audience}`.
+- `{jwt_audience}`: the audience that callers request when they mint a token, such as `https://{managed_service}`. Get `{managed_service}` with `gcloud api-gateway apis describe {api_id} --project={project_id} --format="value(managedService)"`. Do not use an IP address or an internal address, because API Gateway does not accept them in the `aud` claim. A caller gets a matching token with `gcloud auth print-identity-token --impersonate-service-account={caller_sa_email} --audiences={jwt_audience}`. The token has `iss: https://accounts.google.com` and `aud: {jwt_audience}`.
 - API Gateway checks the token claims against the scheme. It does not check the IAM permissions that you granted to the caller's service account. A Google ID token scheme accepts every caller that can get a Google ID token with this audience. To accept only one service account, check the `email` claim in the backend (API Gateway forwards the JWT payload in the `X-Apigateway-Api-Userinfo` header), or use a self-signed JWT with `issuer` set to the service account email.
 
 References:
