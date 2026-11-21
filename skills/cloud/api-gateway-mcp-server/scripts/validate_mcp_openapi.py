@@ -15,8 +15,7 @@ tool has a backend, a unique name that matches [A-Za-z0-9_.-]{1,128}, a
 non-empty description, and no header parameter with the reserved x-google-
 prefix. It checks that tools-list.security names exactly one JWT or API key
 scheme, that a JWT scheme is also in the root security list, and that no
-security list gives alternative (OR) requirements with an API key scheme in
-only some of them.
+security list gives alternative (OR) requirements with an API key scheme.
 
 It warns about HTTP 204 responses, request parameters that are not primitive
 types, API key schemes that are not read from the x-api-key header, the
@@ -111,7 +110,7 @@ def _requirement_names(security: Any) -> list[set[str]]:
 def _or_with_api_key_error(
     security: Any, schemes: dict[str, Any], where: str
 ) -> str | None:
-  """Returns an error if only some OR requirements of a list use an API key.
+  """Returns an error if a security list has OR requirements with an API key.
 
   Args:
     security: The value of a "security" list.
@@ -122,20 +121,18 @@ def _or_with_api_key_error(
     The error message, or None if the security list is valid.
   """
   requirements = _requirement_names(security)
-  with_api_key = 0
+  uses_api_key = False
   for requirement in requirements:
-    if any(
-        isinstance(schemes.get(name), dict)
-        and schemes[name].get('type') == 'apiKey'
-        for name in requirement
-    ):
-      with_api_key += 1
-  if 0 < with_api_key < len(requirements):
+    for name in requirement:
+      scheme = schemes.get(name)
+      if isinstance(scheme, dict) and scheme.get('type') == 'apiKey':
+        uses_api_key = True
+  if len(requirements) > 1 and uses_api_key:
     return (
         f'The "security" list of {where} gives alternative (OR)'
-        ' requirements, and only some of them use an API key scheme. API'
-        ' Gateway supports OR requirements with an API key only if every'
-        ' alternative has one. Put the API key in every alternative.'
+        ' requirements, and one of them uses an API key scheme. API Gateway'
+        ' does not support OR requirements with an API key. Put the schemes'
+        ' in one requirement object (AND).'
     )
   return None
 
