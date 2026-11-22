@@ -28,6 +28,10 @@
 
 set -u
 
+# gcloud's usage reporting runs a detached process after gcloud exits, which
+# also writes the device certificate file (see below), outside the lock.
+export CLOUDSDK_CORE_DISABLE_USAGE_REPORTING=true
+
 # Values go into JSON unescaped, so only characters a project ID can have
 # (domain-scoped IDs contain ":") and an OAuth token can have are allowed.
 valid_project() {
@@ -40,9 +44,111 @@ if ! command -v gcloud >/dev/null 2>&1; then
   echo "gcloud isn't installed or isn't on PATH: install the Google Cloud CLI, then run: gcloud auth application-default login" >&2
   exit 1
 fi
+config="${CLOUDSDK_CONFIG:-$HOME/.config/gcloud}"
+if [ -z "${CLOUDSDK_CONFIG:-}" ] && [ -n "${APPDATA:-}" ] && [ -d "$APPDATA/gcloud" ]; then
+  config="$APPDATA/gcloud" # gcloud's folder on Windows, under Git Bash
+fi
+
+# Serialize concurrent auth token creations. With an on-disk device certificate
+# (certificate-based access), every gcloud call writes it to the same file in
+# gcloud's folder and deletes it on exit, so two calls at once can break each
+# other. Claude Code and Codex start both servers together, running this helper
+# twice at once. The lock is a folder beside that file, shared by every client:
+# mkdir is atomic, and macOS has no flock. It records the helper's process ID
+# (owner) and its gcloud call's (pid). A lock whose helper and gcloud call have
+# both ended was left by a helper that was killed, and is removed at once; one
+# without IDs after 4 s, and any lock after 30 s, in case a process ID was
+# reused. One helper at a time removes or releases a lock, holding a second
+# lock, so none removes a lock another one just took. A helper killed while its
+# gcloud call runs leaves the lock for the next waiter to remove once that call
+# ends. Claude Code stops a helper after about 9 s, so a helper waits at most
+# 6 s, then gets the token without the lock (ADC_HEADERS_LOCK_WAIT changes this
+# for tests).
+lock="$config/adc-headers.lock"
+lock_wait="${ADC_HEADERS_LOCK_WAIT:-6}"
+older_than() {
+  local made
+  made="$(stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null)" || return 1
+  [ $(($(date +%s) - made)) -ge "$2" ]
+}
+running() {
+  local id
+  id="$(cat "$1" 2>/dev/null)"
+  # Only a positive process ID: kill -0 0 would check this process group.
+  case "$id" in
+    "" | *[!0-9]* | 0*) return 1 ;;
+  esac
+  kill -0 "$id" 2>/dev/null
+}
+lock_is_stale() {
+  older_than "$lock" 30 && return 0
+  running "$lock/owner" || running "$lock/pid" && return 1
+  # An empty owner file is a lock just taken, before its process ID is written.
+  [ -s "$lock/owner" ] || older_than "$lock" 4
+}
+# Runs a command holding $lock.remove, or fails if another helper holds it.
+with_remove_lock() {
+  older_than "$lock.remove" 4 && rmdir "$lock.remove" 2>/dev/null
+  mkdir "$lock.remove" 2>/dev/null || return 1
+  "$@"
+  rmdir "$lock.remove" 2>/dev/null
+  return 0
+}
+remove_lock() {
+  rm -f "$lock/owner" "$lock/pid"
+  rmdir "$lock" 2>/dev/null
+}
+remove_if_stale() {
+  if lock_is_stale; then remove_lock; fi
+}
+take_lock() {
+  local start="$SECONDS"
+  while [ $((SECONDS - start)) -lt "$lock_wait" ]; do
+    if mkdir "$lock" 2>/dev/null; then
+      echo "$$" >"$lock/owner"
+      return 0
+    fi
+    if [ ! -d "$lock" ]; then # Just released, or the folder isn't writable.
+      mkdir "$lock" 2>/dev/null && echo "$$" >"$lock/owner" && return 0
+      [ -d "$lock" ] || return 1
+    fi
+    if lock_is_stale && with_remove_lock remove_if_stale; then
+      continue
+    fi
+    sleep 0.1
+  done
+  return 1
+}
+release_if_mine() {
+  [ "$(cat "$lock/owner" 2>/dev/null)" = "$$" ] && remove_lock
+}
+release_lock() {
+  [ -n "$locked" ] || return 0
+  locked=""
+  running "$lock/pid" && return 0 # Killed mid-call: gcloud still uses the file.
+  local tries=0
+  until with_remove_lock release_if_mine; do
+    tries=$((tries + 1))
+    [ "$tries" -ge 20 ] && break
+    sleep 0.1
+  done
+}
+locked=""
+if [ -d "$config" ] && take_lock; then
+  locked=1
+  trap release_lock EXIT
+  trap 'exit 1' HUP INT TERM
+fi
 # gcloud.cmd ends lines with \r\n; some shells keep the \r in $(...), so strip it to keep the JSON valid.
-token="$(gcloud auth application-default print-access-token 2>/dev/null)" || token=""
+if [ -n "$locked" ]; then
+  # In the background, so the lock can record the gcloud call's process ID.
+  token="$(gcloud auth application-default print-access-token 2>/dev/null & echo "$!" >"$lock/pid"; wait "$!")" || token=""
+else
+  token="$(gcloud auth application-default print-access-token 2>/dev/null)" || token=""
+fi
 token="${token%$'\r'}"
+release_lock
+trap - EXIT HUP INT TERM
 if [ -z "$token" ]; then
   echo "Couldn't get a token from \"gcloud auth application-default print-access-token\". If you haven't signed in, run: gcloud auth application-default login. Otherwise, run that command yourself to see the error." >&2
   exit 1
@@ -54,10 +160,6 @@ case "$token" in
     ;;
 esac
 
-config="${CLOUDSDK_CONFIG:-$HOME/.config/gcloud}"
-if [ -z "${CLOUDSDK_CONFIG:-}" ] && [ -n "${APPDATA:-}" ] && [ -d "$APPDATA/gcloud" ]; then
-  config="$APPDATA/gcloud" # gcloud's folder on Windows, under Git Bash
-fi
 adc="$config/application_default_credentials.json"
 quota="$(sed -n 's/.*"quota_project_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$adc" 2>/dev/null | head -n 1)"
 valid_project "$quota" || quota=""

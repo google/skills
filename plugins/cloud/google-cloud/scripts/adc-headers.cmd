@@ -22,6 +22,9 @@ rem gcloud's billing/quota_project, else the gcloud project. Never prints
 rem anything but the headers; errors go to stderr.
 
 setlocal
+rem As in scripts/adc-headers: gcloud's usage reporting writes the device
+rem certificate file from a detached process, outside the lock.
+set "CLOUDSDK_CORE_DISABLE_USAGE_REPORTING=true"
 rem Values go into JSON unescaped, so, as in scripts/adc-headers, only characters
 rem an OAuth token or a project ID can have (domain-scoped IDs contain ":") are
 rem allowed. Each value is checked right after it's read, before it's used; a
@@ -35,8 +38,16 @@ if errorlevel 1 (
   exit /b 1
 )
 
+rem Serialize concurrent auth token creations, as in scripts/adc-headers: with
+rem an on-disk device certificate, every gcloud call writes it to the same file
+rem in gcloud's folder and deletes it on exit, so two calls at once (both
+rem servers start together) can break each other. The lock is a named mutex,
+rem shared by every client; Windows releases it if the helper is killed. Claude
+rem Code stops a helper after about 9 s, so it waits at most 5 s, then gets the
+rem token without the lock. It runs gcloud.cmd: PowerShell would run gcloud.ps1,
+rem which the default execution policy blocks.
 set "TOKEN="
-for /f "usebackq delims=" %%T in (`gcloud auth application-default print-access-token 2^>nul`) do set "TOKEN=%%T"
+for /f "usebackq delims=" %%T in (`powershell -NoProfile -NonInteractive -Command "$m = New-Object System.Threading.Mutex($false, 'Local\google-cloud-adc-headers'); try { $null = $m.WaitOne(5000) } catch [System.Threading.AbandonedMutexException] {}; try { gcloud.cmd auth application-default print-access-token 2>$null } finally { try { $m.ReleaseMutex() } catch {} }" 2^>nul`) do set "TOKEN=%%T"
 if not defined TOKEN (
   >&2 echo Couldn't get a token from "gcloud auth application-default print-access-token". If you haven't signed in, run: gcloud auth application-default login. Otherwise, run that command yourself to see the error.
   exit /b 1
