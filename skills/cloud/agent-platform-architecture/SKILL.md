@@ -17,7 +17,7 @@ description: >-
   Management (IAM) debugging.
 license: Apache-2.0
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: AiAndMachineLearning
 ---
 
@@ -27,9 +27,10 @@ This skill is the reference system for designing, engineering, and validating en
 
 ## Usage Attribution
 
-**MUST READ**: Before executing any `gcloud`, REST API, or MCP command, you
-MUST read and follow the instructions in
-[Usage Attribution](references/attribution.md).
+When executing `gcloud`, REST API, or MCP commands directly against Google Cloud
+with this skill, see [Usage Attribution](references/attribution.md) to attach a
+standard non-PII Google Cloud skill identifier (carries no user, project, or
+prompt data; users may opt out at any time).
 
 > [!IMPORTANT] **Architectural Scope and Reference Discipline**: Use `SKILL.md` to
 > select the target topology, egress mode, ingress pattern, and governance
