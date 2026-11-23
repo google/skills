@@ -1,17 +1,14 @@
 # Google Cloud plugin
 
-The `google-cloud` plugin equips AI coding agents with foundational
-skills, safety guardrails, and live documentation grounding for building on
-Google Cloud.
+Skills, safety guardrails and live documentation that help AI coding agents
+build on Google Cloud. Built on the open
+[Agent Plugins specification](https://agent-plugins.org/), it bundles:
 
-Built on the open [Agent Plugins specification](https://agent-plugins.org/),
-this plugin bundles curated Agent Skills, routing rules, and configuration for
-two MCP servers into a single portable package:
-
--   **Developer Knowledge**: grounded, up-to-date answers from Google's
-    developer documentation.
--   **Autocloud**: the Cloud Operator Agent, which designs, reviews, operates
-    and troubleshoots infrastructure in your projects.
+-   **Skills** for `gcloud`, authentication, onboarding and Cloud Operator.
+-   **Developer Knowledge** (MCP server): answers from Google's developer
+    documentation.
+-   **Autocloud** (MCP server): the Cloud Operator Agent, which designs,
+    reviews, operates and troubleshoots infrastructure in your projects.
 
 --------------------------------------------------------------------------------
 
@@ -19,71 +16,84 @@ two MCP servers into a single portable package:
 
 ### Antigravity
 
-Install the plugin from the Antigravity Marketplace:
+-   **Marketplace:** in Antigravity 2.0, open **Customizations > Marketplace**,
+    search for "Google Cloud" and click **Add**.
+-   **CLI:**
 
-1. In Antigravity 2.0, go to Customizations > Marketplace and search for "Google Cloud".
-2. Click the **Add** button.
+    ```bash
+    agy plugin install google-cloud
+    ```
 
-Alternatively, install the plugin using the Antigravity CLI:
-
-```bash
-agy plugin install google-cloud
-```
-
-**Next: set up the plugin.** Before it works, sign in to Google Cloud and
-connect your Cloud Operator agent: follow [Setup](#setup).
+**Next:** [Setup](#setup): sign in to Google Cloud and connect Cloud Operator.
 
 ### Claude Code
 
-1.  Add the Google plugins marketplace, then install the plugin:
+1.  Install the plugin:
 
     ```bash
     claude plugin marketplace add google/skills
     claude plugin install google-cloud@google-plugins
     ```
 
-    > [!NOTE] On native Windows, the plugin signs in with your Google
-    > credentials through `scripts/adc-headers.cmd`, so it doesn't need WSL.
-    > If the servers still don't connect, see [Troubleshooting](#troubleshooting).
+Works on native Windows too; no WSL needed.
 
-**Next: set up the plugin.** Before it works, sign in to Google Cloud and
-connect your Cloud Operator agent: follow [Setup](#setup).
+**Next:** [Setup](#setup): sign in to Google Cloud and connect Cloud Operator.
 
 ### Codex CLI
 
-1.  Add the Google plugins marketplace, then install the plugin:
+1.  Install the plugin:
 
     ```bash
     codex plugin marketplace add google/skills
     codex plugin add google-cloud@google-plugins
     ```
 
-    > [!NOTE] If `codex` isn't found and you use the ChatGPT desktop app on
-    > macOS, the Codex CLI ships inside the app: run
-    > `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`
-    > instead, or add its folder to your `PATH`.
+    No `codex` command on macOS? The ChatGPT app includes one:
+    `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`.
 
-**Next: set up the plugin.** Before it works, sign in to Google Cloud and
-connect your Cloud Operator agent: follow [Setup](#setup), including the Codex
-step that adds the servers to `config.toml`.
+1.  Connect the plugin's two servers. Codex doesn't run the plugin's sign-in
+    helper on its own, so this adds the servers to `~/.codex/config.toml`.
+
+    -   macOS, Linux, WSL or Git Bash:
+
+        ```bash
+        bash "${CODEX_HOME:-$HOME/.codex}"/plugins/cache/*/google-cloud/*/com.google.codex-config/setup
+        ```
+
+    -   Windows PowerShell:
+
+        ```powershell
+        & (Get-ChildItem "$(if ($env:CODEX_HOME) { $env:CODEX_HOME } else { "$env:USERPROFILE\.codex" })\plugins\cache\*\google-cloud\*\com.google.codex-config\setup.cmd" | Select-Object -Last 1).FullName
+        ```
+
+    It prints `Codex config updated`. If it fails, it says why and prints the
+    settings to add to `config.toml` yourself.
+
+    -   Run it again after each plugin update.
+    -   What it changes: [How the servers sign in](#how-the-servers-sign-in).
+    -   It uses Codex's folder: `CODEX_HOME` if you set it, otherwise
+        `~/.codex` (`%USERPROFILE%\.codex` on Windows).
+    -   Git Bash with a `$HOME` other than `%USERPROFILE%`: run this first,
+        then the command above:
+
+        ```bash
+        export CODEX_HOME="$(cygpath -u "$USERPROFILE")/.codex"
+        ```
+
+**Next:** [Setup](#setup): sign in to Google Cloud and connect Cloud Operator.
 
 --------------------------------------------------------------------------------
 
 ## Setup
 
-Both MCP servers sign in with your Google credentials (Application Default
-Credentials, ADC). No gcloud or Google Cloud project yet? Ask your agent to get
-you started on Google Cloud: the plugin's `google-cloud-recipe-onboarding`
-skill walks you through it.
+New to Google Cloud? Ask your agent to get you started: the
+`google-cloud-recipe-onboarding` skill sets up `gcloud`, an account and a
+project with you.
 
 1.  Install the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
     (`gcloud`).
 
-1.  Sign in twice: `gcloud auth login` for the gcloud commands the skills run
-    (for example, finding your project's organization), and
-    `gcloud auth application-default login` for the two MCP servers. Then, for
-    Developer Knowledge only, set a project to bill its calls to and turn its
-    API on there:
+1.  Sign in, and turn on Developer Knowledge in a project you use:
 
     ```bash
     gcloud auth login
@@ -92,147 +102,47 @@ skill walks you through it.
     gcloud services enable developerknowledge.googleapis.com --project=<YOUR_PROJECT_ID>
     ```
 
-    Your account needs `serviceusage.services.use` on that project (Owners and
-    Editors have it). Cloud Operator needs neither: it gives you a personal
-    operator agent in each Google Cloud organization you work in, for projects
-    in that organization. You don't need a role to create or use your own
-    agent; your organization's administrators decide whether Cloud Operator is
-    turned on.
+    -   `gcloud auth login`: for the `gcloud` commands the skills run.
+    -   `gcloud auth application-default login`: for the two MCP servers.
+    -   The last two: Developer Knowledge bills its calls to that project. You
+        need `serviceusage.services.use` there (Owners and Editors have it).
+    -   Cloud Operator needs neither. You get a personal operator agent in each
+        organization you work in, if its admins turned Cloud Operator on.
 
-1.  In Codex only, add the servers to `config.toml` (below).
+1.  Restart your agent and ask it to **set up Cloud Operator**. It finds your
+    project's organization, finds or helps you create your operator agent, and
+    tests the connection.
 
-1.  Restart your agent, then ask it to **set up Cloud Operator**: it finds the
-    organization of a project you work in (`gcloud projects get-ancestors`),
-    finds your operator agent there or helps you create it, and checks the
-    connection with one call. To create the agent yourself, open
-    `https://console.cloud.google.com/autocloud/agent/create?organizationId=<YOUR_ORGANIZATION_ID>`,
-    signed in with the same account, and click **Get started**, then **Create
-    agent**.
+    To create the agent yourself, open this page with the same account, then
+    click **Get started** and **Create agent**:
+    `https://console.cloud.google.com/autocloud/agent/create?organizationId=<YOUR_ORGANIZATION_ID>`
 
-1.  Start using it: ask about your projects as you normally would, for example
-    "Which Compute Engine VMs are running in project <YOUR_PROJECT_ID>?", "Why
-    did my Cloud Run deploy fail?", or "Review this Terraform before I apply
-    it". The plugin sends questions about your live resources to your operator
-    agent, and documentation questions to Developer Knowledge. If an answer
-    doesn't come from the operator, see [Troubleshooting](#troubleshooting).
+1.  Ask as you normally would. For example:
 
-If `gcloud auth application-default login` says "This app is blocked", your
-organization blocks Application Default Credentials and the servers can't sign
-in; ask your admin.
+    -   "Which Compute Engine VMs are running in project <YOUR_PROJECT_ID>?"
+    -   "Why did my Cloud Run deploy fail?"
+    -   "Review this Terraform before I apply it."
 
-### Codex: add the servers to config.toml
-
-Codex reads the plugin's server entries but not their sign-in helper, so
-without these steps both servers show "Not logged in" in `codex mcp list` and
-calls fail with "Authentication required". You add both servers to its
-configuration yourself.
-
-1.  Copy the plugin's sign-in helper to a fixed path, because the installed
-    plugin folder changes with each version. The commands copy it from the
-    most recently installed version, so run them after you install the
-    plugin in Codex, and again after an update.
-
-    macOS and Linux:
-
-    ```bash
-    mkdir -p ~/.codex/bin
-    cp "$(ls -dt ~/.codex/plugins/cache/*/google-cloud/*/ | head -n 1)scripts/adc-headers" ~/.codex/bin/
-    ```
-
-    Windows (PowerShell):
-
-    ```powershell
-    mkdir "$env:USERPROFILE\.codex\bin" -Force | Out-Null
-    $dir = (Get-ChildItem "$env:USERPROFILE\.codex\plugins\cache\*\google-cloud\*" -Directory | Sort-Object LastWriteTime)[-1].FullName
-    Copy-Item "$dir\scripts\adc-headers.cmd" "$env:USERPROFILE\.codex\bin\" -Force
-    ```
-
-1.  Add both servers to `~/.codex/config.toml` (or your project's
-    `.codex/config.toml`), using the full path to the helper. The helper sends
-    a fresh token from your Google credentials on each connection, and
-    `tool_timeout_sec` lets Cloud Operator calls run for up to 20 minutes.
-
-    -   **macOS:** copy the block below as it is, with your user name in place
-        of `<YOU>`.
-    -   **Linux:** copy the same block, with `/home/<YOU>` in place of
-        `/Users/<YOU>` in **both** `http_headers_helper` lines.
-    -   **Windows:** copy the same block, then change the `http_headers_helper`
-        line in **both** entries to:
-
-        ```toml
-        http_headers_helper = '"C:/Users/<YOU>/.codex/bin/adc-headers.cmd"'
-        ```
-
-    ```toml
-    # Wait for the servers to start: getting a token takes a few seconds.
-    mcp_optional_startup_grace_ms = 0
-
-    [mcp_servers.developer-knowledge]
-    url = "https://developerknowledge.googleapis.com/mcp"
-    http_headers_helper = '"/Users/<YOU>/.codex/bin/adc-headers"'
-
-    [mcp_servers.autocloud]
-    url = "https://geminicloudassist.googleapis.com/mcp/autocloud"
-    http_headers = { "X-Goog-Api-Client" = "google-cloud/2.0.0 agent-skills/1.0 (skill:cloud-operator; version:1.2.0; plugin:google-cloud)" }
-    http_headers_helper = '"/Users/<YOU>/.codex/bin/adc-headers"'
-    tool_timeout_sec = 1200
-    ```
-
-    If you set up these servers before, run `codex mcp remove autocloud` and
-    `codex mcp remove developer-knowledge` first, and keep only one
-    `mcp_optional_startup_grace_ms` line: Codex won't load a file with duplicate
-    entries. Put `mcp_optional_startup_grace_ms` at the top of the file, before
-    any `[section]`, and add the rest to what's already there: keep the
-    `[plugins."google-cloud@google-plugins"]` entry that `codex plugin add`
-    wrote, or Codex loses the plugin's skills. These entries replace the
-    plugin's own entries of the same name. Keep the double quotes inside the
-    single quotes: Codex runs the helper through a shell, and the quotes keep a
-    path with spaces in one piece. The helper reads your credentials from
-    gcloud's default location; Codex doesn't pass `CLOUDSDK_CONFIG` or
-    `GOOGLE_APPLICATION_CREDENTIALS` to it.
-
-After the restart (step 4 above), `/mcp` in the Codex CLI lists both servers'
-tools.
+    Questions about your live resources go to your operator agent;
+    documentation questions go to Developer Knowledge.
 
 --------------------------------------------------------------------------------
 
-## Troubleshooting
+## Plugin in Action
 
--   **A server isn't listed, or `ask_cloud_operator` isn't available:** restart
-    your agent. In Antigravity, turn the plugin on in `/plugin` (a new install
-    can start disabled). In Claude Code, `claude mcp get autocloud` shows
-    whether an `autocloud` entry of your own, for example from the standalone
-    Cloud Operator plugin, replaces the plugin's; remove it with
-    `claude mcp remove autocloud -s <scope>`.
--   **Setup says it can't find your project's organization:** gcloud isn't
-    signed in as you (for example, it uses a VM's service account). Run
-    `gcloud auth login`, check that `gcloud config get-value account` shows
-    your own account, then ask again.
--   **Your agent answers Google Cloud questions itself:** uninstall the
-    standalone Cloud Operator plugin, whose skill competes with this one.
--   **Developer Knowledge fails with "Forbidden" or "requires a quota
-    project":** your Application Default Credentials have no quota project.
-    Set one, then restart your agent:
-    `gcloud auth application-default set-quota-project <YOUR_PROJECT_ID>`.
--   **On Windows, the servers don't connect:** run `scripts\adc-headers.cmd`
-    from the installed plugin folder in Command Prompt
-    (`%USERPROFILE%\.claude\plugins\cache\google-plugins\google-cloud\<version>`
-    for Claude Code, or the same path under `.codex` for Codex). It prints the
-    headers, or the
-    sign-in error and its fix (for example, `gcloud` isn't on `PATH`, or you
-    haven't run `gcloud auth application-default login`). If it works but the
-    servers still don't connect, run your agent in
-    [WSL](https://learn.microsoft.com/windows/wsl/install).
--   **Cloud Operator answers "This method is not available in this project."
-    (`RUN_NOT_ALLOWED`):** this check can fail intermittently, especially just
-    after the agent is created, so your agent tries up to 3 times, about 30
-    seconds apart. If all 3 fail, Cloud Operator isn't on for your organization
-    yet; your agent notes that in its local memory and stops calling it there
-    until you ask it to try again.
--   **Codex doesn't see the servers' tools:** check that
-    `mcp_optional_startup_grace_ms = 0` is at the top of `~/.codex/config.toml`,
-    and that `codex mcp list` shows both servers.
--   **Other errors:** your agent explains them and the fix when a call fails.
+Say you're new to Google Cloud and ask your agent:
+
+> *I'm brand new to this platform, and I need to get an account and a first
+> project with billing set up. Then, I need my local machine authenticated so a
+> script that I'm writing can call the APIs as a service identity instead of as
+> me.*
+
+1.  **Checks your environment:** whether `gcloud` is installed, and which
+    projects and organizations you already have.
+2.  **Reviews the risks:** IAM best practices, such as avoiding leaked keys or
+    keys committed to git.
+3.  **Plans with you:** outlines the steps and asks before changing any
+    resources.
 
 --------------------------------------------------------------------------------
 
@@ -240,114 +150,100 @@ tools.
 
 ### Bundled Skills
 
--   **[gcloud](./skills/gcloud)**: Safety-critical validation, best practices,
-    and execution guardrails for `gcloud` CLI commands.
+-   **[gcloud](./skills/gcloud)**: validation, best practices and guardrails
+    for `gcloud` commands.
 -   **[google-cloud-recipe-auth](./skills/google-cloud-recipe-auth)**:
-    Authentication workflows, credential selection, and service identity best
-    practices.
+    authentication, credential choice and service identities.
 -   **[google-cloud-recipe-onboarding](./skills/google-cloud-recipe-onboarding)**:
-    First-project onboarding, account setup, and billing configuration.
--   **[finding-google-skills](./skills/finding-google-skills)**: Discovery and
-    on-demand installation of specialized skills from the Google Agent Skills
-    repo.
+    your first project: account, billing and `gcloud`.
+-   **[finding-google-skills](./skills/finding-google-skills)**: finds and
+    installs more specialized skills from the Google Agent Skills repo.
 -   **[retrieving-developer-knowledge](./skills/retrieving-developer-knowledge)**:
-    Grounded retrieval of official Google documentation.
--   **[cloud-operator](./skills/cloud-operator)**:
-    Routes Google Cloud requests about your projects (questions, architecture,
-    Terraform and Kubernetes review, rollouts, incidents, cost) to the Cloud
-    Operator Agent. If you haven't set up an operator agent yet, it hands you to
-    `cloud-operator-setup`.
--   **[cloud-operator-setup](./skills/cloud-operator-setup)**: Finds the
-    organization of a project you choose, checks your operator agent there or
-    walks you through creating it, then offers to share your existing Google
-    Cloud context with it.
+    answers grounded in official Google documentation.
+-   **[cloud-operator](./skills/cloud-operator)**: sends requests about your
+    projects (questions, architecture, Terraform and Kubernetes review,
+    rollouts, incidents, cost) to the Cloud Operator Agent.
+-   **[cloud-operator-setup](./skills/cloud-operator-setup)**: finds your
+    project's organization, checks or creates your operator agent there, then
+    offers to share your Google Cloud context with it.
 -   **[cloud-operator-share-context](./skills/cloud-operator-share-context)**:
-    Finds Google Cloud operating context you already have (environments,
-    product preferences, runbooks) in instruction files, memory and docs, and
-    copies what you approve into the operator agent's memory.
+    copies Google Cloud context you already have (environments, preferences,
+    runbooks) into your operator agent's memory, with your approval.
 
 ### MCP Servers
-
-The plugin declares both servers for each agent (`mcp.json` for Agent Plugins
-clients, `.mcp.json` for Claude Code, `mcp_config.json` for Antigravity,
-`gemini-extension.json` for Gemini CLI):
 
 | Server | Name | What it does | Endpoint |
 | :--- | :--- | :--- | :--- |
 | [Developer Knowledge](https://developers.google.com/knowledge/mcp) | `developer-knowledge` | Up-to-date grounding in official Google developer documentation | `https://developerknowledge.googleapis.com/mcp` |
 | Autocloud | `autocloud` | The `ask_cloud_operator`, `search_operator_sessions` and `fetch_operator_session` tools: hand Google Cloud work to your operator agent in the project's organization, which sees your live resources, logs, metrics, billing and policies. Calls can run for up to 20 minutes | `https://geminicloudassist.googleapis.com/mcp/autocloud` |
 
-In Claude Code, the plugin runs its `scripts/adc-headers` (on Windows,
-`scripts/adc-headers.cmd`) each time it connects to a server, to send a fresh
-token from your Google credentials; you don't run it yourself. In Codex, you
-point `~/.codex/config.toml` at the same helper (Setup, above).
+Each agent reads the servers from its own file: `mcp.json` (Agent Plugins
+clients), `.mcp.json` (Claude Code), `mcp_config.json` (Antigravity) and
+`gemini-extension.json` (Gemini CLI).
+
+#### How the servers sign in
+
+Both servers use your Google credentials (Application Default Credentials).
+The plugin's `scripts/adc-headers` (`scripts/adc-headers.cmd` on Windows) gets
+a fresh token on each connection.
+
+-   **Claude Code** runs it for you.
+-   **Codex** needs [Codex CLI step 2](#codex-cli), which adds to
+    `~/.codex/config.toml` the settings in
+    [com.google.codex-config/config.json](./com.google.codex-config/config.json):
+    -   each server's URL and sign-in helper;
+    -   Cloud Operator's `X-Goog-Api-Client` header and a 20-minute timeout;
+    -   `mcp_optional_startup_grace_ms = 0`, so Codex waits for the servers to
+        start.
+
+    Your other settings stay as they are. Codex runs the helper without
+    `CLOUDSDK_CONFIG` or `GOOGLE_APPLICATION_CREDENTIALS`, so it uses gcloud's
+    default credentials. If you set Codex up by hand before, you can delete
+    `~/.codex/bin/adc-headers` (`%USERPROFILE%\.codex\bin\adc-headers.cmd` on
+    Windows).
 
 ### Routing Rules
 
 -   **[google-cloud-discovery.md](./rules/google-cloud-discovery.md)**:
-    Always-on routing map that guides the agent to discover and suggest deeper
-    product-specific skills (such as `gke-*`, `agent-platform-*`,
-    `google-cloud-waf-*`, and `<product>-basics`) when a task requires
-    specialized domain knowledge beyond the foundational bundle.
-
---------------------------------------------------------------------------------
-
-## Plugin in Action
-
-To see how this plugin works, consider a situation where you're bootstrapping a
-new project as part of working on a script. With the `google-cloud`
-plugin installed, you can prompt your agent:
-
-> *I'm brand new to this platform, and I need to get an account and a first
-> project with billing set up. Then, I need my local machine authenticated so a
-> script that I'm writing can call the APIs as a service identity instead of as
-> me.*
-
-1.  **Environment awareness**: The agent silently runs background checks against
-    your live environment for prerequisites like CLI availability and potential
-    existing projects or organizations.
-
-2.  **Review**: The agent considers IAM best practices to avoid risks that might
-    be assumed as part of the prompt, like accidental key leaks or git commits.
-
-3.  **Interaction with guardrails**: The agent outlines a workflow roadmap and
-    offers to act on those steps before modifying any resources.
+    always-on map that points the agent to deeper product skills (such as
+    `gke-*`, `agent-platform-*`, `google-cloud-waf-*` and `<product>-basics`)
+    when a task needs them.
 
 --------------------------------------------------------------------------------
 
 ## Network, Sandbox, and Permission Requirements
 
-If you run your agent in a local sandbox or behind a corporate firewall/proxy,
-configure your environment to allow the following outbound URLs and terminal
-commands.
+In a sandbox or behind a firewall or proxy, allow these URLs and commands.
 
-> [!NOTE] The core bundled skills (`gcloud`, `google-cloud-recipe-auth`,
-> `google-cloud-recipe-onboarding`) and the `developer-knowledge` MCP server
-> only require `gcloud` and HTTPS access to `*.googleapis.com`,
-> `docs.cloud.google.com`, and `developers.google.com`. Access to GitHub domains
-> (`raw.githubusercontent.com`, `api.github.com`) and `curl` is only required at
-> runtime for dynamic skill discovery (`finding-google-skills`) and the REST API
-> fallback in `retrieving-developer-knowledge`. Dynamically fetched skills may
-> require additional product-specific CLI tools or API endpoints.
+> [!NOTE]
+>
+> -   The core skills (`gcloud`, `google-cloud-recipe-auth`,
+>     `google-cloud-recipe-onboarding`) and Developer Knowledge need only
+>     `gcloud` and HTTPS to `*.googleapis.com`, `docs.cloud.google.com` and
+>     `developers.google.com`.
+> -   GitHub (`raw.githubusercontent.com`, `api.github.com`) and `curl` are
+>     needed only for skill discovery (`finding-google-skills`) and the REST
+>     fallback in `retrieving-developer-knowledge`.
+> -   Skills found that way may need more CLI tools or endpoints.
 
 ### 1. Required Outbound URL Allowlist
 
 | Domain / Endpoint | Used By | Purpose |
 | :--- | :--- | :--- |
-| `https://raw.githubusercontent.com` (`githubusercontent.com`) | `finding-google-skills` | Fetches the `index.json` catalog and on-demand `SKILL.md` / reference files from `google/skills`. |
-| `https://github.com`, `https://api.github.com` | Installer, `finding-google-skills`, `google-cloud-discovery` | Installs the plugin and queries the GitHub Trees API fallback (`/repos/google/skills/git/trees/main`). |
-| `https://developerknowledge.googleapis.com` | `developer-knowledge` MCP, `retrieving-developer-knowledge` | Connects to the remote MCP server (`/mcp`) and REST API v1 fallback (`/v1/documents:*`, `/v1:answerQuery`). |
-| `https://geminicloudassist.googleapis.com` | `autocloud` MCP, `cloud-operator`, `cloud-operator-setup`, `cloud-operator-share-context` | Connects to the Autocloud MCP server (`/mcp/autocloud`). |
-| `https://oauth2.googleapis.com` | Both MCP servers | Refreshes your Google credentials. |
-| `https://*.googleapis.com` | `gcloud`, `google-cloud-recipe-auth`, `google-cloud-recipe-onboarding` | Authenticates and executes `gcloud` CLI commands against Google Cloud APIs. |
-| `https://docs.cloud.google.com`, `https://developers.google.com` | `gcloud`, `google-cloud-recipe-auth`, `google-cloud-recipe-onboarding` | Reads official Google Cloud documentation (`*.md.txt`). |
+| `https://developerknowledge.googleapis.com` | `developer-knowledge` MCP, `retrieving-developer-knowledge` | The MCP server (`/mcp`) and its REST fallback (`/v1/documents:*`, `/v1:answerQuery`). |
+| `https://geminicloudassist.googleapis.com` | `autocloud` MCP, `cloud-operator`, `cloud-operator-setup`, `cloud-operator-share-context` | The Autocloud MCP server (`/mcp/autocloud`). |
+| `https://oauth2.googleapis.com` | Both MCP servers, `gcloud` | Refreshes your Google credentials. |
+| `https://*.googleapis.com` | `gcloud`, `google-cloud-recipe-auth`, `google-cloud-recipe-onboarding`, `cloud-operator` | `gcloud` commands against Google Cloud APIs. |
+| `https://docs.cloud.google.com`, `https://developers.google.com` | `gcloud`, `google-cloud-recipe-auth`, `google-cloud-recipe-onboarding`, `cloud-operator` | Official documentation (`*.md.txt`). |
+| `https://raw.githubusercontent.com` | `finding-google-skills` | The `index.json` skill catalog and on-demand `SKILL.md` and reference files from `google/skills`. |
+| `https://github.com`, `https://api.github.com` | Installation, `finding-google-skills`, `google-cloud-discovery` | Installs the plugin, and lists `google/skills` when the catalog isn't available (`/repos/google/skills/git/trees/main`). |
 
 ### 2. Required Terminal Command Permissions
 
--   **Skill discovery & REST fallback** (`finding-google-skills`,
+-   **Skill discovery and REST fallback** (`finding-google-skills`,
     `retrieving-developer-knowledge`): `curl` (`curl -sSL`, `curl -s -X POST`,
-    `curl -s -G`), `jq`, `grep`, and optionally `npx skills` (only if installing
-    discovered skills locally).
+    `curl -s -G`; `curl.exe` or `Invoke-WebRequest` on Windows), and
+    optionally `jq` or `grep` to filter the skill catalog.
 -   **Read-only `gcloud` checks** (`gcloud`, `google-cloud-recipe-onboarding`):
     `which gcloud`, `gcloud help`, `gcloud topic`, `gcloud cheat-sheet`,
     `gcloud auth list`, `gcloud config get-value`, `gcloud config list`,
@@ -355,25 +251,116 @@ commands.
     `gcloud projects describe`, `gcloud billing projects describe`,
     `gcloud billing accounts list`, `gcloud compute regions list`,
     `gcloud compute zones list`.
--   **MCP server sign-in** (Claude Code and Codex): the plugin's
-    `scripts/adc-headers` (`scripts/adc-headers.cmd` on Windows) runs
+-   **MCP server sign-in** (Claude Code and Codex): `scripts/adc-headers`
+    (`scripts/adc-headers.cmd` on Windows) runs
     `gcloud auth application-default print-access-token` and
-    `gcloud config get-value` each time the agent connects to a server.
+    `gcloud config get-value` on each connection.
+-   **Codex setup** ([Codex CLI step 2](#codex-cli)):
+    `com.google.codex-config/setup` (`setup.cmd` on Windows) runs
+    `codex app-server`.
 -   **Cloud Operator** (`cloud-operator`, `cloud-operator-setup`,
-    `cloud-operator-share-context`): `gcloud projects get-ancestors`, to
-    find the organization of the project a request is about;
-    `gcloud organizations list`, when that fails;
-    `gcloud config get-value project`, offered only as a suggestion; and
-    `gcloud auth application-default print-access-token`, to check your
-    credentials when a call fails to sign in.
+    `cloud-operator-share-context`):
+    -   `gcloud projects get-ancestors`: finds the organization of the project
+        a request is about.
+    -   `gcloud organizations list`: when that fails.
+    -   `gcloud config get-value project`: only to suggest a project.
+    -   `gcloud auth application-default print-access-token`: checks your
+        credentials when a call fails to sign in.
+-   **Developer Knowledge REST fallback** (`retrieving-developer-knowledge`):
+    `gcloud auth print-access-token`, or
+    `gcloud auth application-default print-access-token`, and
+    `gcloud config get-value project`.
 -   **Interactive or state-changing `gcloud` commands**
     (`google-cloud-recipe-onboarding`, `google-cloud-recipe-auth`,
     `cloud-operator`, `cloud-operator-setup`): `gcloud auth login`,
     `gcloud auth application-default login`,
     `gcloud auth application-default set-quota-project`, `gcloud config set`,
     `gcloud projects create`, `gcloud billing projects link`,
-    `gcloud services enable`. Do not auto-allow these commands; keep them gated
-    behind confirmation (**Ask**) or run them manually beforehand.
+    `gcloud services enable`. Don't auto-allow these: keep them behind
+    confirmation (**Ask**), or run them yourself first.
+
+--------------------------------------------------------------------------------
+
+## Troubleshooting
+
+Problems while setting up the plugin or making your first calls. For anything
+else, your agent explains the error and the fix.
+
+### Signing in
+
+-   **`gcloud auth application-default login` says "This app is blocked":**
+    your organization blocks Application Default Credentials, so the servers
+    can't sign in. Ask your admin.
+-   **A server says it couldn't get a token, or "gcloud isn't installed":**
+    install the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install),
+    run `gcloud auth application-default login`, then restart your agent.
+-   **"agent_id must be explicitly specified when authenticating as a service
+    account", or "can only be created with an end-user credential":** your
+    Application Default Credentials are a service account's. Run
+    `gcloud auth application-default login` with your own account. If
+    `GOOGLE_APPLICATION_CREDENTIALS` points to a key file, unset it: it
+    overrides that sign-in.
+-   **Setup can't find your project's organization:** `gcloud` isn't signed in
+    as you (for example, it uses a VM's service account). Run
+    `gcloud auth login`, check `gcloud config get-value account`, then ask
+    again.
+
+### Connecting the servers
+
+-   **A server, or `ask_cloud_operator`, is missing:** restart your agent.
+    -   Antigravity: turn the plugin on in `/plugin`; a new install can start
+        off.
+    -   Claude Code: run `claude mcp get autocloud`. If it shows an `autocloud`
+        entry of your own (for example, from the standalone Cloud Operator
+        plugin), remove it: `claude mcp remove autocloud -s <scope>`.
+-   **Codex shows "Not logged in", or no tools:** run
+    [Codex CLI step 2](#codex-cli) again, then restart Codex.
+-   **Codex setup prints "Codex config update failed":** run it again. If it
+    fails again, add the lines it prints to `config.toml` yourself, as it
+    says.
+-   **Windows: the servers don't connect:** in Command Prompt, go to the
+    installed plugin's folder and run `scripts\adc-headers.cmd`. It prints the
+    sign-in error and its fix.
+    -   Claude Code's folder:
+        `%USERPROFILE%\.claude\plugins\cache\google-plugins\google-cloud\<version>`
+    -   Codex's: the same, with `.codex` in place of `.claude`.
+    -   Still failing? Run your agent in
+        [WSL](https://learn.microsoft.com/windows/wsl/install).
+
+### Developer Knowledge
+
+-   **"... requires a quota project, which is not set by default":** run
+    `gcloud auth application-default set-quota-project <YOUR_PROJECT_ID>`, then
+    restart your agent.
+-   **"Developer Knowledge API has not been used in project ... or it is
+    disabled":** turn the API on in your quota project:
+
+    ```bash
+    gcloud services enable developerknowledge.googleapis.com --project=<YOUR_PROJECT_ID>
+    ```
+
+### Cloud Operator
+
+-   **Your agent answers Google Cloud questions itself:** uninstall the
+    standalone Cloud Operator plugin; its skill competes with this one.
+-   **"personal operator agent ... has not been initialized yet":** you don't
+    have an operator agent in that organization yet. Ask your agent to **set
+    up Cloud Operator**; it helps you create one.
+-   **"agent ... is not ready to serve yet":** the agent was just created. Wait
+    about a minute and ask again.
+-   **"This method is not available in this project." (`RUN_NOT_ALLOWED`):**
+    this can fail for a while after you create the agent, so your agent tries
+    3 times, about 30 seconds apart. If all fail, Cloud Operator isn't on for
+    your organization yet; your agent stops calling it there until you ask it
+    to try again.
+-   **"AutoCloud is disabled for organization ..." (`ORG_DISABLED`), or "The
+    caller does not have permission":** an administrator of your organization
+    controls access to Cloud Operator. Ask them.
+-   **You sign in with a personal Google Account (for example, @gmail.com):**
+    Cloud Operator doesn't support personal accounts yet. Developer Knowledge
+    and the other skills still work.
+-   **Your project isn't in an organization:** Cloud Operator works only with
+    projects in an organization.
 
 --------------------------------------------------------------------------------
 
@@ -385,19 +372,16 @@ commands.
     claude plugin uninstall google-cloud@google-plugins
     ```
 
--   **Codex:** remove the plugin, then the two servers you added to
-    `config.toml` (this deletes their sections) and the sign-in helper:
+-   **Codex:** remove the plugin and the two servers setup added:
 
     ```bash
     codex plugin remove google-cloud@google-plugins
     codex mcp remove autocloud
     codex mcp remove developer-knowledge
-    rm ~/.codex/bin/adc-headers
     ```
 
-    On Windows, delete `%USERPROFILE%\.codex\bin\adc-headers.cmd` instead.
     You can also delete the `mcp_optional_startup_grace_ms` line at the top of
-    `config.toml`.
+    `~/.codex/config.toml`.
 
 -   **Antigravity:**
 
@@ -405,8 +389,8 @@ commands.
     agy plugin uninstall google-cloud
     ```
 
-To remove the marketplace too, run `claude plugin marketplace remove
-google-plugins` or `codex plugin marketplace remove google-plugins` after
-removing the plugin. That also uninstalls the other plugins you installed from
-it (in Codex, remove each with `codex plugin remove` first, or their entries
-stay in `config.toml`).
+-   **The marketplace too:** after removing the plugin, run
+    `claude plugin marketplace remove google-plugins` or
+    `codex plugin marketplace remove google-plugins`. This also uninstalls the
+    other plugins you installed from it. In Codex, remove each with
+    `codex plugin remove` first, or their entries stay in `config.toml`.

@@ -1,0 +1,338 @@
+#!/usr/bin/env bash
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Connects the plugin's two MCP servers in Codex: adds the settings in
+# config.json (this folder) to Codex's config.toml. Codex reads the plugin's
+# server entries but not their sign-in helper, so without this both servers
+# show "Not logged in".
+#
+# 1. Finds the newest installed version of the plugin in Codex.
+# 2. Replaces ${PLUGIN_ROOT} in config.json with that version's folder.
+# 3. Sends config.json to Codex's configuration API (codex app-server,
+#    config/batchWrite). "upsert" keeps the user's other settings.
+# 4. If that fails, prints the same settings as config.toml lines for the user
+#    to add by hand.
+#
+# setup.cmd does the same on Windows.
+
+if [ -z "${BASH_VERSION:-}" ]; then
+  exec bash "$0" "$@" # Started with sh.
+fi
+set -u
+
+codex_home="${CODEX_HOME:-$HOME/.codex}"
+# Under Git Bash on Windows, Codex uses %USERPROFILE%\.codex, which can differ
+# from $HOME.
+if [ -z "${CODEX_HOME:-}" ] && [ -n "${USERPROFILE:-}" ] && command -v cygpath >/dev/null 2>&1; then
+  codex_home="$(cygpath -u "$USERPROFILE")/.codex"
+fi
+# Seconds to wait for Codex to answer (CODEX_SETUP_TIMEOUT changes it for
+# tests).
+timeout="${CODEX_SETUP_TIMEOUT:-30}"
+
+# True if version $1 is newer than $2, comparing the numbers between dots:
+# 2.10.0 is newer than 2.9.0 (sort -V isn't available everywhere).
+version_newer() {
+  local a="$1" b="$2" x y
+  while [ -n "$a" ] || [ -n "$b" ]; do
+    x="${a%%.*}"
+    y="${b%%.*}"
+    if [ "$a" = "$x" ]; then a=""; else a="${a#*.}"; fi
+    if [ "$b" = "$y" ]; then b=""; else b="${b#*.}"; fi
+    x="${x%%[!0-9]*}"
+    y="${y%%[!0-9]*}"
+    x=$((10#${x:-0}))
+    y=$((10#${y:-0}))
+    [ "$x" -gt "$y" ] && return 0
+    [ "$x" -lt "$y" ] && return 1
+  done
+  return 1
+}
+
+# Prints $1 with each ${PLUGIN_ROOT} replaced by $plugin_root. Not with
+# ${var//...}: bash 5.2 treats & in the replacement specially.
+fill_in() {
+  local rest="$1" out="" mark='${PLUGIN_ROOT}'
+  while case "$rest" in *"$mark"*) true ;; *) false ;; esac do
+    out="$out${rest%%"$mark"*}$plugin_root"
+    rest="${rest#*"$mark"}"
+  done
+  printf '%s' "$out$rest"
+}
+
+# Prints config.json's settings as config.toml lines, with ${PLUGIN_ROOT}
+# filled in: top-level settings first, then one [table] per section. Handles
+# what config.json uses (objects, strings, numbers, true and false, and arrays
+# of those); anything else stops with an error.
+settings_as_toml() {
+  fill_in "$(cat "$config")" | awk '
+    function err(m) { print "config.json: " m > "/dev/stderr"; exit 1 }
+    function expect(t) { if (tok[p] != t) err("expected " t); p++ }
+    function unq(t) { return substr(t, 2, length(t) - 2) }
+    # A key as TOML writes it: bare if it can be, else quoted (JSON and TOML
+    # escape strings the same way).
+    function tkey(k) { return k ~ /^[A-Za-z0-9_-]+$/ ? k : "\"" k "\"" }
+    function skip(   depth) {
+      depth = 0
+      do {
+        if (p > n) err("unexpected end")
+        if (tok[p] == "{" || tok[p] == "[") depth++
+        else if (tok[p] == "}" || tok[p] == "]") depth--
+        p++
+      } while (depth > 0)
+    }
+    # JSON allows \/ but TOML does not. Walks the escapes so that in \\/ only
+    # the backslash pair is kept.
+    function unslash(s,   out, c) {
+      out = ""
+      while (s != "") {
+        c = substr(s, 1, 1)
+        if (c == "\\") {
+          c = substr(s, 2, 1)
+          out = out (c == "/" ? "/" : "\\" c)
+          s = substr(s, 3)
+        } else {
+          out = out c
+          s = substr(s, 2)
+        }
+      }
+      return out
+    }
+    # A string, number, true, false or array of those, as TOML writes it.
+    function literal(   t, out, first) {
+      t = tok[p]
+      if (t == "[") {
+        p++; out = "["; first = 1
+        while (tok[p] != "]") {
+          if (!first) expect(",")
+          if (tok[p] == "{") err("arrays of objects can'"'"'t be written here")
+          out = out (first ? "" : ", ") literal(); first = 0
+        }
+        p++
+        return out "]"
+      }
+      if (t == "null" || t == "" || t == "{") err("can'"'"'t write " (t == "" ? "the end" : t) " as a value")
+      if (t ~ /^"/ && index(t, "\\/")) t = unslash(t)
+      p++
+      return t
+    }
+    function add(table, line) {
+      if (!(table in body)) { body[table] = ""; order[++tables] = table }
+      if (line != "") body[table] = body[table] line "\n"
+    }
+    function object(table,   key) {
+      expect("{")
+      add(table, "")
+      while (tok[p] != "}") {
+        if (tok[p] !~ /^"/) err("expected a key")
+        key = tkey(unq(tok[p])); p++
+        expect(":")
+        if (tok[p] == "{") object(table "." key)
+        else add(table, key " = " literal())
+        if (tok[p] == ",") p++
+        else if (tok[p] != "}") err("expected , or }")
+      }
+      p++
+    }
+    { text = text $0 "\n" }
+    END {
+      # Tokens: punctuation, strings (escapes kept), and other values.
+      for (i = 1; i <= length(text); ) {
+        c = substr(text, i, 1)
+        if (c == " " || c == "\t" || c == "\r" || c == "\n") { i++; continue }
+        if (index("[]{}:,", c)) { tok[++n] = c; i++; continue }
+        if (c == "\"") {
+          for (j = i + 1; j <= length(text); j++) {
+            d = substr(text, j, 1)
+            if (d == "\\") j++
+            else if (d == "\"") break
+          }
+          if (j > length(text)) err("a string has no closing quote")
+          tok[++n] = substr(text, i, j - i + 1); i = j + 1; continue
+        }
+        if (match(substr(text, i), /^(-?[0-9][0-9.eE+-]*|true|false|null)/)) {
+          tok[++n] = substr(text, i, RLENGTH); i += RLENGTH; continue
+        }
+        err("unexpected " c)
+      }
+      # [{"keyPath": "a.b", "value": ...}, ...], fields in any order.
+      p = 1
+      expect("[")
+      while (tok[p] != "]") {
+        expect("{")
+        path = ""; start = 0
+        while (tok[p] != "}") {
+          if (tok[p] !~ /^"/) err("expected a key")
+          field = unq(tok[p]); p++
+          expect(":")
+          if (field == "keyPath") { path = unq(tok[p]); p++ }
+          else if (field == "value") { start = p; skip() }
+          else skip()
+          if (tok[p] == ",") p++
+          else if (tok[p] != "}") err("expected , or }")
+        }
+        p++
+        if (path == "" || !start) err("each edit needs a keyPath and a value")
+        after = p; p = start
+        count = split(path, part, ".")
+        table = ""
+        for (k = 1; k < count; k++) table = table (k > 1 ? "." : "") tkey(part[k])
+        key = tkey(part[count])
+        if (tok[p] == "{") object(table == "" ? key : table "." key)
+        else add(table, key " = " literal())
+        p = after
+        if (tok[p] == ",") p++
+      }
+      printf "%s", body[""]
+      for (k = 1; k <= tables; k++)
+        if (order[k] != "") printf "\n[%s]\n%s", order[k], body[order[k]]
+    }'
+}
+
+# Says the update failed ($1: why), and how to retry or add the settings by
+# hand.
+fail() {
+  local toml
+  {
+    echo "Codex config update failed: $1"
+    echo
+    echo "To retry, run this command again."
+    if [ -n "${show_manual:-}" ] && [ -f "$config" ] && toml="$(settings_as_toml)"; then
+      echo "Or add the settings to $codex_config yourself:"
+      echo "  1. Delete any of the sections below that are already there."
+      echo "  2. Put the lines above the first [section] at the top, before any"
+      echo "     [section], and the rest at the end:"
+      echo
+      printf '%s\n' "$toml"
+      echo
+      echo "  3. Restart Codex."
+    fi
+  } >&2
+  exit 1
+}
+
+helper=""
+version=""
+for path in "$codex_home"/plugins/cache/*/google-cloud/*/scripts/adc-headers; do
+  [ -f "$path" ] || continue
+  v="$(basename "$(dirname "$(dirname "$path")")")"
+  if [ -z "$helper" ] || version_newer "$v" "$version"; then
+    helper="$path"
+    version="$v"
+  fi
+done
+if [ -z "$helper" ]; then
+  echo "The google-cloud plugin isn't installed in Codex ($codex_home)." >&2
+  echo "Install it first: codex plugin add google-cloud@google-plugins" >&2
+  exit 1
+fi
+plugin_root="$(dirname "$(dirname "$helper")")"
+config="$plugin_root/com.google.codex-config/config.json"
+codex_config="$codex_home/config.toml"
+
+# Under Git Bash on Windows, Codex needs Windows paths (C:/Users/...). It runs
+# adc-headers.cmd for the extensionless name, as Claude Code does.
+codex_home_for_codex="$codex_home"
+# Characters Codex can't have in the helper's path: it runs it as "<path>"
+# through a shell, where these are special inside double quotes (and JSON
+# couldn't take " or \ unescaped). On Windows the shell is cmd.exe, which
+# expands %VAR% there.
+bad_chars='"`$\'
+if command -v cygpath >/dev/null 2>&1; then
+  plugin_root="$(cygpath -m "$plugin_root")"
+  codex_home_for_codex="$(cygpath -m "$codex_home")"
+  bad_chars="$bad_chars%"
+fi
+case "$plugin_root" in
+  *["$bad_chars"]*)
+    fail "the plugin's folder contains one of $bad_chars, so Codex can't run its sign-in helper: $plugin_root
+Set CODEX_HOME to a folder without them, install the plugin there, and run this again."
+    ;;
+esac
+show_manual=1
+
+if ! command -v codex >/dev/null 2>&1; then
+  fail "codex isn't installed or isn't on PATH."
+fi
+if [ ! -f "$config" ]; then
+  fail "$config is missing. Reinstall the plugin: codex plugin add google-cloud@google-plugins"
+fi
+# JSON strings can't contain line breaks, so removing them keeps the JSON valid
+# and puts the request on one line, as codex app-server expects.
+edits="$(fill_in "$(tr -d '\r\n' <"$config")")"
+request='{"id":2,"method":"config/batchWrite","params":{"edits":'"$edits"'}}'
+
+work="$(mktemp -d 2>/dev/null || mktemp -d -t codex-setup)" || fail "couldn't create a temporary folder."
+trap 'rm -rf "$work"' EXIT
+out="$work/out"
+: >"$out"
+
+# Codex's reply to request $1. Requests and notifications Codex sends itself
+# have a "method" field (a "method" quoted inside an error message doesn't
+# count).
+reply_to() {
+  grep -E "^\\{\"id\": *$1,|\"id\": *$1\\}\$" "$out" 2>/dev/null | grep -Ev '[{,] *"method" *:' | head -n 1
+}
+# Waits for the reply to request $1; stops early if Codex exits.
+wait_for_reply() {
+  local start="$SECONDS"
+  while [ -z "$(reply_to "$1")" ]; do
+    [ -f "$work/exited" ] && return 1
+    if [ $((SECONDS - start)) -ge "$timeout" ]; then
+      : >"$work/timed-out"
+      return 1
+    fi
+    sleep 0.1
+  done
+}
+# The requests go to codex through a pipe (Windows programs can't read from a
+# FIFO under Git Bash). codex runs in the background, so setup can stop it if
+# it doesn't exit once its input closes; its process ID goes to $work/pid.
+{
+  printf '%s\n' '{"id":1,"method":"initialize","params":{"clientInfo":{"name":"google-cloud-setup","version":"1.0"}}}'
+  if wait_for_reply 1; then
+    printf '%s\n' '{"method":"initialized"}' "$request"
+    wait_for_reply 2
+  fi
+  # Give codex a few seconds to exit after its input closes, then stop it.
+  exec 1>&-
+  for _ in $(seq 1 50); do
+    [ -f "$work/exited" ] && break
+    sleep 0.1
+  done
+  [ -f "$work/exited" ] || kill "$(cat "$work/pid" 2>/dev/null)" 2>/dev/null
+} 2>/dev/null | {
+  # A background job gets /dev/null as its input unless given the pipe.
+  CODEX_HOME="$codex_home_for_codex" codex app-server --stdio <&0 >"$out" 2>"$work/err" &
+  echo "$!" >"$work/pid"
+  wait "$!"
+  echo "$?" >"$work/exited"
+}
+
+reply="$(reply_to 2)"
+# Success: a "result" with "status": "ok" (not an "error").
+if printf '%s' "$reply" | grep -Eq '"result" *:' && printf '%s' "$reply" | grep -Eq '"status" *: *"ok"' && ! printf '%s' "$reply" | grep -Eq '"error" *:'; then
+  echo "Codex config updated (google-cloud $version). Restart Codex to use it."
+  exit 0
+fi
+err="$(tr '\r\n' '  ' <"$work/err" 2>/dev/null | cut -c1-300)"
+if [ -n "$reply" ]; then
+  fail "Codex answered: $reply"
+elif [ ! -f "$work/timed-out" ] && [ -f "$work/exited" ]; then
+  fail "codex app-server stopped (exit $(cat "$work/exited")): ${err:-no message}
+Check that 'codex app-server --help' works; your Codex may be too old."
+else
+  fail "Codex didn't answer within $timeout s."
+fi
