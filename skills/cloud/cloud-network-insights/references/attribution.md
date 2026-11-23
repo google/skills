@@ -1,8 +1,9 @@
 # Usage Attribution
 
-Tag every command you execute directly in the terminal while using this skill,
-so usage can be attributed. The tag identifies only the skill and its version;
-it carries no user data.
+**MUST READ**: Before executing any `gcloud`, REST API, or MCP command with
+this skill, follow these usage attribution instructions. Tag every command you
+execute directly in the terminal so usage can be attributed. The tag identifies
+only the skill and its version; it carries no user data.
 
 -   **`gcloud` CLI Commands**: Prefix every `gcloud` invocation, whatever the
     subcommand, with the metrics environment variable. Set it inline on each
@@ -10,7 +11,7 @@ it carries no user data.
 
     ```bash
     CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="agent-skills/1.0 (skill:cloud-network-insights)" \
-    gcloud COMMAND [FLAGS]
+    gcloud <command> [flags]
     ```
 
     Do not use `gcloud config set` for this: it would persist beyond the current
@@ -18,15 +19,14 @@ it carries no user data.
 
 -   **Direct HTTP, REST, and MCP Requests**: On direct HTTP calls to Google
     Cloud APIs (for example with `curl`) or HTTP requests to a remote MCP
-    server, include
-    `agent-skills/1.0 (skill:cloud-network-insights)` in the
+    server, include `agent-skills/1.0 (skill:cloud-network-insights)` in the
     `User-Agent` header. If a `User-Agent` header is already specified, append
     this string to the end of it rather than overwriting existing `User-Agent`
-    data — the collection pipeline parses the `agent-skills/VERSION` and
-    `skill:SKILL_NAME` tokens, so any rewording breaks attribution:
+    data — the collection pipeline parses the `agent-skills/<version>` and
+    `skill:<name>` tokens, so any rewording breaks attribution:
 
-    ```text
-    User-Agent: EXISTING_USER_AGENT agent-skills/1.0 (skill:cloud-network-insights)
+    ```
+    User-Agent: <existing_user_agent> agent-skills/1.0 (skill:cloud-network-insights)
     ```
 
 -   **Constraint for Generated Code**: The tracking prefix is strictly for
