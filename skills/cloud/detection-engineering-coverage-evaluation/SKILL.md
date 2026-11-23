@@ -1,7 +1,7 @@
 ---
 name: detection-engineering-coverage-evaluation
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: Security
 description: >-
   Automates the end-to-end detection engineering workflow in Google SecOps using MCP tools.
@@ -13,7 +13,8 @@ description: >-
 
 # SecOps Detection Coverage Skill
 
-> **Routing Note:** To author, test (Retrohunt), or tune YARA-L 2.0 detection rules directly, open `secops-detection-engineering/SKILL.md`.
+> **Routing Note:** To author, test (Retrohunt), or tune YARA-L 2.0 detection
+> rules directly, use the `secops-detection-engineering` skill.
 
 This skill guides the agent through an end-to-end detection engineering
 lifecycle using Google SecOps MCP tools. It handles multiple Threat Detection
