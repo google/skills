@@ -1,8 +1,9 @@
 ---
 name: bigquery-troubleshooting
 metadata:
-  version: "1.1.1"
+  version: "1.1.2"
   category: BigDataAndAnalytics
+  publisher: google
 description: >-
   Provides diagnostic workflows and step-by-step root-cause analysis
   procedures for actively broken, failing, or slow BigQuery jobs, execution
@@ -57,11 +58,26 @@ Before running diagnostic queries or investigating incident telemetry:
     *   Verify an active Google Cloud Billing account is attached to
         `{project_id}`.
     *   Ensure appropriate IAM roles:
-        *   `roles/bigquery.jobUser`: Executing diagnostic queries.
+        *   `roles/bigquery.jobUser`: Executing diagnostic queries and
+            inspecting your own jobs via CLI (`bq show -j`, `bq ls -j`);
+            pair with read roles below to query `INFORMATION_SCHEMA`.
+        *   `roles/bigquery.user`: Querying user-scoped job telemetry
+            (`JOBS_BY_USER`, `JOBS_TIMELINE_BY_USER`) and executing
+            diagnostic queries (supersedes `roles/bigquery.jobUser`).
+        *   `roles/bigquery.metadataViewer`: Inspecting table, dataset,
+            and storage metadata (`TABLE_STORAGE`,
+            `TABLE_STORAGE_USAGE_TIMELINE`, `TABLES`,
+            `SCHEMATA_OPTIONS`).
         *   `roles/bigquery.resourceViewer` or `roles/bigquery.admin`:
-            Inspecting reservation and job execution telemetry.
-        *   `roles/monitoring.viewer`: Cloud Monitoring metrics.
-        *   `roles/billing.viewer`: Cloud Billing reports and cost attribution.
+            Inspecting any user's job (`bq show -j`), project-, folder-,
+            or organization-level jobs at the matching resource scope,
+            and reservation, capacity commitment, and assignment
+            telemetry on the reservations administration project.
+            Enabling `TABLE_STORAGE` opt-in via `ALTER PROJECT` requires
+            `roles/bigquery.admin`.
+        *   `roles/monitoring.viewer`: Reading Cloud Monitoring metrics.
+        *   `roles/billing.viewer` (on the Cloud Billing account):
+            Viewing Cloud Billing reports and SKU cost attribution.
 
 6.  **Companion Skills Installation**:
     This skill is part of a 3-pillar operations suite (`bigquery-observability`,
@@ -83,8 +99,8 @@ Before running diagnostic queries or investigating incident telemetry:
     (Performance, Compute Cost, or Storage Cost). If the request falls outside
     incident diagnosis or asks for a sibling domain, follow **Routing
     Boundaries** below.
-2.  **Telemetry Tool Selection:** Follow the tool-selection guidance in
-    [bigquery-observability](../bigquery-observability)
+2.  **Telemetry Tool Selection:** Follow the tool-selection guidance in the
+    [BigQuery observability skill](../bigquery-observability)
     (`bigquery_observability`) to select the appropriate telemetry interface
     (REST API `bq show --location={location} -j {project_id}:{job_id}` for
     single-job stage bottlenecks vs. `INFORMATION_SCHEMA` for system-wide
@@ -109,8 +125,8 @@ Before running diagnostic queries or investigating incident telemetry:
 4.  **Domain Deep Dive & Comparative Analysis:** Execute the step-by-step
     diagnostic workflow defined in the corresponding domain reference file
     listed under **Domain References** below, then run the corresponding query
-    from [bigquery-observability](../bigquery-observability) following its
-    `INFORMATION_SCHEMA` best practices to isolate the root cause via
+    from the [BigQuery observability skill](../bigquery-observability) following
+    its `INFORMATION_SCHEMA` best practices to isolate the root cause via
     comparative analysis against a normal baseline.
 
 ## Performance Context: The Relativity of "Slow"
