@@ -7,12 +7,12 @@
         | :--- | :--- | :--- | :--- |
         | Start Preload | `startPreload` | `preload` | `Preload` |
         | Stop Preload | `destroyAll` | `stopPreloadingAndRemoveAllAds` | `DestroyAll` |
-        | Poll Ad | `pollAd` | `ad(withPreloadID:)` | `DequeueAd` |
-        | Peek Ad | `peekAdResponseInfo` | `responseInfo(withPreloadID:)` | `PeekAdResponseInfo` |
+        | Poll Ad | `pollAd` | `ad(with:)` | `DequeueAd` |
+        | Peek Ad | `peekAdResponseInfo` | `responseInfo(with:)` | `PeekAdResponseInfo` |
         | Ad Preloaded | `onAdPreloaded` | `adAvailable(forPreloadID:)` | `OnAdPreloaded` |
         | Ad Failed to Preload | `onAdFailedToPreload` | `adFailedToPreload(forPreloadID:error:)` | `OnAdFailedToPreload` |
         | Ads Exhausted | `onAdsExhausted` | `adsExhausted(forPreloadID:)` | `OnAdsExhausted` |
-        | Ad Available Check | `isAdAvailable` | `isAdAvailable(withPreloadID:)` | `IsAdAvailable` |
+        | Ad Available Check | `isAdAvailable` | `isAdAvailable(with:)` | `IsAdAvailable` |
 
 -   **Pass/Fail Criteria**:
     -   **Fail**: Any of the following improper ad preloading patterns are
