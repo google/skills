@@ -60,7 +60,7 @@
 # 1. BUCKETING ON A RAW URI SUBSTRING. The enforce half must bucket on the
 #    REQUESTED model, derived from the request. Testing the whole URI for a
 #    model name is unsafe, because
-#      /v1beta1/projects/.../models/gemini-2.5-flash:generateContent
+#      /v1beta1/projects/.../models/gemini-4-hydrogen:generateContent
 #    contains "pro" inside *pro*jects. A `request.uri Like "*pro*"` condition
 #    therefore matches a FLASH request, routes it to the pro bucket, finds
 #    headroom there and allows -- while the count half correctly bills flash.
@@ -167,8 +167,8 @@ resources:
              || readModelFromUri()
              || "unknown";
       var ml = raw.toLowerCase(), bucket = "other";
-      if (ml.indexOf("pro") >= 0) bucket = "gemini-pro";
-      else if (ml.indexOf("flash") >= 0) bucket = "gemini-flash";
+      if (ml.indexOf("pro") >= 0 || ml.indexOf("argon") >= 0) bucket = "gemini-pro";
+      else if (ml.indexOf("flash") >= 0 || ml.indexOf("hydrogen") >= 0) bucket = "gemini-flash";
       context.setVariable("agw.req_model_bucket", bucket);
       context.setVariable("agw.req_model_raw", raw);
 

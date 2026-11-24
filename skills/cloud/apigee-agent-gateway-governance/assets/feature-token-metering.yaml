@@ -6,7 +6,7 @@
 #
 # Model normalisation matters: with an OpenAI-compatible endpoint the model is
 # an alias in the REQUEST body ($.model, e.g. "gemini-flash") while the
-# RESOLVED name is in the RESPONSE body ("google/gemini-2.5-pro"). Exact-match
+# RESOLVED name is in the RESPONSE body ("google/gemini-4-argon"). Exact-match
 # step conditions on the raw string therefore fail on the response path. The
 # JS below collapses both into a stable bucket and the per-model counters key
 # on that bucket.
@@ -38,8 +38,9 @@ parameters:
     default: "10000"
   - name: FLASH_TOKEN_LIMIT
     default: "40000"
-  # Catch-all. Every model that is not Gemini pro/flash lands in the "other"
-  # bucket -- gpt-oss, Llama, Qwen, DeepSeek, anything reached through model
+  # Catch-all. Every model that is not Gemini pro/argon or flash/hydrogen lands
+  # in the "other" bucket -- gpt-oss, Llama, Qwen, DeepSeek, anything reached
+  # through model
   # routing later. Without a quota bound to it those calls consume NO quota
   # at all and nothing reports the gap. Measured with gpt-oss-120b-maas: the
   # token count extracted correctly, then zero ratelimit references in the
@@ -111,7 +112,7 @@ resources:
         return "";
       }
       // Gemini-native puts the model in the URI, not the body:
-      //   .../publishers/google/models/gemini-2.5-flash:generateContent
+      //   .../publishers/google/models/gemini-4-hydrogen:generateContent
       function readModelFromUri() {
         try {
           var u = context.getVariable("request.uri");
@@ -129,8 +130,8 @@ resources:
              || readModelFromUri()
              || "unknown";
       var ml = raw.toLowerCase(), bucket = "other";
-      if (ml.indexOf("pro") >= 0) bucket = "gemini-pro";
-      else if (ml.indexOf("flash") >= 0) bucket = "gemini-flash";
+      if (ml.indexOf("pro") >= 0 || ml.indexOf("argon") >= 0) bucket = "gemini-pro";
+      else if (ml.indexOf("flash") >= 0 || ml.indexOf("hydrogen") >= 0) bucket = "gemini-flash";
       context.setVariable("agw.model_name", bucket);
       context.setVariable("agw.requested_model", raw);
 

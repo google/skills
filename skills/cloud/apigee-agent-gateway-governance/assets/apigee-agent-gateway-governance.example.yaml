@@ -284,9 +284,9 @@ spec:
           limit: 10000
         - bucket: gemini-flash
           limit: 40000
-        # Catch-all: every model whose name contains neither "pro" nor
-        # "flash" -- gpt-oss, Llama, Qwen, DeepSeek. Without it those calls
-        # consume no quota at all: the token count is extracted correctly and
+        # Catch-all: every model whose name contains neither "pro"/"argon" nor
+        # "flash"/"hydrogen" -- gpt-oss, Llama, Qwen, DeepSeek. Without it those
+        # calls consume no quota at all: the token count is extracted correctly and
         # then discarded, with zero ratelimit references in the transaction
         # and nothing reporting the gap.
         - bucket: other

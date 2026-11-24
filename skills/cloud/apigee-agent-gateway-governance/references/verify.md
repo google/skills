@@ -159,8 +159,9 @@ shapes. The ids come from `/data`; the flow variables below come from
     AuthzExtension.
 4.  **`agw.model_name` is the bucket you expect.** `other` is now a real,
     metered bucket rather than a hole — but it still means the name matched
-    neither `pro` nor `flash`, so check it is deliberate. On a Gemini turn
-    `other` means the normalization didn't find the model where it looked.
+    neither `pro`/`argon` nor `flash`/`hydrogen`, so check it is deliberate. On
+    a Gemini turn `other` means the normalization didn't find the model where it
+    looked.
 5.  **`agw.token_source` names the branch that matched** — `gemini`, `openai`,
     `sum`, or `none`. `none` is the diagnostic: the count was not found in any
     known shape, `agw.total_tokens` is deliberately left unset, and the quota
