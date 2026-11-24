@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "developer-knowledge": {
+      "type": "streamable-http",
+      "url": "https://developerknowledge.googleapis.com/mcp",
+      "headers": {
+        "X-Goog-Api-Client": "google-cloud/2.0.0 agent-skills/1.0 (plugin:google-cloud)"
+      },
+      "headersHelper": "${PLUGIN_ROOT}/scripts/adc-headers",
+      "codemode": false
+    },
+    "autocloud": {
+      "type": "streamable-http",
+      "url": "https://geminicloudassist.googleapis.com/mcp/autocloud",
+      "headers": {
+        "X-Goog-Api-Client": "google-cloud/2.0.0 agent-skills/1.0 (skill:cloud-operator; version:1.2.0; plugin:google-cloud)"
+      },
+      "timeout": 1200000,
+      "headersHelper": "${PLUGIN_ROOT}/scripts/adc-headers",
+      "codemode": false
+    }
+  }
+}

@@ -82,6 +82,31 @@ Works on native Windows too; no WSL needed.
 
 **Next:** [Setup](#setup): sign in to Google Cloud and connect Cloud Operator.
 
+### OpenCode
+
+1.  Install the plugin:
+
+    ```bash
+    opencode plugin add 'github:google/skills#main::path:plugins/cloud/google-cloud'
+    ```
+
+    This adds it to your global `~/.config/opencode/opencode.json(c)`, so it
+    works in the terminal, the desktop app and the web UI. Restart OpenCode.
+
+### Pi
+
+1.  Clone the Google Agent Skills repository, then install the plugin folder as
+    a Pi package:
+
+    ```bash
+    git clone https://github.com/google/skills
+    pi install ./skills/plugins/cloud/google-cloud
+    ```
+
+    Pi loads the plugin from that folder, so run `git pull` in the clone to
+    update it. Add `--local` to install it for the current project only.
+    Restart Pi, or run `/reload` in a running session.
+
 --------------------------------------------------------------------------------
 
 ## Setup
@@ -178,8 +203,10 @@ Say you're new to Google Cloud and ask your agent:
 | Autocloud | `autocloud` | The `ask_cloud_operator`, `search_operator_sessions` and `fetch_operator_session` tools: hand Google Cloud work to your operator agent in the project's organization, which sees your live resources, logs, metrics, billing and policies. Calls can run for up to 20 minutes | `https://geminicloudassist.googleapis.com/mcp/autocloud` |
 
 Each agent reads the servers from its own file: `mcp.json` (Agent Plugins
-clients), `.mcp.json` (Claude Code), `mcp_config.json` (Antigravity) and
-`gemini-extension.json` (Gemini CLI).
+clients), `.mcp.json` (Claude Code), `mcp_config.json` (Antigravity),
+`gemini-extension.json` (Gemini CLI),
+`com.google.opencode-config/mcp.json` (OpenCode) and
+`com.google.pi-config/mcp.json` (Pi).
 
 #### How the servers sign in
 
@@ -201,6 +228,11 @@ a fresh token on each connection.
     default credentials. If you set Codex up by hand before, you can delete
     `~/.codex/bin/adc-headers` (`%USERPROFILE%\.codex\bin\adc-headers.cmd` on
     Windows).
+
+In OpenCode and Pi, the plugin's code in `src/` (named by `package.json`) adds
+the servers from that client's file, the skills and the routing rule. It runs
+the same helper and renews the token every 30 minutes, but never during a
+running Cloud Operator call.
 
 ### Routing Rules
 
@@ -251,8 +283,8 @@ In a sandbox or behind a firewall or proxy, allow these URLs and commands.
     `gcloud projects describe`, `gcloud billing projects describe`,
     `gcloud billing accounts list`, `gcloud compute regions list`,
     `gcloud compute zones list`.
--   **MCP server sign-in** (Claude Code and Codex): `scripts/adc-headers`
-    (`scripts/adc-headers.cmd` on Windows) runs
+-   **MCP server sign-in** (Claude Code, Codex, OpenCode and Pi):
+    `scripts/adc-headers` (`scripts/adc-headers.cmd` on Windows) runs
     `gcloud auth application-default print-access-token` and
     `gcloud config get-value` on each connection.
 -   **Codex setup** ([Codex CLI step 2](#codex-cli)):
@@ -326,6 +358,23 @@ else, your agent explains the error and the fix.
     -   Codex's: the same, with `.codex` in place of `.claude`.
     -   Still failing? Run your agent in
         [WSL](https://learn.microsoft.com/windows/wsl/install).
+-   **OpenCode or Pi doesn't list the servers:** `opencode mcp list`, or `/mcp`
+    in a Pi session, shows them (`pi mcp list` doesn't load plugins, so it
+    never lists them). The plugin adds both servers at startup even without
+    Application Default Credentials; their calls then fail with an
+    authentication error until you sign in (in Pi, ignore "Run /mcp to sign
+    in" and run `gcloud auth application-default login`). Pi shows the
+    credential problem at startup; in OpenCode, run
+    `opencode run --standalone --print-logs "hi"` to see it. The plugin tries
+    again every few minutes and applies the token once your credentials work,
+    without a restart. A server of the same name in your own OpenCode or Pi
+    configuration replaces the plugin's.
+-   **OpenCode doesn't use the plugin's tools right after its server
+    starts:** the plugin's tools can take a few seconds to appear after
+    OpenCode's background server starts (for example after
+    `opencode service restart`, or for the first prompt in a new folder), and
+    `opencode mcp list` can show "No MCP servers configured" meanwhile. Wait a
+    few seconds and ask again.
 
 ### Developer Knowledge
 
@@ -388,6 +437,23 @@ else, your agent explains the error and the fix.
     ```bash
     agy plugin uninstall google-cloud
     ```
+
+-   **OpenCode:**
+
+    ```bash
+    opencode plugin remove 'github:google/skills#main::path:plugins/cloud/google-cloud'
+    ```
+
+    Then restart OpenCode.
+
+-   **Pi:**
+
+    ```bash
+    pi remove ./skills/plugins/cloud/google-cloud
+    ```
+
+    Add `--local` for a project install, and `--approve` if Pi says the
+    project isn't trusted. You can then delete the clone.
 
 -   **The marketplace too:** after removing the plugin, run
     `claude plugin marketplace remove google-plugins` or
