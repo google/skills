@@ -21,7 +21,7 @@ automatically routes requests through the best available engine:
                      ▼                               ▼
           [ Engine 1: Cloud Run ]         [ Engine 2: GCE IAP ]
             Serverless REST Bridge          GCE VM in VPC via IAP
-            - Latency: <50ms                - Latency: 1–3s
+            - Latency: <50ms                - Latency: 1-3s
             - Zero client tools             - Uses gcloud compute ssh
             - $0 idle (scales to 0)         - Existing VPC VM
 ```
@@ -37,7 +37,8 @@ automatically routes requests through the best available engine:
 
     ```bash
     gcloud run deploy filestore-nfs-bridge \
-      --image=gcr.io/${PROJECT_ID}/filestore-bridge:latest \
+      --region=${REGION} \
+      --image=${REGION}-docker.pkg.dev/${PROJECT_ID}/filestore-nfs-bridge/filestore-nfs-bridge:latest \
       --vpc-egress=all-traffic \
       --network=${VPC_NAME} \
       --subnet=${SUBNET_NAME} \

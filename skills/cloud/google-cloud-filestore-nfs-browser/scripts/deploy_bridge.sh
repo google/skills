@@ -20,7 +20,7 @@ FILESTORE_IP="$5"
 FILE_SHARE_NAME="$6"
 
 SERVICE_NAME="filestore-nfs-bridge"
-IMAGE_TAG="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:latest"
+IMAGE_TAG="${REGION}-docker.pkg.dev/${PROJECT_ID}/${SERVICE_NAME}/${SERVICE_NAME}:latest"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ATTRIBUTION_FILE="${SCRIPT_DIR}/../references/attribution.md"
 ATTRIBUTION_TAG=""
@@ -38,14 +38,29 @@ echo " Region:     ${REGION}"
 echo " Filestore:  ${FILESTORE_IP}:/${FILE_SHARE_NAME}"
 echo "============================================================"
 
-# 1. Build image using Cloud Build
+# 1. Ensure Artifact Registry API is enabled and repository exists
+echo "==> Ensuring Artifact Registry repository exists..."
+CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="${ATTRIBUTION_TAG}" \
+gcloud services enable artifactregistry.googleapis.com \
+  --project="${PROJECT_ID}"
+CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="${ATTRIBUTION_TAG}" \
+gcloud artifacts repositories describe "${SERVICE_NAME}" \
+  --project="${PROJECT_ID}" \
+  --location="${REGION}" >/dev/null 2>&1 || \
+CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="${ATTRIBUTION_TAG}" \
+gcloud artifacts repositories create "${SERVICE_NAME}" \
+  --project="${PROJECT_ID}" \
+  --location="${REGION}" \
+  --repository-format=docker
+
+# 2. Build image using Cloud Build
 echo "==> Building container image via Cloud Build..."
 CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="${ATTRIBUTION_TAG}" \
 gcloud builds submit "$(dirname "$0")/bridge_server" \
   --project="${PROJECT_ID}" \
   --tag="${IMAGE_TAG}"
 
-# 2. Deploy to Cloud Run with Direct VPC Egress & NFS Volume Mount
+# 3. Deploy to Cloud Run with Direct VPC Egress & NFS Volume Mount
 echo "==> Deploying Cloud Run service with Direct VPC Egress..."
 CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="${ATTRIBUTION_TAG}" \
 gcloud run deploy "${SERVICE_NAME}" \
@@ -63,7 +78,7 @@ gcloud run deploy "${SERVICE_NAME}" \
   --cpu=1 \
   --memory=512Mi
 
-# 3. Retrieve and print Service URL
+# 4. Retrieve and print Service URL
 SERVICE_URL=$(CLOUDSDK_METRICS_REQUEST_ATTRIBUTION="${ATTRIBUTION_TAG}" \
   gcloud run services describe "${SERVICE_NAME}" \
   --project="${PROJECT_ID}" \

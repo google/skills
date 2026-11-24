@@ -31,6 +31,7 @@ To deploy the Cloud Run bridge service, the deployer needs:
 *   `roles/run.admin` on the GCP Project
 *   `roles/iam.serviceAccountUser` on the Cloud Run runtime service account
 *   `roles/vpcaccess.user` or compute network viewing permissions
+*   `roles/artifactregistry.admin` (or `roles/artifactregistry.writer` if reusing an existing repository) to create and push to the Artifact Registry Docker repository
 
 To invoke the bridge API, the caller/agent needs:
 
@@ -52,16 +53,23 @@ FILE_SHARE=$(gcloud filestore instances describe prod-filestore \
   --location=us-central1-a \
   --format="value(fileShares[0].name)")
 
-# 2. Build Image via Cloud Build
+# 2. Create Artifact Registry Docker Repository
+gcloud services enable artifactregistry.googleapis.com --project=my-project
+gcloud artifacts repositories create filestore-nfs-bridge \
+  --project=my-project \
+  --location=us-central1 \
+  --repository-format=docker
+
+# 3. Build Image via Cloud Build
 gcloud builds submit scripts/bridge_server \
   --project=my-project \
-  --tag=gcr.io/my-project/filestore-bridge:latest
+  --tag=us-central1-docker.pkg.dev/my-project/filestore-nfs-bridge/filestore-nfs-bridge:latest
 
-# 3. Deploy to Cloud Run with Direct VPC Egress & NFS Mount
+# 4. Deploy to Cloud Run with Direct VPC Egress & NFS Mount
 gcloud run deploy filestore-nfs-bridge \
   --project=my-project \
   --region=us-central1 \
-  --image=gcr.io/my-project/filestore-bridge:latest \
+  --image=us-central1-docker.pkg.dev/my-project/filestore-nfs-bridge/filestore-nfs-bridge:latest \
   --network=default \
   --subnet=default \
   --vpc-egress=all-traffic \
