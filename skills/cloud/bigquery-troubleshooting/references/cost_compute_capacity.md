@@ -1,7 +1,5 @@
 # BigQuery Troubleshooting: Capacity (Editions) Cost & Slot Allocation
 
-<!-- disableFinding(LINK_RELATIVE_G3DOC) -->
-
 This reference guide provides root-cause mapping and remediation strategies for
 BigQuery Editions and capacity compute cost spikes (slot-hour usage, uncovered
 baseline penalties, and autoscaler surges). It focuses strictly on
@@ -12,13 +10,19 @@ root causes and points to the corresponding audit query in
 
 ## Table of Contents
 
--   [1. 4-Step Diagnostic Funnel](#1-4-step-diagnostic-funnel) (Lines 23-123)
--   [2. Diagnostic Workflows by Symptom & Root Cause](#2-diagnostic-workflows-by-symptom-root-cause) (Lines 125-255)
-    -   [Scenario 1: Uncovered Baseline Slots Penalty & Commitment Expiration](#scenario-1-uncovered-baseline-slots-penalty-commitment-expiration) (Lines 127-164)
-    -   [Scenario 2: Baseline Reduction Triggering Autoscale Surge](#scenario-2-baseline-reduction-triggering-autoscale-surge) (Lines 166-186)
-    -   [Scenario 3: Reservation Autoscaler Thrashing & Concurrency Spikes](#scenario-3-reservation-autoscaler-thrashing-concurrency-spikes) (Lines 188-214)
-    -   [Scenario 4: Unexpected "BigQuery Reservation API" Charges (Serverless & Managed Features)](#scenario-4-unexpected-bigquery-reservation-api-charges-serverless-managed-features) (Lines 216-255)
--   [3. Telemetry & Data Retrieval Reference](#3-telemetry-data-retrieval-reference) (Lines 257-274)
+-   [1. 4-Step Diagnostic Funnel](#1-4-step-diagnostic-funnel) (Lines 27-127)
+-   [2. Diagnostic Workflows by Symptom & Root Cause](#2-diagnostic-workflows-by-symptom-root-cause)
+    (Lines 129-259)
+    -   [Scenario 1: Uncovered Baseline Slots Penalty & Commitment Expiration](#scenario-1-uncovered-baseline-slots-penalty-commitment-expiration)
+        (Lines 131-168)
+    -   [Scenario 2: Baseline Reduction Triggering Autoscale Surge](#scenario-2-baseline-reduction-triggering-autoscale-surge)
+        (Lines 170-190)
+    -   [Scenario 3: Reservation Autoscaler Thrashing & Concurrency Spikes](#scenario-3-reservation-autoscaler-thrashing-concurrency-spikes)
+        (Lines 192-218)
+    -   [Scenario 4: Unexpected "BigQuery Reservation API" Charges (Serverless & Managed Features)](#scenario-4-unexpected-bigquery-reservation-api-charges-serverless-managed-features)
+        (Lines 220-259)
+-   [3. Telemetry & Data Retrieval Reference](#3-telemetry-data-retrieval-reference)
+    (Lines 261-278)
 
 ## 1. 4-Step Diagnostic Funnel
 

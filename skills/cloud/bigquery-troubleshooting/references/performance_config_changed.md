@@ -7,12 +7,18 @@ points to the corresponding audit query in `bigquery-observability`.
 
 ## Table of Contents
 
--   [Diagnostic Workflows by Symptom & Root Cause](#diagnostic-workflows-by-symptom-root-cause) (Lines 17-99)
-    -   [1. Reservation Baseline & Autoscale Modifications](#1-reservation-baseline-autoscale-modifications) (Lines 19-39)
-    -   [2. Active Capacity Commitment Timeline & Expiration](#2-active-capacity-commitment-timeline-expiration) (Lines 41-62)
-    -   [3. Reservation Assignment Reconfigurations](#3-reservation-assignment-reconfigurations) (Lines 64-80)
-    -   [4. Autoscaling Headroom Saturation & Capacity Ceilings](#4-autoscaling-headroom-saturation-capacity-ceilings) (Lines 82-99)
--   [Remediation & Recommendations](#remediation-recommendations) (Lines 101-111)
+-   [Diagnostic Workflows by Symptom & Root Cause](#diagnostic-workflows-by-symptom-root-cause)
+    (Lines 23-105)
+    -   [1. Reservation Baseline & Autoscale Modifications](#1-reservation-baseline-autoscale-modifications)
+        (Lines 25-45)
+    -   [2. Active Capacity Commitment Timeline & Expiration](#2-active-capacity-commitment-timeline-expiration)
+        (Lines 47-68)
+    -   [3. Reservation Assignment Reconfigurations](#3-reservation-assignment-reconfigurations)
+        (Lines 70-86)
+    -   [4. Autoscaling Headroom Saturation & Capacity Ceilings](#4-autoscaling-headroom-saturation-capacity-ceilings)
+        (Lines 88-105)
+-   [Remediation & Recommendations](#remediation-recommendations) (Lines
+    107-117)
 
 ## Diagnostic Workflows by Symptom & Root Cause
 

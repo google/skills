@@ -1,7 +1,5 @@
 # BigQuery Troubleshooting: Storage Footprint & Billing Models
 
-<!-- disableFinding(LINK_RELATIVE_G3DOC) -->
-
 This reference guide provides root-cause mapping and remediation strategies for
 BigQuery storage cost increases, dataset footprint growth, and billing model
 transitions. It focuses strictly on BigQuery Managed Storage billable usage
@@ -12,15 +10,23 @@ and points to the corresponding query in `bigquery-observability`.
 
 ## Table of Contents
 
--   [1. 4-Step Diagnostic Funnel](#1-4-step-diagnostic-funnel) (Lines 25-101)
--   [2. Diagnostic Workflows by Symptom & Root Cause](#2-diagnostic-workflows-by-symptom-root-cause) (Lines 103-244)
-    -   [Scenario 1: Historical Partition Timer Reset (The DML Trap)](#scenario-1-historical-partition-timer-reset-the-dml-trap) (Lines 105-132)
-    -   [Scenario 2: The Unpartitioned Table Active Trap](#scenario-2-the-unpartitioned-table-active-trap) (Lines 134-157)
-    -   [Scenario 3: Time Travel & Fail-Safe Churn on Physical Billing](#scenario-3-time-travel-fail-safe-churn-on-physical-billing) (Lines 159-185)
-    -   [Scenario 4: Deleted Table / Dataset "Phantom Spend" & Long-Term Promotion](#scenario-4-deleted-table-dataset-phantom-spend-long-term-promotion) (Lines 187-226)
-    -   [Scenario 5: Table Clones and Snapshots Overestimation](#scenario-5-table-clones-and-snapshots-overestimation) (Lines 228-244)
--   [3. Execution Limitations & Footguns](#3-execution-limitations-footguns) (Lines 246-278)
--   [4. Telemetry & Data Retrieval Reference](#4-telemetry-data-retrieval-reference) (Lines 280-297)
+-   [1. 4-Step Diagnostic Funnel](#1-4-step-diagnostic-funnel) (Lines 31-107)
+-   [2. Diagnostic Workflows by Symptom & Root Cause](#2-diagnostic-workflows-by-symptom-root-cause)
+    (Lines 109-251)
+    -   [Scenario 1: Historical Partition Timer Reset (The DML Trap)](#scenario-1-historical-partition-timer-reset-the-dml-trap)
+        (Lines 111-138)
+    -   [Scenario 2: The Unpartitioned Table Active Trap](#scenario-2-the-unpartitioned-table-active-trap)
+        (Lines 140-163)
+    -   [Scenario 3: Time Travel & Fail-Safe Churn on Physical Billing](#scenario-3-time-travel-fail-safe-churn-on-physical-billing)
+        (Lines 165-191)
+    -   [Scenario 4: Deleted Table / Dataset "Phantom Spend" & Long-Term Promotion](#scenario-4-deleted-table-dataset-phantom-spend-long-term-promotion)
+        (Lines 193-233)
+    -   [Scenario 5: Table Clones and Snapshots Overestimation](#scenario-5-table-clones-and-snapshots-overestimation)
+        (Lines 235-251)
+-   [3. Execution Limitations & Footguns](#3-execution-limitations-footguns)
+    (Lines 253-289)
+-   [4. Telemetry & Data Retrieval Reference](#4-telemetry-data-retrieval-reference)
+    (Lines 291-308)
 
 ## 1. 4-Step Diagnostic Funnel
 
@@ -36,7 +42,7 @@ increase?"*, *"Why is storage spend higher than expected?"*):
         preceding 7 days (`CURRENT_DATE() - 7` to `CURRENT_DATE() - 14`) if
         unspecified; otherwise evaluate the user's requested timeframe against
         its corresponding prior baseline period
-        (`INFORMATION_SCHEMA.TABLE_STORAGE_USAGE_TIMELINE` retains 180 days).
+        (`INFORMATION_SCHEMA.TABLE_STORAGE_USAGE_TIMELINE` retains 90 days).
     *   **Baseline Scan (Historical Trend vs. Current Snapshot):**
         *   **Billing Trend & Invoice Audit:** Query
             `INFORMATION_SCHEMA.TABLE_STORAGE_USAGE_TIMELINE` as the absolute
@@ -161,9 +167,9 @@ increase?"*, *"Why is storage spend higher than expected?"*):
 *   **When to Use / Symptoms:** Physical storage costs are significantly higher
     than logical storage despite good data compression.
 *   **Potential Root Causes:** Under Physical storage billing, billable storage
-    includes active data plus **Time Travel** (1–7 days) and **Fail-Safe** (7
-    days non-configurable). If the workload runs daily `WRITE_TRUNCATE`, `CREATE
-    OR REPLACE TABLE`, or heavy batch updates, replaced physical blocks
+    includes active data plus **Time Travel** (2–7 days) and **Fail-Safe** (7
+    days non-configurable). If the workload runs daily `WRITE_TRUNCATE`,
+    `CREATE OR REPLACE TABLE`, or heavy batch updates, replaced physical blocks
     accumulate in Time Travel and Fail-Safe billed at active physical rates.
 *   **Key Telemetry & Tables:**
     *   **Table:** `INFORMATION_SCHEMA.TABLE_STORAGE`.
@@ -195,7 +201,8 @@ increase?"*, *"Why is storage spend higher than expected?"*):
         days) plus an additional 7 days for Fail-Safe recovery. During this
         entire retention window, deleted blocks contribute to billable active
         physical storage even though the table no longer appears in the console
-        or `INFORMATION_SCHEMA.TABLE_STORAGE`.
+        or `INFORMATION_SCHEMA.TABLES` (it remains visible in
+        `INFORMATION_SCHEMA.TABLE_STORAGE` with `deleted = TRUE`).
     *   *Long-Term to Active Promotion:* If the deleted data was in long-term
         physical storage, deletion causes this data to move into active physical
         storage during the Time Travel and Fail-Safe windows. Because active
@@ -254,20 +261,24 @@ increase?"*, *"Why is storage spend higher than expected?"*):
     is changed between `LOGICAL` and `PHYSICAL`, it **cannot be changed again
     for 14 days**. Always verify compression ratios and churn rates over a full
     7-day cycle before switching.
-*   **Opt-In & Access Requirements:** `INFORMATION_SCHEMA.TABLE_STORAGE` views
-    require explicit opt-in (``ALTER PROJECT `{project_id}` SET OPTIONS
-    (`region-{region}.enable_info_schema_storage` = TRUE)``) on
-    non-grandfathered projects/orgs and `roles/bigquery.admin` or
-    `roles/bigquery.resourceAdmin` IAM permissions (`bigquery.config.update`).
-    Historical data takes ~24 hours to populate post-enablement. For immediate
-    triage without waiting for backfill, use `INFORMATION_SCHEMA.PARTITIONS` and
+*   **Opt-In & Access Requirements:** Querying
+    `INFORMATION_SCHEMA.TABLE_STORAGE` requires `bigquery.tables.get` and
+    `bigquery.tables.list` (`roles/bigquery.metadataViewer`). On
+    non-grandfathered projects/orgs, data collection also requires opt-in via
+    ``ALTER PROJECT `{project_id}` SET OPTIONS
+    (`region-{region}.enable_info_schema_storage` = TRUE)`` (or
+    `ALTER ORGANIZATION`), which requires `bigquery.config.update`
+    (`roles/bigquery.admin`, not `roles/bigquery.resourceAdmin`). Historical
+    data takes ~24 hours to populate post-enablement. For immediate triage
+    without waiting for backfill, use `INFORMATION_SCHEMA.PARTITIONS` and
     `INFORMATION_SCHEMA.SCHEMATA_OPTIONS`, which do not require opt-in.
 *   **BigLake Managed Storage:** BigLake Apache Iceberg table metadata appears
     in `INFORMATION_SCHEMA.TABLE_STORAGE` with `table_type = 'BASE TABLE'`, but
     actual file storage resides in customer Cloud Storage buckets and is
     excluded from BigQuery billable storage usage. To strictly isolate native
-    BigQuery billable storage, join with `INFORMATION_SCHEMA.TABLES` and filter
-    `WHERE managed_table_type IS NULL OR managed_table_type = 'NATIVE'`.
+    BigQuery billable storage, filter
+    `WHERE managed_table_type IS NULL OR managed_table_type = 'NATIVE'` directly
+    on `INFORMATION_SCHEMA.TABLE_STORAGE`.
 *   **Monthly Proration & Short Month Effect (February Daily Spikes):** BigQuery
     storage is priced at a fixed monthly rate per GiB. Google Cloud Billing
     calculates daily charges by prorating the monthly rate over the exact number

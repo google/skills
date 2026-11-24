@@ -7,15 +7,24 @@ to potential root causes and points to the corresponding query in
 
 ## Table of Contents
 
--   [Diagnostic Workflows by Symptom & Root Cause](#diagnostic-workflows-by-symptom-root-cause) (Lines 20-173)
-    -   [1. Single-Job Stage Bottleneck Diagnosis & REST API Triage](#1-single-job-stage-bottleneck-diagnosis-rest-api-triage) (Lines 22-55)
-    -   [2. Cohort Baseline Comparison (`normalized_literals`)](#2-cohort-baseline-comparison-normalized_literals) (Lines 57-75)
-    -   [3. Incident Window Discovery & Timeline Degradation](#3-incident-window-discovery-timeline-degradation) (Lines 77-95)
-    -   [4. Reservation Slot Saturation (1-Second Resolution)](#4-reservation-slot-saturation-1-second-resolution) (Lines 97-115)
-    -   [5. Target vs. Baseline Timeframe Comparison](#5-target-vs-baseline-timeframe-comparison) (Lines 117-136)
-    -   [6. Fleet Performance Variance & Outlier Discovery](#6-fleet-performance-variance-outlier-discovery) (Lines 138-155)
-    -   [7. Table-Level Activity & Lock Contention](#7-table-level-activity-lock-contention) (Lines 157-173)
--   [Remediation & Optimization Strategies](#remediation-optimization-strategies) (Lines 175-189)
+-   [Diagnostic Workflows by Symptom & Root Cause](#diagnostic-workflows-by-symptom-root-cause)
+    (Lines 29-182)
+    -   [1. Single-Job Stage Bottleneck Diagnosis & REST API Triage](#1-single-job-stage-bottleneck-diagnosis-rest-api-triage)
+        (Lines 31-64)
+    -   [2. Cohort Baseline Comparison (`normalized_literals`)](#2-cohort-baseline-comparison-normalized_literals)
+        (Lines 66-84)
+    -   [3. Incident Window Discovery & Timeline Degradation](#3-incident-window-discovery-timeline-degradation)
+        (Lines 86-104)
+    -   [4. Reservation Slot Saturation (1-Second Resolution)](#4-reservation-slot-saturation-1-second-resolution)
+        (Lines 106-124)
+    -   [5. Target vs. Baseline Timeframe Comparison](#5-target-vs-baseline-timeframe-comparison)
+        (Lines 126-145)
+    -   [6. Fleet Performance Variance & Outlier Discovery](#6-fleet-performance-variance-outlier-discovery)
+        (Lines 147-164)
+    -   [7. Table-Level Activity & Lock Contention](#7-table-level-activity-lock-contention)
+        (Lines 166-182)
+-   [Remediation & Optimization Strategies](#remediation-optimization-strategies)
+    (Lines 184-198)
 
 ## Diagnostic Workflows by Symptom & Root Cause
 
@@ -47,9 +56,9 @@ to potential root causes and points to the corresponding query in
 -   **Diagnostic Procedure & Telemetry**: See the `bigquery-observability` skill
     (`references/job_performance_queries.md`, section "REST API Single-Job
     Point-Lookup & Stage Bottlenecks") for fast CLI triage (`bq show -j`), the
-    section "Single Job Performance & Stage Bottleneck Flags" for single-job
-    SQL bottleneck analysis, and the section "Stage Row Expansion, Shuffle Spill
-    & Join Insights" for multi-job `UNNEST(job_stages)` analysis. For
+    section "Single Job Performance & Stage Bottleneck Flags" for single-job SQL
+    bottleneck analysis, and the section "Stage Row Expansion, Shuffle Spill &
+    Join Insights" for multi-job `UNNEST(job_stages)` analysis. For
     execution-plan stage diagnosis of join explosions, shuffle spills, and
     partition skew, see
     [query_plan_execution_graph.md](query_plan_execution_graph.md#3-join-explosion-shuffle-spill-partition-skew-diagnosis).

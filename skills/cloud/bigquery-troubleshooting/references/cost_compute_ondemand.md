@@ -1,7 +1,5 @@
 # BigQuery Troubleshooting: On-Demand Compute Spend & Query Scans
 
-<!-- disableFinding(LINK_RELATIVE_G3DOC) -->
-
 This reference guide provides root-cause mapping and remediation strategies for
 BigQuery On-Demand compute cost spikes, query scan volume growth, and runaway
 queries. It focuses strictly on On-Demand compute billable usage
@@ -11,14 +9,21 @@ corresponding query in `bigquery-observability`.
 
 ## Table of Contents
 
--   [1. 4-Step Diagnostic Funnel](#1-4-step-diagnostic-funnel) (Lines 23-76)
--   [2. Diagnostic Workflows by Symptom & Root Cause](#2-diagnostic-workflows-by-symptom-root-cause) (Lines 78-255)
-    -   [Scenario 1: The Bully Query (Unpartitioned Runaway Scan)](#scenario-1-the-bully-query-unpartitioned-runaway-scan) (Lines 80-141)
-    -   [Scenario 2: Hidden RLS Redacted Costs](#scenario-2-hidden-rls-redacted-costs) (Lines 143-169)
-    -   [Scenario 3: BQML Model Training Rates](#scenario-3-bqml-model-training-rates) (Lines 171-197)
-    -   [Scenario 4: User / Service Account Bursting & Missing Quotas](#scenario-4-user-service-account-bursting-missing-quotas) (Lines 199-223)
-    -   [Scenario 5: Querying Very Small Tables (10 MiB Minimum Billed Data Floor)](#scenario-5-querying-very-small-tables-10-mib-minimum-billed-data-floor) (Lines 225-255)
--   [3. Telemetry & Data Retrieval Reference](#3-telemetry-data-retrieval-reference) (Lines 257-279)
+-   [1. 4-Step Diagnostic Funnel](#1-4-step-diagnostic-funnel) (Lines 28-81)
+-   [2. Diagnostic Workflows by Symptom & Root Cause](#2-diagnostic-workflows-by-symptom-root-cause)
+    (Lines 83-269)
+    -   [Scenario 1: The Bully Query (Unpartitioned Runaway Scan)](#scenario-1-the-bully-query-unpartitioned-runaway-scan)
+        (Lines 85-146)
+    -   [Scenario 2: Hidden RLS Redacted Costs](#scenario-2-hidden-rls-redacted-costs)
+        (Lines 148-183)
+    -   [Scenario 3: BQML Model Training Rates](#scenario-3-bqml-model-training-rates)
+        (Lines 185-211)
+    -   [Scenario 4: User / Service Account Bursting & Missing Quotas](#scenario-4-user-service-account-bursting-missing-quotas)
+        (Lines 213-237)
+    -   [Scenario 5: Querying Very Small Tables (10 MiB Minimum Billed Data Floor)](#scenario-5-querying-very-small-tables-10-mib-minimum-billed-data-floor)
+        (Lines 239-269)
+-   [3. Telemetry & Data Retrieval Reference](#3-telemetry-data-retrieval-reference)
+    (Lines 271-294)
 
 ## 1. 4-Step Diagnostic Funnel
 
@@ -146,24 +151,33 @@ Month-over-Month comparisons):
     `INFORMATION_SCHEMA.JOBS`, causing standard sum queries to undercount spend
     and creating an apparent discrepancy with the Cloud Billing invoice.
 *   **Potential Root Causes:** Row-Level Security (RLS) policies are active on
-    the scanned tables. BigQuery masks `total_bytes_billed` to prevent inferring
-    filtered row counts or data distributions from scan sizes.
+    the scanned tables. BigQuery hides sensitive statistics
+    (`total_bytes_billed`, `total_bytes_processed`, partitions processed, and
+    `job_stages`) on all queries against tables with row-level access policies
+    to prevent side-channel inference.
 *   **Key Telemetry & Tables:**
-    *   **Tables:** `INFORMATION_SCHEMA.JOBS`,
-        `INFORMATION_SCHEMA.ROW_ACCESS_POLICIES`.
+    *   **Tables:** `INFORMATION_SCHEMA.JOBS` (audit active row access policies
+        and filter predicates via `INFORMATION_SCHEMA.ROW_ACCESS_POLICIES` —
+        note that Analytics Hub linked datasets return zero rows without error,
+        so check the publisher source dataset instead — or list policies and
+        grantees with `bq ls --row_access_policies {dataset_id}.{table_id}`).
     *   **Filters:** `job_type = 'QUERY'`, `total_bytes_billed IS NULL`,
-        `error_result IS NULL`.
+        `(error_result IS NULL OR error_result.reason = 'stopped')`.
     *   **Key Fields:** `project_id` (for org/folder-level views), `job_id`,
-        `user_email`, `referenced_tables`, `total_bytes_processed`.
+        `user_email`, `referenced_tables` (`total_bytes_processed` is also
+        `NULL` in `INFORMATION_SCHEMA.JOBS` when RLS is active).
 *   **Diagnostic Procedure & Telemetry:** Count the volume of redacted queries
     in `INFORMATION_SCHEMA.JOBS` where `total_bytes_billed IS NULL` and
-    `error_result IS NULL`. See **Telemetry & Data Retrieval Reference** below
-    to audit active row access filters on referenced tables.
+    `(error_result IS NULL OR error_result.reason = 'stopped')`. See **Telemetry
+    & Data Retrieval Reference** below to audit active row access policies on
+    referenced tables.
 *   **Remediation & Actions:**
-    *   **Audit Service Account Access:** For automated ETL/BI service accounts
-        requiring full table data, grant appropriate table-level permissions or
-        use authorized views/raw tables without row access policies so scan
-        sizes are unmasked.
+    *   **Audit Logs or Separate Base Tables:** No IAM permission or role
+        unmasks `total_bytes_billed` in `INFORMATION_SCHEMA.JOBS` when a
+        referenced table has row-level access policies. Project Owners can view
+        bytes processed in Cloud Audit Logs, or route trusted full-table ETL/BI
+        pipelines to separate raw base tables that have no row-level access
+        policies.
     *   **Reconcile with Billing Reports:** Use Google Cloud Billing Reports
         grouped by SKU (`Analysis`) to track complete financial invoice amounts
         including RLS-redacted queries.
@@ -275,5 +289,6 @@ levers are self-contained within this guide.
     Views") for `INFORMATION_SCHEMA.JOBS` view schema.
 *   **Security & Access Policies:** See the `bigquery-observability` skill
     (`references/schema_others.md`, section
-    "`INFORMATION_SCHEMA.ROW_ACCESS_POLICIES` & `ROW_ACCESS_POLICY_OPTIONS`")
-    for `INFORMATION_SCHEMA.ROW_ACCESS_POLICIES` view schema.
+    "`INFORMATION_SCHEMA.ROW_ACCESS_POLICIES`") for auditing active row-level
+    access policies and filter predicates via SQL, or inspecting grantees with
+    `bq ls --row_access_policies` / `rowAccessPolicies.getIamPolicy`.
