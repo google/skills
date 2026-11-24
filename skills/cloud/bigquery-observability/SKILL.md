@@ -1,8 +1,9 @@
 ---
 name: bigquery-observability
 metadata:
-  version: "1.2.2"
+  version: "1.2.3"
   category: BigDataAndAnalytics
+  publisher: google
 description: >-
   Provides data-retrieval best practices, tool selection guidance, and
   performant SQL query syntax for BigQuery telemetry across INFORMATION_SCHEMA,
@@ -72,10 +73,27 @@ Google Cloud environment and project are configured:
     *   Verify an active Google Cloud Billing account is attached to
         `{project_id}`.
     *   Ensure appropriate IAM roles:
-        *   `roles/bigquery.jobUser`: Running telemetry queries.
+        *   `roles/bigquery.jobUser`: Submitting queries, own-job CLI
+            fallback (`bq ls -j`, `bq show -j`), and reading
+            `PROJECT_OPTIONS` (pair with read roles below to query
+            `INFORMATION_SCHEMA`).
+        *   `roles/bigquery.user`: Querying user-scoped telemetry
+            (`JOBS_BY_USER`, `JOBS_TIMELINE_BY_USER`, `SESSIONS_BY_USER`)
+            and submitting queries (supersedes `roles/bigquery.jobUser`).
+        *   `roles/bigquery.metadataViewer`: Inspecting table, dataset,
+            and storage metadata (`TABLES`, `COLUMNS`, `TABLE_STORAGE`,
+            `TABLE_STORAGE_USAGE_TIMELINE`, `SCHEMATA`,
+            `SCHEMATA_OPTIONS`).
         *   `roles/bigquery.resourceViewer` or `roles/bigquery.admin`:
-            Organization-level jobs and reservation telemetry.
-        *   `roles/monitoring.viewer`: Cloud Monitoring metrics.
+            Querying project-, folder-, or organization-level jobs at
+            the matching resource scope, and reservation, capacity
+            commitment, and assignment telemetry on the reservations
+            administration project.
+        *   `roles/recommender.viewer` (optional): Querying
+            `RECOMMENDATIONS` and `INSIGHTS` views (dataset IAM
+            recommendations also require `iam.roles.get`/`list` and
+            `bigquery.datasets.getIamPolicy`).
+        *   `roles/monitoring.viewer`: Reading Cloud Monitoring metrics.
 
 6.  **Companion Skills Installation**:
     This skill is part of a 3-pillar operations suite (`bigquery-observability`,
@@ -134,13 +152,22 @@ a **project qualifier**.
 
     *Example:* `` `my-project`.`analytics`.INFORMATION_SCHEMA.TABLES``
 
-    *Applies to:* Dataset-scoped views (`PARTITIONS`, `SEARCH_INDEXES*`).
-    Never use `region-` with dataset views.
+    *Applies to:* Dataset-scoped views (`PARTITIONS`, `SEARCH_INDEXES`,
+    `SEARCH_INDEX_COLUMNS`, `SEARCH_INDEX_OPTIONS`,
+    `SEARCH_INDEX_COLUMN_OPTIONS`, `VECTOR_INDEXES`, `VECTOR_INDEX_COLUMNS`,
+    `VECTOR_INDEX_OPTIONS`, `TABLE_CONSTRAINTS`, `KEY_COLUMN_USAGE`;
+    `SEARCH_INDEXES_BY_ORGANIZATION` uses `region-`). Never use `region-` with
+    `PARTITIONS`, dataset-level `SEARCH_INDEX*` views (which fail with
+    `Not found`), or `VECTOR_INDEX*` views (which silently return 0 rows);
+    prefer `{dataset_id}` for `TABLE_CONSTRAINTS` and `KEY_COLUMN_USAGE` per
+    public documentation.
 
-3.  **Dual-Scoped Views:** Views like `TABLES`, `COLUMNS`, `COLUMN_FIELD_PATHS`,
-    `VIEWS`, `ROUTINES`, and `VECTOR_INDEXES` can be qualified with either
-    `{dataset_id}` or `region-{region}` depending on whether dataset or
-    region-wide analysis is required.
+3.  **Dual-Scoped Views:** Views like `TABLES`, `TABLE_OPTIONS`,
+    `TABLE_SNAPSHOTS`, `COLUMNS`, `COLUMN_FIELD_PATHS`, `VIEWS`,
+    `MATERIALIZED_VIEWS`, `ROW_ACCESS_POLICIES`, `ROUTINES`, `ROUTINE_OPTIONS`,
+    and `PARAMETERS` can be qualified with either `{dataset_id}` or
+    `region-{region}` depending on whether dataset or region-wide analysis is
+    required.
 
 4.  **Project Qualifier (`{project_id}`):** Optional. If omitted, queries
     default to the project in which the query is executing. Specifying a project
@@ -156,8 +183,11 @@ analytical need:
 1.  **User-Level over Project-Level (`_BY_USER`):** When diagnosing queries or
     sessions executed by the current user, use `_BY_USER` (e.g. `JOBS_BY_USER`,
     `SESSIONS_BY_USER`). This requires only `bigquery.jobs.list` (granted via
-    `roles/bigquery.user` or `roles/bigquery.jobUser`), avoiding the need for
-    `bigquery.jobs.listAll` or `roles/bigquery.admin`.
+    `roles/bigquery.user`), avoiding the need for `bigquery.jobs.listAll` or
+    `roles/bigquery.admin`. If `JOBS_BY_USER` also returns `403 Access Denied`
+    (e.g. when the caller only holds `roles/bigquery.jobUser`, which grants
+    `bigquery.jobs.create` but not `bigquery.jobs.list`), fall back to
+    `bq ls -j -n {max_results} {project_id}` for a zero-compute CLI job listing.
 2.  **Dataset-Level over Region/Project-Level:** When querying table metadata,
     columns, or views for a specific dataset, qualify with `{dataset_id}` rather
     than `region-{region}` when project-level metadata access is restricted.
@@ -167,6 +197,18 @@ analytical need:
     `_BY_ORGANIZATION`. Folder and organization queries require broad folder/org
     IAM permissions (`bigquery.jobs.listAll` or `bigquery.tables.list` at the
     Org/Folder node).
+    *   **Admin Project vs. Query Running Project:** When investigating inside a
+        **Query Running Project**, `JOBS_BY_PROJECT` (and
+        `JOBS_TIMELINE_BY_PROJECT`) captures that project's query stats.
+        However, in BigQuery Editions, reservations and commitments
+        (`RESERVATIONS*`, `CAPACITY_COMMITMENTS*`, `ASSIGNMENTS*`) live in an
+        **Admin Project** whose `JOBS_BY_PROJECT` view typically has no query
+        running stats. When starting from an admin project or aggregating
+        workload across all projects sharing a reservation, query
+        `JOBS_BY_ORGANIZATION` (or `JOBS_TIMELINE_BY_ORGANIZATION`) filtered by
+        `reservation_id` (`{admin_project_id}:{location}.{reservation_name}`;
+        note multi-region locations use uppercase `US` or `EU`, or compare with
+        `LOWER(reservation_id)`).
 4.  **Metadata Roles over Data Roles:** For table and storage introspection,
     prefer `roles/bigquery.metadataViewer` (which provides `bigquery.tables.get`
     and `bigquery.tables.list`) over `roles/bigquery.dataViewer` or
@@ -242,30 +284,30 @@ analytical need:
 
 *   **Compute & Capacity Schema Dictionary** (`references/schema_compute.md`):
     Complete column dictionary, physical units, and least-privilege IAM roles
-    for all compute, job, session, reservation, capacity commitment, and
-    assignment views (`JOBS*`, `JOBS_TIMELINE*`, `SESSIONS_BY_USER`,
+    for all compute, job, session, reservation, capacity commitment, assignment,
+    and BI Engine views (`JOBS*`, `JOBS_TIMELINE*`, `SESSIONS_BY_USER`,
     `SESSIONS_BY_PROJECT`, `RESERVATIONS*`, `RESERVATION_CHANGES*`,
     `RESERVATIONS_TIMELINE*`, `CAPACITY_COMMITMENTS*`,
-    `CAPACITY_COMMITMENT_CHANGES_BY_PROJECT`, `ASSIGNMENTS*`,
-    `ASSIGNMENT_CHANGES_BY_PROJECT`).
+    `CAPACITY_COMMITMENT_CHANGES*`, `ASSIGNMENTS*`, `ASSIGNMENT_CHANGES*`,
+    `BI_CAPACITIES`, `BI_CAPACITY_CHANGES`).
 *   **Storage & Data Catalog Schema Dictionary**
     (`references/schema_storage.md`): Complete column dictionary, physical
     units, and least-privilege IAM roles for all table storage, partition,
     column, snapshot, dataset, constraint, and replication views
-    (`TABLE_STORAGE*`, `TABLE_STORAGE_USAGE_TIMELINE*`, `TABLES*`,
+    (`TABLE_STORAGE*`, `TABLE_STORAGE_USAGE_TIMELINE*`, `TABLES`,
     `TABLE_OPTIONS`, `COLUMNS`, `COLUMN_FIELD_PATHS`, `PARTITIONS`, `VIEWS`,
     `MATERIALIZED_VIEWS`, `TABLE_SNAPSHOTS`, `TABLE_CONSTRAINTS`,
-    `KEY_COLUMN_USAGE`, `SCHEMATA*`, `SCHEMATA_OPTIONS`, `SCHEMATA_REPLICAS*`,
+    `KEY_COLUMN_USAGE`, `SCHEMATA`, `SCHEMATA_OPTIONS`, `SCHEMATA_REPLICAS*`,
     `SCHEMATA_LINKS`, `SHARED_DATASET_USAGE`).
 *   **Platform, Governance & Ingestion Schema Dictionary**
     (`references/schema_others.md`): Complete column dictionary, physical units,
     and least-privilege IAM roles for all remaining views including Access
-    Control (`OBJECT_PRIVILEGES`), Streaming Ingestion
-    (`STREAMING_TIMELINE_BY_PROJECT*`, `WRITE_API_TIMELINE_BY_PROJECT*`),
-    Configuration Options (`PROJECT_OPTIONS*`, `EFFECTIVE_PROJECT_OPTIONS`,
-    `ORGANIZATION_OPTIONS*`, `ORGANIZATION_OPTIONS_CHANGES`), Insights &
-    Recommendations (`RECOMMENDATIONS*`, `INSIGHTS`), and Indexes/BI
+    Control (`OBJECT_PRIVILEGES`, `ROW_ACCESS_POLICIES`), Streaming Ingestion
+    (`STREAMING_TIMELINE*`, `WRITE_API_TIMELINE*`), Configuration Options
+    (`PROJECT_OPTIONS`, `PROJECT_OPTIONS_CHANGES`, `EFFECTIVE_PROJECT_OPTIONS`,
+    `ORGANIZATION_OPTIONS`, `ORGANIZATION_OPTIONS_CHANGES`), Insights &
+    Recommendations (`RECOMMENDATIONS*`, `INSIGHTS*`), and Indexes/BI
     Engine/Routines (`SEARCH_INDEXES*`, `SEARCH_INDEX_COLUMNS`,
-    `SEARCH_INDEX_OPTIONS`, `VECTOR_INDEXES*`, `VECTOR_INDEX_COLUMNS`,
-    `VECTOR_INDEX_OPTIONS`, `BI_CAPACITIES`, `BI_CAPACITY_CHANGES`, `ROUTINES*`,
+    `SEARCH_INDEX_OPTIONS`, `VECTOR_INDEXES`, `VECTOR_INDEX_COLUMNS`,
+    `VECTOR_INDEX_OPTIONS`, `BI_CAPACITIES`, `BI_CAPACITY_CHANGES`, `ROUTINES`,
     `ROUTINE_OPTIONS`, `PARAMETERS`).

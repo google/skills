@@ -7,42 +7,41 @@ views in BigQuery `INFORMATION_SCHEMA`.
 ## Table of Contents
 
 -   [View Scoping & Qualification Matrix](#view-scoping-qualification-matrix)
-    (Lines 47-62)
+    (Lines 46-61)
 -   [3. Storage Footprint, Partitions & Table Metadata Views](#3-storage-footprint-partitions-table-metadata-views)
-    (Lines 63-434)
+    (Lines 62-443)
     -   [`INFORMATION_SCHEMA.TABLE_STORAGE_USAGE_TIMELINE` (and `_BY_PROJECT`, `_BY_ORGANIZATION`, `_BY_FOLDER`)](#information_schematable_storage_usage_timeline-and-_by_project-_by_organization-_by_folder)
-        (Lines 65-114)
+        (Lines 64-115)
     -   [`INFORMATION_SCHEMA.TABLE_STORAGE` (and `_BY_PROJECT`, `_BY_ORGANIZATION`, `_BY_FOLDER`)](#information_schematable_storage-and-_by_project-_by_organization-_by_folder)
-        (Lines 115-166)
-    -   [`INFORMATION_SCHEMA.TABLES` (and `_BY_PROJECT`)](#information_schematables-and-_by_project)
-        (Lines 167-213)
+        (Lines 116-171)
+    -   [`INFORMATION_SCHEMA.TABLES`](#information_schematables) (Lines 172-218)
     -   [`INFORMATION_SCHEMA.TABLE_OPTIONS`](#information_schematable_options)
-        (Lines 214-241)
+        (Lines 219-246)
     -   [`INFORMATION_SCHEMA.TABLE_SNAPSHOTS`](#information_schematable_snapshots)
-        (Lines 242-268)
+        (Lines 247-277)
     -   [`INFORMATION_SCHEMA.PARTITIONS`](#information_schemapartitions) (Lines
-        269-300)
+        278-309)
     -   [`INFORMATION_SCHEMA.COLUMNS`](#information_schemacolumns) (Lines
-        301-345)
+        310-354)
     -   [`INFORMATION_SCHEMA.COLUMN_FIELD_PATHS`](#information_schemacolumn_field_paths)
-        (Lines 346-378)
-    -   [`INFORMATION_SCHEMA.VIEWS`](#information_schemaviews) (Lines 379-405)
+        (Lines 355-387)
+    -   [`INFORMATION_SCHEMA.VIEWS`](#information_schemaviews) (Lines 388-414)
     -   [`INFORMATION_SCHEMA.MATERIALIZED_VIEWS`](#information_schemamaterialized_views)
-        (Lines 406-434)
+        (Lines 415-443)
 -   [4. Datasets, Replication & Sharing Views](#4-datasets-replication-sharing-views)
-    (Lines 435-619)
+    (Lines 444-629)
     -   [`INFORMATION_SCHEMA.SCHEMATA`](#information_schemaschemata) (Lines
-        437-466)
+        446-475)
     -   [`INFORMATION_SCHEMA.SCHEMATA_OPTIONS`](#information_schemaschemata_options)
-        (Lines 467-492)
+        (Lines 476-501)
     -   [`INFORMATION_SCHEMA.SCHEMATA_REPLICAS` (and `_BY_FAILOVER_RESERVATION`)](#information_schemaschemata_replicas-and-_by_failover_reservation)
-        (Lines 493-527)
+        (Lines 502-536)
     -   [`INFORMATION_SCHEMA.SCHEMATA_LINKS` & `SHARED_DATASET_USAGE`](#information_schemaschemata_links-shared_dataset_usage)
-        (Lines 528-559)
+        (Lines 537-571)
     -   [`INFORMATION_SCHEMA.TABLE_CONSTRAINTS`](#information_schematable_constraints)
-        (Lines 560-589)
+        (Lines 572-601)
     -   [`INFORMATION_SCHEMA.KEY_COLUMN_USAGE`](#information_schemakey_column_usage)
-        (Lines 590-619)
+        (Lines 602-629)
 
 ## View Scoping & Qualification Matrix
 
@@ -56,8 +55,8 @@ and **Dataset-Only** qualification categories:
 | **Tables & Metadata** | `TABLES`, `TABLE_OPTIONS`, `COLUMNS`, `COLUMN_FIELD_PATHS`, `VIEWS`, `MATERIALIZED_VIEWS` | **Dual-Scoped** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.{view_name}``<br>OR<br>`` `{project_id}`.`{dataset_id}`.INFORMATION_SCHEMA.{view_name}`` |
 | **Table Partitions** | `PARTITIONS` | **Dataset-Only** | `` `{project_id}`.`{dataset_id}`.INFORMATION_SCHEMA.PARTITIONS``<br>• Partition boundaries and storage tiers. Must be qualified with `{dataset_id}`. |
 | **Table Snapshots** | `TABLE_SNAPSHOTS` | **Dual-Scoped** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.TABLE_SNAPSHOTS``<br>OR<br>`` `{project_id}`.`{dataset_id}`.INFORMATION_SCHEMA.TABLE_SNAPSHOTS`` |
-| **Datasets & Replication** | `SCHEMATA*`, `SCHEMATA_OPTIONS`, `SCHEMATA_REPLICAS*`, `SCHEMATA_LINKS`, `SHARED_DATASET_USAGE` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.SCHEMATA*``<br>• Dataset catalog, cross-region replication, and failover status. |
-| **Table Constraints** | `TABLE_CONSTRAINTS`, `KEY_COLUMN_USAGE` | **Dual-Scoped** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.{view_name}``<br>OR<br>`` `{project_id}`.`{dataset_id}`.INFORMATION_SCHEMA.{view_name}`` |
+| **Datasets & Replication** | `SCHEMATA`, `SCHEMATA_OPTIONS`, `SCHEMATA_REPLICAS*`, `SCHEMATA_LINKS`, `SHARED_DATASET_USAGE` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.{view_name}``<br>• Dataset catalog, cross-region replication, and failover status. |
+| **Table Constraints** | `TABLE_CONSTRAINTS`, `KEY_COLUMN_USAGE` | **Dataset-Scoped** | `` `{project_id}`.`{dataset_id}`.INFORMATION_SCHEMA.{view_name}``<br>• Primary/foreign key constraints and participating columns (`{dataset_id}` is documented; `region-{region}` is also accepted at runtime). |
 <!-- mdformat on -->
 
 ## 3. Storage Footprint, Partitions & Table Metadata Views
@@ -76,7 +75,8 @@ and Logical vs. Physical billing tiers.
     `bigquery.tables.list` on the project. Granted by **BigQuery Metadata
     Viewer** (`roles/bigquery.metadataViewer`), **BigQuery Data Viewer**
     (`roles/bigquery.dataViewer`), **BigQuery Data Editor**
-    (`roles/bigquery.dataEditor`), or **BigQuery Admin**
+    (`roles/bigquery.dataEditor`), **BigQuery Data Owner**
+    (`roles/bigquery.dataOwner`), or **BigQuery Admin**
     (`roles/bigquery.admin`).
 *   **`_BY_FOLDER`:** Requires `bigquery.tables.get` and `bigquery.tables.list`
     on the parent folder.
@@ -86,12 +86,12 @@ and Logical vs. Physical billing tiers.
 <!-- mdformat off -->
 | Column Name | Data Type | Physical Unit | Description |
 | :--- | :--- | :--- | :--- |
-| `billable_active_logical_usage` | `INT64` | **MiB-seconds** | Active logical usage time integral (<90 days unmutated). |
-| `billable_active_physical_usage` | `INT64` | **MiB-seconds** | Active physical usage time integral. |
-| `billable_long_term_logical_usage` | `INT64` | **MiB-seconds** | Long-term logical usage time integral (>=90 days unmutated). |
-| `billable_long_term_physical_usage` | `INT64` | **MiB-seconds** | Long-term physical usage time integral. |
-| `billable_total_logical_usage` | `INT64` | **MiB-seconds** | Total logical usage time integral. |
-| `billable_total_physical_usage` | `INT64` | **MiB-seconds** | Total physical compressed usage time integral. |
+| `billable_active_logical_usage` | `INT64` | **MiB-seconds** | Active logical usage time integral (<90 days; `0` if dataset uses `PHYSICAL` billing). |
+| `billable_active_physical_usage` | `INT64` | **MiB-seconds** | Active physical usage time integral including Time Travel and Fail-Safe (`0` if `LOGICAL` billing). |
+| `billable_long_term_logical_usage` | `INT64` | **MiB-seconds** | Long-term logical usage time integral (>90 days; `0` if `PHYSICAL` billing). |
+| `billable_long_term_physical_usage` | `INT64` | **MiB-seconds** | Long-term physical usage time integral (>90 days; `0` if `LOGICAL` billing). |
+| `billable_total_logical_usage` | `INT64` | **MiB-seconds** | Total logical usage time integral (`0` if `PHYSICAL` billing). |
+| `billable_total_physical_usage` | `INT64` | **MiB-seconds** | Total physical usage time integral including Time Travel and Fail-Safe (`0` if `LOGICAL` billing). |
 | `folder_numbers` | `ARRAY<INT64>` | Array | Folder hierarchy IDs containing the project (only in `_BY_FOLDER`). |
 | `project_id` | `STRING` | Project ID | Project containing the table. |
 | `project_number` | `INT64` | Numeric ID | Numeric project ID. |
@@ -109,17 +109,21 @@ and Logical vs. Physical billing tiers.
 > [!NOTE] **Access Requirements:** Accessing `TABLE_STORAGE_USAGE_TIMELINE`
 > requires `bigquery.tables.get` and `bigquery.tables.list` IAM permissions
 > (granted by `roles/bigquery.metadataViewer`, `roles/bigquery.dataViewer`,
-> `roles/bigquery.dataEditor`, or `roles/bigquery.admin`) on the project. Does
-> not require `enable_info_schema_storage` opt-in.
+> `roles/bigquery.dataEditor`, `roles/bigquery.dataOwner`, or
+> `roles/bigquery.admin`) on the project. Retention is 90 days (~72-hour lag).
+> Does not require `enable_info_schema_storage` opt-in.
 
 ### `INFORMATION_SCHEMA.TABLE_STORAGE` (and `_BY_PROJECT`, `_BY_ORGANIZATION`, `_BY_FOLDER`)
 
 #### High-Level Description
 
-Real-time point-in-time snapshot of table storage sizes, active vs. long-term
-uncompressed bytes, compressed physical bytes, Time Travel retention overhead,
-and Fail-Safe bytes. Requires storage metadata opt-in or Resource Admin IAM
-roles for new projects.
+Near real-time snapshot of table storage sizes (typically delayed by seconds to
+minutes, or up to a day for partition/table expiration changes), including
+active vs. long-term uncompressed bytes, compressed physical bytes, Time Travel
+retention overhead, and Fail-Safe bytes. Controlled by the
+`enable_info_schema_storage` project/organization option (required on
+non-grandfathered projects/organizations via `ALTER PROJECT` /
+`ALTER ORGANIZATION SET OPTIONS`).
 
 #### Required IAM Permissions & Predefined Roles
 
@@ -127,7 +131,8 @@ roles for new projects.
     `bigquery.tables.list` on the project. Granted by **BigQuery Metadata
     Viewer** (`roles/bigquery.metadataViewer`), **BigQuery Data Viewer**
     (`roles/bigquery.dataViewer`), **BigQuery Data Editor**
-    (`roles/bigquery.dataEditor`), or **BigQuery Admin**
+    (`roles/bigquery.dataEditor`), **BigQuery Data Owner**
+    (`roles/bigquery.dataOwner`), or **BigQuery Admin**
     (`roles/bigquery.admin`).
 *   **`_BY_FOLDER`:** Requires `bigquery.tables.get` and `bigquery.tables.list`
     on the parent folder.
@@ -147,24 +152,24 @@ roles for new projects.
 | `last_metadata_index_refresh_time` | `TIMESTAMP` | UTC Timestamp | Last metadata indexing refresh timestamp. |
 | `long_term_logical_bytes` | `INT64` | **Bytes** | Uncompressed long-term logical bytes (>=90 days unmutated). **GiB:** `long_term_logical_bytes / POWER(1024, 3)`. |
 | `long_term_physical_bytes` | `INT64` | **Bytes** | Compressed long-term physical bytes (>=90 days unmutated). **GiB:** `long_term_physical_bytes / POWER(1024, 3)`. |
-| `managed_table_type` | `STRING` | Enum | `'NATIVE'` or `'ICEBERG'`. |
+| `managed_table_type` | `STRING` | Enum | `'NATIVE'` or `'BIGLAKE'` (Preview). |
 | `project_id` | `STRING` | Project ID | Project containing table. |
 | `project_number` | `INT64` | Numeric ID | Numeric project ID. |
 | `storage_last_modified_time` | `TIMESTAMP` | UTC Timestamp | Last storage mutation timestamp. |
 | `table_catalog` | `STRING` | Project ID | Table catalog / project name. |
-| `table_deletion_reason` | `STRING` | Enum / Reason | Reason for deletion: `'TABLE EXPIRATION'`, `'DATASET DELETION'`, `'USER_DELETED'`. |
+| `table_deletion_reason` | `STRING` | Enum / Reason | Reason for deletion when `deleted` is `TRUE`: `'TABLE_EXPIRATION'`, `'DATASET_DELETION'`, `'USER_DELETED'`. |
 | `table_deletion_time` | `TIMESTAMP` | UTC Timestamp | Exact timestamp when the table was deleted. |
 | `table_name` | `STRING` | Table ID | Table name. |
 | `table_schema` | `STRING` | Dataset ID | Dataset name. |
-| `time_travel_physical_bytes` | `INT64` | **Bytes** | Physical storage consumed by Time Travel retention (1 to 7 days). Billed at active physical rates under Physical model; free under Logical model. |
+| `time_travel_physical_bytes` | `INT64` | **Bytes** | Physical storage consumed by Time Travel retention (2 to 7 days). Billed at active physical rates under Physical model; free under Logical model. |
 | `total_logical_bytes` | `INT64` | **Bytes** | Sum of `active_logical_bytes` + `long_term_logical_bytes`. |
 | `total_partitions` | `INT64` | Count | Number of partitions. |
 | `total_physical_bytes` | `INT64` | **Bytes** | Sum of `active_physical_bytes` + `long_term_physical_bytes`. |
 | `total_rows` | `INT64` | Count | Current row count. |
-| `table_type` | `STRING` | Enum | `'BASE TABLE'`, `'CLONE'`, `'SNAPSHOT'`, `'VIEW'`, `'MATERIALIZED VIEW'`. |
+| `table_type` | `STRING` | Enum | `'BASE TABLE'`, `'CLONE'`, `'SNAPSHOT'`, `'MATERIALIZED VIEW'`. |
 <!-- mdformat on -->
 
-### `INFORMATION_SCHEMA.TABLES` (and `_BY_PROJECT`)
+### `INFORMATION_SCHEMA.TABLES`
 
 #### High-Level Description
 
@@ -196,14 +201,14 @@ project, along with creation times, DDL definitions, and replication statuses.
 | `is_fine_grained_mutations_enabled` | `STRING` | `'YES'` / `'NO'` | Indicates whether fine-grained mutations are enabled on the table. |
 | `is_insertable_into` | `STRING` | `'YES'` / `'NO'` | Indicates whether the table supports DML `INSERT` operations. |
 | `is_typed` | `STRING` | `'NO'` | Always `'NO'` for BigQuery tables. |
-| `managed_table_type` | `STRING` | Enum | `'NATIVE'` or `'ICEBERG'` (for BigLake Managed Tables). |
-| `replica_source_catalog` | `STRING` | Project ID | For read-only table replicas, the source table project ID. |
-| `replica_source_name` | `STRING` | Table ID | For read-only table replicas, the source table name. |
-| `replica_source_schema` | `STRING` | Dataset ID | For read-only table replicas, the source dataset ID. |
-| `replication_error` | `RECORD` | Error Struct | Replication error details if table replication fails (`reason`, `location`, `message`). |
-| `replication_status` | `STRING` | Enum | Table replication status (`'ACTIVE'`, `'FAILED'`, `'OUT_OF_SYNC'`). |
-| `snapshot_time_ms` | `TIMESTAMP` | UTC Timestamp | For snapshots/clones, the exact base table snapshot point in time. |
-| `sync_status` | `RECORD` | Sync Struct | Metadata sync status for Apache Iceberg and BigLake tables (`status`, `last_sync_time`, `message`). |
+| `managed_table_type` | `STRING` | Enum | `'NATIVE'` or `'BIGLAKE'` (for BigLake Iceberg tables in BigQuery; Preview). |
+| `replica_source_catalog` | `STRING` | Project ID | For materialized view replicas, the base materialized view project ID. |
+| `replica_source_name` | `STRING` | Table ID | For materialized view replicas, the base materialized view name. |
+| `replica_source_schema` | `STRING` | Dataset ID | For materialized view replicas, the base materialized view dataset ID. |
+| `replication_error` | `STRING` | Error String | Error details when `replication_status` indicates a materialized view replica issue. |
+| `replication_status` | `STRING` | Enum | Materialized view replica status (`'REPLICATION_STATUS_UNSPECIFIED'`, `'ACTIVE'`, `'SOURCE_DELETED'`, `'PERMISSION_DENIED'`, `'UNSUPPORTED_CONFIGURATION'`). |
+| `snapshot_time_ms` | `TIMESTAMP` | UTC Timestamp | For snapshots/clones, the time travel timestamp or creation timestamp on the base table. |
+| `sync_status` | `RECORD` | Struct | `STRUCT<last_completion_time TIMESTAMP, error_time TIMESTAMP, error STRUCT<reason STRING, location STRING, message STRING>>` sync status between primary and secondary replicas for cross-region / DR datasets (`NULL` on primary or un-replicated datasets). |
 | `table_catalog` | `STRING` | Project ID | Project name. |
 | `table_name` | `STRING` | Table ID | Table name. |
 | `table_schema` | `STRING` | Dataset ID | Dataset name. |
@@ -243,15 +248,19 @@ partition filter requirements.
 
 #### High-Level Description
 
-Detailed metadata for BigQuery Table Snapshots, tracking base table lineages,
-snapshot creation timestamps, and snapshot retention.
+Detailed metadata for BigQuery Table Snapshots, tracking base table lineages and
+snapshot creation timestamps.
 
 #### Required IAM Permissions & Predefined Roles
 
-*   Requires `bigquery.tables.list` on the target dataset or project.
+*   Requires `bigquery.tables.get` and `bigquery.tables.list` on the target
+    dataset or project (runtime checks both, even though public docs only list
+    `bigquery.tables.list`).
 *   **Predefined Roles:** **BigQuery Metadata Viewer**
     (`roles/bigquery.metadataViewer` - Least Privilege), **BigQuery Data
-    Viewer** (`roles/bigquery.dataViewer`), or **BigQuery Admin**
+    Viewer** (`roles/bigquery.dataViewer`), **BigQuery Data Editor**
+    (`roles/bigquery.dataEditor`), **BigQuery Data Owner**
+    (`roles/bigquery.dataOwner`), or **BigQuery Admin**
     (`roles/bigquery.admin`).
 
 <!-- mdformat off -->
@@ -260,7 +269,7 @@ snapshot creation timestamps, and snapshot retention.
 | `base_table_catalog` | `STRING` | Project ID | Project ID of the base table. |
 | `base_table_name` | `STRING` | Table ID | Base table name. |
 | `base_table_schema` | `STRING` | Dataset ID | Dataset ID of the base table. |
-| `snapshot_time` | `TIMESTAMP` | UTC Timestamp | Base table snapshot point-in-time timestamp. |
+| `snapshot_time` | `TIMESTAMP` | UTC Timestamp | Base-table point in time captured by the snapshot (`FOR SYSTEM_TIME AS OF` timestamp if specified, otherwise creation time; see `TABLES.creation_time` for snapshot creation time). |
 | `table_catalog` | `STRING` | Project ID | Project containing the snapshot. |
 | `table_name` | `STRING` | Table ID | Snapshot table name. |
 | `table_schema` | `STRING` | Dataset ID | Dataset containing the snapshot. |
@@ -318,13 +327,13 @@ tags, and data masking policies.
 <!-- mdformat off -->
 | Column Name | Data Type | Physical Unit | Description |
 | :--- | :--- | :--- | :--- |
-| `async_generation_status` | `RECORD` | Status Struct | For stored generated columns, the status of background asynchronous population (`status`, `message`, `end_time`). |
+| `async_generation_status` | `RECORD` | Status Struct | Populated only while an automatically generated embedding column has an active blocking generation error (`blocking_error.message`; `ErrorProto` struct with `reason`, `location`, `message`, where only `message` is populated); `NULL` for healthy embedding columns (identify those via `is_stored = 'YES'`) and all other columns. |
 | `clustering_ordinal_position` | `INT64` | Position | 1-indexed position in the table's clustering key specification. |
 | `collation_name` | `STRING` | Collation | Active string collation rule. |
 | `column_default` | `STRING` | SQL Literal | Default value expression. |
 | `column_name` | `STRING` | Field Name | Top-level column name. |
-| `data_governance_tags` | `RECORD` | Tags Struct | IAM and Data Governance tags attached to column. |
-| `data_policies` | `RECORD` | Policy Struct | Data policy masking definitions applied to column. |
+| `data_governance_tags` | `ARRAY<RECORD>` | Tags Struct Array | IAM and Data Governance tags attached to column. |
+| `data_policies` | `ARRAY<RECORD>` | Policy Struct Array | Data policy masking definitions applied to column. |
 | `data_type` | `STRING` | SQL Type | GoogleSQL type (`'INT64'`, `'ARRAY<STRING>'`, `'STRUCT<...>'`). |
 | `generation_expression` | `STRING` | SQL Expression | GoogleSQL expression used to calculate generated column values. |
 | `is_generated` | `STRING` | `'ALWAYS'` / `'NEVER'` | Indicates whether the column is a generated column. |
@@ -332,11 +341,11 @@ tags, and data masking policies.
 | `is_identity` | `STRING` | `'YES'` / `'NO'` | Indicates whether the column is an auto-generated sequence identity. |
 | `is_nullable` | `STRING` | `'YES'` / `'NO'` | Nullability constraint. |
 | `is_partitioning_column` | `STRING` | `'YES'` / `'NO'` | `'YES'` if this column partitions the table. |
-| `is_stored` | `STRING` | `'YES'` / `'NO'` | Indicates whether a generated column is stored on disk or evaluated at query time. |
+| `is_stored` | `STRING` | `'YES'` / `NULL` | `'YES'` if the column is an automatically generated embedding column; `NULL` otherwise. |
 | `is_system_defined` | `STRING` | `'YES'` / `'NO'` | `'YES'` if the column is created and managed automatically by BigQuery. |
-| `is_updatable` | `STRING` | `'YES'` / `'NO'` | Always `'YES'` for BigQuery tables. |
+| `is_updatable` | `STRING` | Nullable | Always `NULL`. |
 | `ordinal_position` | `INT64` | Position | 1-indexed column ordinal position. |
-| `policy_tags` | `STRING` | Resource Path | Cloud Data Catalog policy tag resource paths for Column-Level Security (CLS). |
+| `policy_tags` | `ARRAY<STRING>` | Resource Paths | Cloud Data Catalog policy tag resource paths for Column-Level Security (CLS). |
 | `rounding_mode` | `STRING` | Enum | Rounding mode for `NUMERIC` / `BIGNUMERIC` columns. |
 | `table_catalog` | `STRING` | Project ID | Project name. |
 | `table_name` | `STRING` | Table ID | Table name. |
@@ -371,9 +380,9 @@ BigQuery tables.
 | `description` | `STRING` | Text | Field description. |
 | `collation_name` | `STRING` | Collation | Collation rule. |
 | `rounding_mode` | `STRING` | Enum | Rounding mode. |
-| `policy_tags` | `STRING` | Resource Path | Policy tags attached to nested field. |
-| `data_governance_tags` | `RECORD` | Struct | Data governance tags. |
-| `data_policies` | `RECORD` | Struct | Masking policies applied to field. |
+| `policy_tags` | `ARRAY<STRING>` | Resource Paths | Policy tags attached to nested field. |
+| `data_governance_tags` | `ARRAY<RECORD>` | Struct Array | Data governance tags. |
+| `data_policies` | `ARRAY<RECORD>` | Struct Array | Masking policies applied to field. |
 <!-- mdformat on -->
 
 ### `INFORMATION_SCHEMA.VIEWS`
@@ -461,7 +470,7 @@ DDL statements, and default collation rules.
 | `location` | `STRING` | Region | Physical geographic storage region (e.g. `'US'`, `'EU'`, `'us-central1'`). |
 | `default_collation_name` | `STRING` | Collation | Default collation rule inherited by new tables. |
 | `ddl` | `STRING` | SQL String | DDL statement to reproduce the dataset. |
-| `sync_status` | `JSON` | JSON | Cross-region replication sync health details. |
+| `sync_status` | `RECORD` | Struct | `STRUCT<last_completion_time TIMESTAMP, error_time TIMESTAMP, error STRUCT<reason STRING, location STRING, message STRING>>` cross-region replication sync health details. |
 <!-- mdformat on -->
 
 ### `INFORMATION_SCHEMA.SCHEMATA_OPTIONS`
@@ -522,7 +531,7 @@ health, lag staleness, failover reservations, and backfill progress.
 | `replica_primary_assignment_time` | `TIMESTAMP` | UTC Timestamp | Timestamp when primary switch to replica was initiated. |
 | `replication_time` | `TIMESTAMP` | UTC Timestamp | Replication watermark for the most stale table within the dataset. |
 | `schema_name` | `STRING` | Dataset ID | Dataset name. |
-| `sync_status` | `JSON` | JSON | Sync health details between primary and secondary replicas. |
+| `sync_status` | `RECORD` | Struct | `STRUCT<last_completion_time TIMESTAMP, error_time TIMESTAMP, error STRUCT<reason STRING, location STRING, message STRING>>` sync health details between primary and secondary replicas. |
 <!-- mdformat on -->
 
 ### `INFORMATION_SCHEMA.SCHEMATA_LINKS` & `SHARED_DATASET_USAGE`
@@ -534,12 +543,17 @@ Rooms (DCR), and Cross-Project Shared Dataset usage.
 
 #### Required IAM Permissions & Predefined Roles
 
-*   Requires `bigquery.datasets.get` on the target dataset or project.
-*   **Predefined Roles:** **BigQuery Metadata Viewer**
-    (`roles/bigquery.metadataViewer` - Least Privilege), **BigQuery Data
-    Viewer** (`roles/bigquery.dataViewer`), **BigQuery Data Owner**
-    (`roles/bigquery.dataOwner`), or **BigQuery Admin**
-    (`roles/bigquery.admin`).
+*   **`SCHEMATA_LINKS`:** Requires `bigquery.datasets.get` on the project
+    (granted by `roles/bigquery.metadataViewer`, `roles/bigquery.dataViewer`,
+    `roles/bigquery.dataEditor`, `roles/bigquery.dataOwner`, or
+    `roles/bigquery.admin`).
+*   **`SHARED_DATASET_USAGE`:** Requires
+    `bigquery.datasets.listSharedDatasetUsage` on the source project (granted by
+    **BigQuery Data Owner** (`roles/bigquery.dataOwner`) or **BigQuery Admin**
+    (`roles/bigquery.admin`); partitioned by `job_start_time` with subscriber
+    consumption columns `project_id`, `dataset_id`, `table_id`, `job_id`,
+    `linked_project_number`, `subscriber_org_number`, `num_rows_processed`, and
+    `total_bytes_processed`).
 
 <!-- mdformat off -->
 | Column Name | Data Type | Physical Unit | Description |
@@ -554,8 +568,6 @@ Rooms (DCR), and Cross-Project Shared Dataset usage.
 | `shared_asset_id` | `STRING` | Asset ID | Analytics Hub listing or DCR asset identifier. |
 | `link_type` | `STRING` | Enum | `'ANALYTICS_HUB'`, `'DATA_CLEAN_ROOM'`. |
 <!-- mdformat on -->
-
-<a id="sec-routines"></a>
 
 ### `INFORMATION_SCHEMA.TABLE_CONSTRAINTS`
 
@@ -615,5 +627,3 @@ Defines column-level participation in primary and foreign key constraints.
 | `ordinal_position` | `INT64` | Position | 1-indexed position in composite constraint. |
 | `position_in_unique_constraint` | `INT64` | Position | Referenced position in target primary key. |
 <!-- mdformat on -->
-
-<a id="sec-insights"></a>

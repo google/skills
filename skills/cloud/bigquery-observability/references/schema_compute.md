@@ -9,38 +9,38 @@ and Assignment views in BigQuery `INFORMATION_SCHEMA`.
 -   [View Scoping & Qualification Matrix](#view-scoping-qualification-matrix)
     (Lines 38-57)
 -   [1. Jobs & Compute Telemetry Views](#1-jobs-compute-telemetry-views) (Lines
-    58-268)
+    58-269)
     -   [`INFORMATION_SCHEMA.JOBS` (and `_BY_PROJECT`, `_BY_ORGANIZATION`, `_BY_USER`, `_BY_FOLDER`)](#information_schemajobs-and-_by_project-_by_organization-_by_user-_by_folder)
         (Lines 60-177)
     -   [`INFORMATION_SCHEMA.JOBS_TIMELINE` (and `_BY_PROJECT`, `_BY_ORGANIZATION`, `_BY_USER`, `_BY_FOLDER`)](#information_schemajobs_timeline-and-_by_project-_by_organization-_by_user-_by_folder)
-        (Lines 178-233)
+        (Lines 178-234)
     -   [`INFORMATION_SCHEMA.SESSIONS_BY_USER` (and `_BY_PROJECT`)](#information_schemasessions_by_user-and-_by_project)
-        (Lines 234-268)
+        (Lines 235-269)
 -   [2. Capacity, Reservations & Commitments Views](#2-capacity-reservations-commitments-views)
-    (Lines 269-588)
+    (Lines 270-594)
     -   [`INFORMATION_SCHEMA.RESERVATIONS` (and `_BY_PROJECT`)](#information_schemareservations-and-_by_project)
-        (Lines 271-309)
+        (Lines 272-311)
     -   [`INFORMATION_SCHEMA.RESERVATION_CHANGES` (and `_BY_PROJECT`)](#information_schemareservation_changes-and-_by_project)
-        (Lines 310-352)
+        (Lines 312-355)
     -   [`INFORMATION_SCHEMA.RESERVATIONS_TIMELINE` (and `_BY_PROJECT`)](#information_schemareservations_timeline-and-_by_project)
-        (Lines 353-426)
+        (Lines 356-429)
     -   [`INFORMATION_SCHEMA.CAPACITY_COMMITMENTS` (and `_BY_PROJECT`)](#information_schemacapacity_commitments-and-_by_project)
-        (Lines 427-457)
+        (Lines 430-460)
     -   [`INFORMATION_SCHEMA.CAPACITY_COMMITMENT_CHANGES_BY_PROJECT` (and `_CHANGES`)](#information_schemacapacity_commitment_changes_by_project-and-_changes)
-        (Lines 458-496)
+        (Lines 461-499)
     -   [`INFORMATION_SCHEMA.ASSIGNMENTS` (and `_BY_PROJECT`)](#information_schemaassignments-and-_by_project)
-        (Lines 497-527)
+        (Lines 500-531)
     -   [`INFORMATION_SCHEMA.ASSIGNMENT_CHANGES_BY_PROJECT` (and `_CHANGES`)](#information_schemaassignment_changes_by_project-and-_changes)
-        (Lines 528-562)
+        (Lines 532-567)
     -   [`INFORMATION_SCHEMA.BI_CAPACITIES` (and `BI_CAPACITY_CHANGES`)](#information_schemabi_capacities-and-bi_capacity_changes)
-        (Lines 563-588)
+        (Lines 568-594)
 
 ## View Scoping & Qualification Matrix
 
 BigQuery Compute and Capacity views are **Region-Only** scoped. They require the
-`region-{region}` dataset qualifier (e.g. ``
-`{project_id}`.`region-{region}`.INFORMATION_SCHEMA.{view_name}``) and cannot be
-scoped to a single dataset:
+`region-{region}` dataset qualifier (e.g.
+`` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.{view_name}``) and cannot
+be scoped to a single dataset:
 
 <!-- mdformat off -->
 | View Family | INFORMATION_SCHEMA View(s) | Qualification Scope | Syntax Pattern & Scoping Rules |
@@ -50,9 +50,9 @@ scoped to a single dataset:
 | **SQL Sessions** | `SESSIONS_BY_USER`, `SESSIONS_BY_PROJECT` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.SESSIONS*``<br>• Active and interactive multi-statement SQL sessions and notebook lifetimes. |
 | **Reservations** | `RESERVATIONS*`, `RESERVATION_CHANGES*` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.RESERVATIONS*``<br>• Current baseline slot limits, edition tier bindings, and reservation lifecycle changes (`RESERVATION_CHANGES`). |
 | **Reservation Timeline** | `RESERVATIONS_TIMELINE*` (`_BY_PROJECT`) | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.RESERVATIONS_TIMELINE*``<br>• 1-minute discrete timeline of assigned baseline slots and periodic autoscale slot-seconds (`period_autoscale_slot_seconds`). Retention is 180 days. |
-| **Capacity Commitments** | `CAPACITY_COMMITMENTS*`, `CAPACITY_COMMITMENT_CHANGES_BY_PROJECT` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.CAPACITY_COMMITMENTS*``<br>• 1-Year / 3-Year commitment purchases, active states, renewal plans, and lifecycle changes (`CAPACITY_COMMITMENT_CHANGES`). |
-| **Workload Assignments** | `ASSIGNMENTS*`, `ASSIGNMENT_CHANGES_BY_PROJECT` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.ASSIGNMENTS*``<br>• Mapping of projects/folders/orgs to specific reservations (`assignee_id`, `job_type`) and assignment lifecycle changes. |
-| **BI Engine Capacities** | `BI_CAPACITIES*`, `BI_CAPACITY_CHANGES*` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.BI_CAPACITIES*``<br>• BI Engine RAM allocation sizes (bytes) and preferred table routing rules. |
+| **Capacity Commitments** | `CAPACITY_COMMITMENTS*`, `CAPACITY_COMMITMENT_CHANGES*` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.CAPACITY_COMMITMENTS*``<br>• 1-Year / 3-Year commitment purchases, active states, renewal plans, and lifecycle changes (`CAPACITY_COMMITMENT_CHANGES`). |
+| **Workload Assignments** | `ASSIGNMENTS*`, `ASSIGNMENT_CHANGES*` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.ASSIGNMENTS*``<br>• Mapping of projects/folders/orgs to specific reservations (`assignee_id`, `job_type`) and assignment lifecycle changes. |
+| **BI Engine Capacities** | `BI_CAPACITIES`, `BI_CAPACITY_CHANGES` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.BI_CAPACITIES``<br>• BI Engine RAM allocation sizes (bytes) and preferred table routing rules (`BI_CAPACITY_CHANGES` for update logs). |
 <!-- mdformat on -->
 
 ## 1. Jobs & Compute Telemetry Views
@@ -69,12 +69,12 @@ parent-child script hierarchy, and error classifications. Retention is 180 days.
 #### Required IAM Permissions & Predefined Roles
 
 *   **`JOBS_BY_USER` (Least Privilege):** Requires `bigquery.jobs.list` on the
-    project. Granted by **BigQuery User** (`roles/bigquery.user`), **BigQuery
-    Job User** (`roles/bigquery.jobUser`), or **BigQuery Admin**
-    (`roles/bigquery.admin`).
+    project. Granted by **BigQuery User** (`roles/bigquery.user`) or **BigQuery
+    Admin** (`roles/bigquery.admin`).
 *   **`JOBS` / `JOBS_BY_PROJECT`:** Requires `bigquery.jobs.listAll` on the
     project. Granted by **BigQuery Resource Admin**
-    (`roles/bigquery.resourceAdmin`), **BigQuery Resource Viewer**
+    (`roles/bigquery.resourceAdmin`), **BigQuery Resource Editor**
+    (`roles/bigquery.resourceEditor`), **BigQuery Resource Viewer**
     (`roles/bigquery.resourceViewer`), **BigQuery Studio Admin**
     (`roles/bigquery.studioAdmin`), or **BigQuery Admin**
     (`roles/bigquery.admin`).
@@ -125,7 +125,7 @@ parent-child script hierarchy, and error classifications. Retention is 180 days.
 | `statement_type` | `STRING` | Enum | SQL statement category (e.g. `'SELECT'`, `'CREATE_MODEL'`, `'SCRIPT'`, `'INSERT'`, `'UPDATE'`, `'DELETE'`). |
 | `timeline` | `ARRAY<RECORD>` | Struct Array | Slice-level stage progression snapshots (`elapsed_ms`, `total_slot_ms`, `pending_units`, `completed_units`, `active_units`). |
 | `total_bytes_billed` | `INT64` | **Bytes** | Raw billable bytes. **Formula to convert to TB:** `(total_bytes_billed / POWER(1024, 4)) * CASE statement_type WHEN 'CREATE_MODEL' THEN 50 ELSE 1 END`. Returns `NULL` if Row-Level Security (RLS) is active. |
-| `total_bytes_processed` | `INT64` | **Bytes** | Total uncompressed bytes scanned before partition/column pruning. |
+| `total_bytes_processed` | `INT64` | **Bytes** | Total uncompressed bytes scanned after partition/column pruning. Returns `NULL` if Row-Level Security (RLS) is active. |
 | `total_modified_partitions` | `INT64` | Count | Number of distinct table partitions updated by DML or load job. |
 | `total_services_sku_slot_ms` | `INT64` | **Slot-ms** | Slot-ms consumed by external service workloads billed on the Services SKU. |
 | `total_slot_ms` | `INT64` | **Slot-ms** | Total slot compute time consumed across entire duration including retries. **Formula for Slot-Hours:** `total_slot_ms / 1000.0 / 3600.0`. |
@@ -143,8 +143,8 @@ the query plan (note that `job_stages` is empty for queries that read from
 tables with row-level access policies):
 
 *   `id` (`INT64`): Unique 0-indexed execution stage identifier.
-*   `name` (`STRING`): Stage identifier (e.g. `'S00: Input'`, `'S01:
-    Aggregate'`).
+*   `name` (`STRING`): Stage identifier (e.g. `'S00: Input'`,
+    `'S01: Aggregate'`).
 *   `input_stages` (`ARRAY<INT64>`): Stage IDs whose outputs feed into this
     stage.
 *   `start_ms` (`INT64`): Millisecond timestamp when the stage began.
@@ -157,15 +157,15 @@ tables with row-level access policies):
 *   `records_written` (`INT64`): Number of output records produced.
 *   `parallel_inputs` (`INT64`): Maximum parallel worker shards allocated.
 *   `completed_parallel_inputs` (`INT64`): Shards successfully finished.
-*   `wait_ratio_avg`, `wait_ratio_max` (`FLOAT64`): Fraction (`0.0-1.0`) of
-    time the average or slowest worker in the stage spent waiting to be
-    scheduled on available slots relative to the longest time any worker in any
-    stage spent in any phase.
+*   `wait_ratio_avg`, `wait_ratio_max` (`FLOAT64`): Fraction (`0.0-1.0`) of time
+    the average or slowest worker in the stage spent waiting to be scheduled on
+    available slots relative to the longest time any worker in any stage spent
+    in any phase.
 *   `wait_ms_avg`, `wait_ms_max` (`INT64`): Milliseconds the average or slowest
     worker in the stage spent waiting to be scheduled on available slots.
-*   `read_ratio_avg`, `read_ratio_max`, `read_ms_avg`, `read_ms_max`
-    (`FLOAT64` / `INT64`): Relative ratio and duration (ms) workers spent
-    reading input table or shuffle data.
+*   `read_ratio_avg`, `read_ratio_max`, `read_ms_avg`, `read_ms_max` (`FLOAT64`
+    / `INT64`): Relative ratio and duration (ms) workers spent reading input
+    table or shuffle data.
 *   `compute_ratio_avg`, `compute_ratio_max`, `compute_ms_avg`, `compute_ms_max`
     (`FLOAT64` / `INT64`): Relative ratio and duration (ms) workers spent in CPU
     computation.
@@ -186,18 +186,19 @@ starvation.
 
 #### Required IAM Permissions & Predefined Roles
 
-*   **`JOBS_BY_USER` (Least Privilege):** Requires `bigquery.jobs.list` on the
-    project. Granted by **BigQuery User** (`roles/bigquery.user`), **BigQuery
-    Job User** (`roles/bigquery.jobUser`), or **BigQuery Admin**
-    (`roles/bigquery.admin`).
-*   **`JOBS` / `JOBS_BY_PROJECT`:** Requires `bigquery.jobs.listAll` on the
-    project. Granted by **BigQuery Resource Admin**
-    (`roles/bigquery.resourceAdmin`), **BigQuery Resource Viewer**
+*   **`JOBS_TIMELINE_BY_USER` (Least Privilege):** Requires `bigquery.jobs.list`
+    on the project. Granted by **BigQuery User** (`roles/bigquery.user`) or
+    **BigQuery Admin** (`roles/bigquery.admin`).
+*   **`JOBS_TIMELINE` / `JOBS_TIMELINE_BY_PROJECT`:** Requires
+    `bigquery.jobs.listAll` on the project. Granted by **BigQuery Resource
+    Admin** (`roles/bigquery.resourceAdmin`), **BigQuery Resource Editor**
+    (`roles/bigquery.resourceEditor`), **BigQuery Resource Viewer**
     (`roles/bigquery.resourceViewer`), **BigQuery Studio Admin**
     (`roles/bigquery.studioAdmin`), or **BigQuery Admin**
     (`roles/bigquery.admin`).
-*   **`JOBS_BY_FOLDER`:** Requires `bigquery.jobs.listAll` on the parent folder.
-*   **`JOBS_BY_ORGANIZATION`:** Requires `bigquery.jobs.listAll` on the
+*   **`JOBS_TIMELINE_BY_FOLDER`:** Requires `bigquery.jobs.listAll` on the
+    parent folder.
+*   **`JOBS_TIMELINE_BY_ORGANIZATION`:** Requires `bigquery.jobs.listAll` on the
     organization.
 
 <!-- mdformat off -->
@@ -242,13 +243,13 @@ table allocations.
 #### Required IAM Permissions & Predefined Roles
 
 *   **`SESSIONS_BY_USER` (Least Privilege):** Requires `bigquery.jobs.list` on
-    the project. Granted by **BigQuery User** (`roles/bigquery.user`),
-    **BigQuery Job User** (`roles/bigquery.jobUser`), or **BigQuery Admin**
-    (`roles/bigquery.admin`).
+    the project. Granted by **BigQuery User** (`roles/bigquery.user`) or
+    **BigQuery Admin** (`roles/bigquery.admin`).
 *   **`SESSIONS_BY_PROJECT`:** Requires `bigquery.jobs.listAll` on the project.
     Granted by **BigQuery Resource Viewer** (`roles/bigquery.resourceViewer`),
-    **BigQuery Resource Admin** (`roles/bigquery.resourceAdmin`), or **BigQuery
-    Admin** (`roles/bigquery.admin`).
+    **BigQuery Resource Editor** (`roles/bigquery.resourceEditor`), **BigQuery
+    Resource Admin** (`roles/bigquery.resourceAdmin`), or **BigQuery Admin**
+    (`roles/bigquery.admin`).
 
 <!-- mdformat off -->
 | Column Name | Data Type | Physical Unit | Description |
@@ -302,6 +303,7 @@ Edition tiers, scaling modes, and disaster recovery replica locations.
 | `reservation_group_path` | `ARRAY<STRING>` | Array | Reservation group hierarchy path (e.g. `['my-group']`). |
 | `reservation_name` | `STRING` | Resource Path | User-provided reservation name. |
 | `scaling_mode` | `STRING` | Enum | Scaling mode determining progression from baseline to `max_slots` (`'ALL_SLOTS'`, `'IDLE_SLOTS_ONLY'`, `'AUTOSCALE_ONLY'`, `'SCALING_MODE_UNSPECIFIED'`). |
+| `scheduling_policy` | `RECORD` | Struct | Default per-project caps within the reservation (`max_slots`, `concurrency`), or `NULL` if unset (Preview / feature-flag gated; verify availability with `SELECT * ... LIMIT 0` before projecting explicitly). |
 | `secondary_location` | `STRING` | Region | Current location of reservation's secondary replica in Disaster Recovery. |
 | `slot_capacity` | `INT64` | **Slots** | Baseline slot capacity configured for the reservation. |
 | `target_job_concurrency` | `INT64` | Count | Target maximum concurrent queries before queueing (0 = dynamic auto-concurrency). |
@@ -344,10 +346,11 @@ removed from the view).
 | `reservation_group_path` | `ARRAY<STRING>` | Array | Reservation group hierarchy path. |
 | `reservation_name` | `STRING` | Resource Path | User-provided reservation name. |
 | `scaling_mode` | `STRING` | Enum | Scaling mode (`'ALL_SLOTS'`, `'IDLE_SLOTS_ONLY'`, `'AUTOSCALE_ONLY'`, `'SCALING_MODE_UNSPECIFIED'`). |
+| `scheduling_policy` | `RECORD` | Struct | Default per-project caps within the reservation (`max_slots`, `concurrency`), or `NULL` if unset (Preview / feature-flag gated; verify availability with `SELECT * ... LIMIT 0` before projecting explicitly). |
 | `secondary_location` | `STRING` | Region | Location of secondary replica in Disaster Recovery. |
 | `slot_capacity` | `INT64` | **Slots** | Baseline slot capacity configured at event time. |
 | `target_job_concurrency` | `INT64` | Count | Target query concurrency limit. |
-| `user_email` | `STRING` | Email | Administrator or service identity who initiated the change (`'google'` if automated). |
+| `user_email` | `STRING` | Email | Administrator or service identity who initiated the change (`'google'` if automated; `NULL` if unknown). |
 <!-- mdformat on -->
 
 ### `INFORMATION_SCHEMA.RESERVATIONS_TIMELINE` (and `_BY_PROJECT`)
@@ -362,13 +365,12 @@ records).
 
 #### Required IAM Permissions & Predefined Roles
 
-*   Requires `bigquery.reservations.list` or `bigquery.reservations.get` on the
-    administration project.
-*   **Predefined Roles:** **BigQuery Resource Viewer**
-    (`roles/bigquery.resourceViewer`), **BigQuery Resource Admin**
+*   Requires `bigquery.reservations.list` on the administration project.
+*   **Predefined Roles:** **BigQuery Resource Admin**
     (`roles/bigquery.resourceAdmin`), **BigQuery Resource Editor**
-    (`roles/bigquery.resourceEditor`), or **BigQuery Admin**
-    (`roles/bigquery.admin`).
+    (`roles/bigquery.resourceEditor`), **BigQuery Resource Viewer**
+    (`roles/bigquery.resourceViewer`), **BigQuery User**
+    (`roles/bigquery.user`), or **BigQuery Admin** (`roles/bigquery.admin`).
 
 <!-- mdformat off -->
 | Column Name | Data Type | Physical Unit | Description & Conversion Formula |
@@ -389,6 +391,7 @@ records).
 | `reservation_id` | `STRING` | Resource Path | Formatted reservation path (`project_id:location.reservation_name`) for joining with `JOBS_TIMELINE`. |
 | `reservation_name` | `STRING` | Resource Path | Name of the reservation. |
 | `scaling_mode` | `STRING` | Enum | Scaling mode (`'ALL_SLOTS'`, `'IDLE_SLOTS_ONLY'`, `'AUTOSCALE_ONLY'`, `'SCALING_MODE_UNSPECIFIED'`). |
+| `scheduling_policy` | `RECORD` | Struct | Default per-project caps within the reservation (`max_slots`, `concurrency`), or `NULL` if unset (Preview / feature-flag gated; verify availability with `SELECT * ... LIMIT 0` before projecting explicitly). |
 | `slot_capacity` | `INT64` | **Slots** | Total configured baseline slot capacity. **Formula for Billable Baseline Slots:** `IF(is_creation_region, slot_capacity, 0)`. |
 | `slots_assigned` | `INT64` | **Slots** | Instantaneous active baseline allocation. Shifts to secondary region during DR failover events (for invoicing, use `slot_capacity` with `is_creation_region`). |
 | `slots_max_assigned` | `INT64` | **Slots** | Maximum slot capacity for reservation including idle sharing (`slots_assigned` if `ignore_idle_slots = TRUE`). |
@@ -419,10 +422,10 @@ discrete capacity and usage snapshots within the 1-minute period:
 
 > [!NOTE] **Array Population Invariant:** When there are autoscale or
 > reservation changes during the minute, `per_second_details` is populated with
-> 60 elements (one per second). For steady-state reservations with no changes
-> during that minute, `per_second_details` is an empty array to prevent
-> redundant repeating data. To analyze second-level telemetry, use `LEFT JOIN
-> UNNEST(per_second_details) AS s`.
+> 60 elements (one per second). For non-autoscale reservations that remain
+> unchanged during that minute, `per_second_details` is an empty array to
+> prevent redundant repeating data. To analyze second-level telemetry, use
+> `LEFT JOIN UNNEST(per_second_details) AS s`.
 
 ### `INFORMATION_SCHEMA.CAPACITY_COMMITMENTS` (and `_BY_PROJECT`)
 
@@ -433,12 +436,12 @@ parameters, and remaining commitment lifecycles.
 
 #### Required IAM Permissions & Predefined Roles
 
-*   Requires `bigquery.capacityCommitments.list` or
-    `bigquery.capacityCommitments.get` on the administration project.
-*   **Predefined Roles:** **BigQuery Resource Viewer**
-    (`roles/bigquery.resourceViewer`), **BigQuery Resource Admin**
-    (`roles/bigquery.resourceAdmin`), or **BigQuery Admin**
-    (`roles/bigquery.admin`).
+*   Requires `bigquery.capacityCommitments.list` on the administration project.
+*   **Predefined Roles:** **BigQuery Resource Admin**
+    (`roles/bigquery.resourceAdmin`), **BigQuery Resource Editor**
+    (`roles/bigquery.resourceEditor`), **BigQuery Resource Viewer**
+    (`roles/bigquery.resourceViewer`), **BigQuery User**
+    (`roles/bigquery.user`), or **BigQuery Admin** (`roles/bigquery.admin`).
 
 <!-- mdformat off -->
 | Column Name | Data Type | Physical Unit | Description |
@@ -467,12 +470,12 @@ running-total historical capacity curves for CUD reconciliation.
 
 #### Required IAM Permissions & Predefined Roles
 
-*   Requires `bigquery.capacityCommitments.list` or
-    `bigquery.capacityCommitments.get` on the administration project.
-*   **Predefined Roles:** **BigQuery Resource Viewer**
-    (`roles/bigquery.resourceViewer`), **BigQuery Resource Admin**
-    (`roles/bigquery.resourceAdmin`), or **BigQuery Admin**
-    (`roles/bigquery.admin`).
+*   Requires `bigquery.capacityCommitments.list` on the administration project.
+*   **Predefined Roles:** **BigQuery Resource Admin**
+    (`roles/bigquery.resourceAdmin`), **BigQuery Resource Editor**
+    (`roles/bigquery.resourceEditor`), **BigQuery Resource Viewer**
+    (`roles/bigquery.resourceViewer`), **BigQuery User**
+    (`roles/bigquery.user`), or **BigQuery Admin** (`roles/bigquery.admin`).
 
 <!-- mdformat off -->
 | Column Name | Data Type | Physical Unit | Description |
@@ -504,12 +507,13 @@ and ML workloads.
 
 #### Required IAM Permissions & Predefined Roles
 
-*   Requires `bigquery.reservationAssignments.list` or
-    `bigquery.reservationAssignments.get` on the administration project.
-*   **Predefined Roles:** **BigQuery Resource Viewer**
-    (`roles/bigquery.resourceViewer`), **BigQuery Resource Admin**
-    (`roles/bigquery.resourceAdmin`), or **BigQuery Admin**
-    (`roles/bigquery.admin`).
+*   Requires `bigquery.reservationAssignments.list` on the administration
+    project.
+*   **Predefined Roles:** **BigQuery Resource Admin**
+    (`roles/bigquery.resourceAdmin`), **BigQuery Resource Editor**
+    (`roles/bigquery.resourceEditor`), **BigQuery Resource Viewer**
+    (`roles/bigquery.resourceViewer`), **BigQuery User**
+    (`roles/bigquery.user`), or **BigQuery Admin** (`roles/bigquery.admin`).
 
 <!-- mdformat off -->
 | Column Name | Data Type | Physical Unit | Description |
@@ -538,10 +542,11 @@ they are removed from the view).
 
 *   Requires `bigquery.reservationAssignments.list` on the administration
     project.
-*   **Predefined Roles:** **BigQuery Resource Viewer**
-    (`roles/bigquery.resourceViewer`), **BigQuery Resource Admin**
-    (`roles/bigquery.resourceAdmin`), or **BigQuery Admin**
-    (`roles/bigquery.admin`).
+*   **Predefined Roles:** **BigQuery Resource Admin**
+    (`roles/bigquery.resourceAdmin`), **BigQuery Resource Editor**
+    (`roles/bigquery.resourceEditor`), **BigQuery Resource Viewer**
+    (`roles/bigquery.resourceViewer`), **BigQuery User**
+    (`roles/bigquery.user`), or **BigQuery Admin** (`roles/bigquery.admin`).
 
 <!-- mdformat off -->
 | Column Name | Data Type | Physical Unit | Description |
@@ -570,19 +575,20 @@ sub-second SQL acceleration.
 #### Required IAM Permissions & Predefined Roles
 
 *   Requires `bigquery.bireservations.get` on the project.
-*   **Predefined Roles:** **BigQuery Resource Viewer**
-    (`roles/bigquery.resourceViewer`), **BigQuery Resource Admin**
-    (`roles/bigquery.resourceAdmin`), or **BigQuery Admin**
-    (`roles/bigquery.admin`).
+*   **Predefined Roles:** **BigQuery Resource Admin**
+    (`roles/bigquery.resourceAdmin`), **BigQuery Resource Editor**
+    (`roles/bigquery.resourceEditor`), **BigQuery Resource Viewer**
+    (`roles/bigquery.resourceViewer`), **BigQuery User**
+    (`roles/bigquery.user`), or **BigQuery Admin** (`roles/bigquery.admin`).
 
 <!-- mdformat off -->
 | Column Name | Data Type | Physical Unit | Description |
 | :--- | :--- | :--- | :--- |
 | `bi_capacity_name` | `STRING` | String | Name of the capacity object (always `'default'`). |
-| `preferred_tables` | `ARRAY<STRING>` | Array | Set of preferred table paths for BI Engine caching (`NULL` = all tables in project). |
+| `preferred_tables` | `ARRAY<STRING>` | Array | Set of preferred tables this BI Engine capacity must be used for (`NULL` = all queries in project). |
 | `project_id` | `STRING` | Project ID | Project containing the BI Engine capacity. |
 | `project_number` | `INT64` | Numeric ID | Project number containing the BI Engine capacity. |
 | `size` | `INT64` | **Bytes** | BI Engine allocated RAM capacity in bytes. **GiB:** `size / POWER(1024, 3)`. |
 | `change_timestamp` | `TIMESTAMP` | UTC Timestamp | (In `BI_CAPACITY_CHANGES`) Timestamp when the update was made. |
-| `user_email` | `STRING` | Email | (In `BI_CAPACITY_CHANGES`) Administrator or service identity who made the change. |
+| `user_email` | `STRING` | Email | (In `BI_CAPACITY_CHANGES`) Administrator or identity who made the change (`'google'` if automated; `NULL` if unknown). |
 <!-- mdformat on -->
