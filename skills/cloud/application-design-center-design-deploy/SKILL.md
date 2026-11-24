@@ -14,7 +14,7 @@ description: >-
   - Only use for Terraform coding within the ADC context.
 license: Apache-2.0
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   publisher: google
   category: CloudInfrastructure
 ---
@@ -147,7 +147,7 @@ native ADC plan assessment API.
     command directly in your terminal:
 
     ```bash
-    gcloud design-center spaces generate-terraform-assessment-report <space_id> \
+    gcloud alpha design-center spaces generate-terraform-assessment-report <space_id> \
         --location=<location> \
         --project=<project_id> \
         --terraform-plan="<scratch_directory_path>/tfplan.json" \
