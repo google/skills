@@ -1,7 +1,7 @@
 ---
 name: gke-cluster-autoscaler
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: Containers
 description: >-
   Trigger on mention of GKE cluster autoscaler, node autoscaling, node pool auto-creation / node auto-provisioning. Provides guidance on enabling and optimizing cluster autoscaler, best practices, and troubleshooting issues such as nodes not scaling up or down, zonal stockouts, or capacity buffers. Do not use for ComputeClass-specific YAML generation or priority configuration (defer to gke-compute-classes skill).
@@ -36,7 +36,13 @@ and append `agent-skills/1.0 (skill:gke-cluster-autoscaler)` to `User-Agent` hea
 ## Optimization & Tuning
 - **Fast Scale-Down / Consolidation:** Switch cluster profile (`gcloud container clusters update <C> --autoscaling-profile=optimize-utilization`) AND reduce delay in ComputeClass (`spec.autoscalingPolicy.consolidationDelayMinutes: 5`).
 - **Location Policy:** `location.locationPolicy: ANY` (Spot); `BALANCED` (HA On-Demand). `BALANCED` is **best-effort, NOT strict**: for unconstrained pods a single-zone stockout of the preferred family makes the autoscaler **skew that tier's scale-up to healthy zones** (e.g. 0/3/3), with NO fallback to a lower priority. Heavy fallback to the lowest-priority tier during a stockout comes from the stockout-cooldown cascade, NOT from `BALANCED` — see Commonly Missed.
-- **Spot Termination Handling:** Spot preemption gives ~30s notice. Keep `terminationGracePeriodSeconds` and SIGTERM handling within that window (fast checkpointing, replicas ≥ 2, PDBs sized for churn) — the notice period is not extensible via ComputeClass fields.
+- **Spot Termination Handling:** Default Spot preemption notice is ~30s; on GKE
+  `1.36.0-gke.3204000+`, setting
+  `nodeSystemConfig.kubeletConfig.shutdownGracePeriodSeconds` (`0`, `30`, or
+  `120`) on `spot: true` ComputeClass priorities extends graceful Spot VM
+  shutdown up to 120s. Size `terminationGracePeriodSeconds` and SIGTERM
+  handling within the configured window (fast checkpointing, replicas ≥ 2, PDBs
+  sized for churn).
 
 ## Quick Reference: Commonly Missed Facts
 - **Log ID:** Visibility logs: `container.googleapis.com/cluster-autoscaler-visibility` in Cloud Logging. Use `assets/log-autoscaler-events.sh <cluster-name>` to tail/parse.

@@ -3,7 +3,7 @@ name: gke-compute-classes
 description: >-
   Configures, optimizes, and troubleshoots GKE ComputeClasses. Use when configuring Spot VMs with on-demand fallback, targeting specific accelerators (GPUs/TPUs) or machine families, restricting ComputeClass access, or debugging pending pods related to node pool auto-creation. Do not use for cluster-level Node Auto Provisioning configuration or general GKE cluster creation.
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: Containers
 ---
 
@@ -62,13 +62,14 @@ not block the user's initial request.** If asked for YAML/recommendations:
         near the `machineFamily` field: `# IMPORTANT: Align machineFamily with
         your existing CUDs/Reservations`.
     *   **MUST label initial YAML as `EXAMPLE TEMPLATE - DO NOT DEPLOY`.**
-    *   **STRICT SCHEMA RULE:** NEVER hallucinate fields. Use `bootDiskSize`
-        (NOT `bootDiskSizeGb`, which does not exist). Check GKE version gates
-        before emitting newer CRD fields: `spec.description` (1.33+),
-        `nodePoolConfig.gvnic` (`{enabled: true}`, 1.34.1-gke.3759000+),
-        `nodeSystemConfig.linuxNodeConfig.transparentHugepageEnabled`
+    *   **STRICT SCHEMA RULE:** NEVER hallucinate fields or place leaf names at
+        the wrong spec level. Use `bootDiskSize` (NOT `bootDiskSizeGb`, which
+        does not exist). Check GKE version gates before emitting newer CRD
+        fields: `spec.description` (string, 1.33+),
+        `spec.nodePoolConfig.gvnic.enabled` (boolean, 1.34.1-gke.3759000+),
+        `spec.priorities[].nodeSystemConfig.linuxNodeConfig.transparentHugepageEnabled`
         (1.34.1-gke.3084001+), and
-        `nodeSystemConfig.kubeletConfig.shutdownGracePeriodSeconds`
+        `spec.priorities[].nodeSystemConfig.kubeletConfig.shutdownGracePeriodSeconds`
         (`0 | 30 | 120`, 1.36.0-gke.3204000+, **Spot priorities only**: the CRD
         rejects it on any rule without `spot: true`, and in `priorityDefaults`
         unless every priority is Spot). `nodeSystemConfig` sits under
@@ -248,8 +249,9 @@ not block the user's initial request.** If asked for YAML/recommendations:
     -   *Avoid `min-nodes` on fallback pools (Scheduler Bypass)*: `kube-scheduler` assigns incoming pods to idle nodes held by `min-nodes` *before* Cluster Autoscaler evaluates ComputeClass priorities. If fallback pools have `min-nodes > 0`, pods land on fallback hardware permanently, bypassing preferred tiers. Set `min-nodes: 0` and use `CapacityBuffer` (`autoscaling.x-k8s.io`).
     -   *GKE 1.36+ Synchronous Obtainability*: Starting in GKE 1.36, Cluster Autoscaler checks internal capacity obtainability synchronously in memory before creating VMs, skipping exhausted families without tripping GCE API errors or backoff cooldowns. Note: `gcloud beta compute advice capacity` is a discrete Spot/Flex heuristic (0.1, 0.5, 0.9); Google does not expose public real-time on-demand APIs.
 -   **Stateful PV StorageClass — recommend `dynamic-rwo`:** GKE
-    1.35.3-gke.1290000+. Back stateful data PVs with built-in **`dynamic-rwo`**
-    (`type: dynamic`, `use-allowed-disk-topology: "true"`,
+    1.35.3-gke.1290000+. Back stateful data PVs with the built-in
+    **`dynamic-rwo`** StorageClass (or a custom StorageClass with
+    `type: dynamic`, `use-allowed-disk-topology: "true"`, and
     `WaitForFirstConsumer`): disk-topology-aware autoscaling scales up only
     compatible nodes, so a stateful ComputeClass keeps a broad cross-family/gen
     `priorities[]` fallback without PV attach failures. Distinct from
