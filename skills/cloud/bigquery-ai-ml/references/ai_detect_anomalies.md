@@ -34,7 +34,7 @@ Argument                     | Requirement  | Type          | Description
 **`id_cols`**                | Optional     | Array<String> | Grouping columns for multiple series (e.g., `['store_id']`).
 **`anomaly_prob_threshold`** | Optional     | Float64       | Threshold for anomaly detection (0 to 1). Defaults to 0.95.
 **`model`**                  | Optional     | String        | Model version. Allowed options are `'TimesFM 2.0'`, `'TimesFM 2.5'`, and `'TimesFM 3.0'`, with `'TimesFM 2.5'` preferred.
-**`context_window`**         | Optional     | Int64         | The number of historical data points the model uses. The min value is 64 and the max value is 2048 for `'TimesFM 2.0'`. The min value is 64 and the max value is 15360 for `'TimesFM 2.5'`. If not set, the model determines this automatically.
+**`context_window`**         | Optional     | Int64         | The number of historical data points the model uses. The min value is 64 and the max value is 2048 for `'TimesFM 2.0'`, and the min value is 64 and the max value is 15360 for `'TimesFM 2.5'` (selected automatically if omitted). For `'TimesFM 3.0'`, must be a multiple of 32 in `[64, 2048]` and defaults to `2048` when omitted.
 
 ### Output Schema
 

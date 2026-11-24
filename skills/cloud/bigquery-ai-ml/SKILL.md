@@ -1,7 +1,7 @@
 ---
 name: bigquery-ai-ml
 metadata:
-  version: "1.1.2"
+  version: "1.1.3"
   category: AiAndMachineLearning
   publisher: google
 description: >-
