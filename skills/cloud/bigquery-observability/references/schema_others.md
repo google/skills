@@ -24,7 +24,7 @@ Indexes, Configurations, and Recommendations.
     -   [`INFORMATION_SCHEMA.WRITE_API_TIMELINE_BY_PROJECT` (and `_BY_ORGANIZATION`, `_BY_FOLDER`)](#information_schemawrite_api_timeline_by_project-and-_by_organization-_by_folder)
         (Lines 214-248)
 -   [7. Search, Vector, AI Indexes & BI Engine Views](#7-search-vector-ai-indexes-bi-engine-views)
-    (Lines 249-404)
+    (Lines 249-407)
     -   [`INFORMATION_SCHEMA.SEARCH_INDEXES` (and `_OPTIONS`)](#information_schemasearch_indexes-and-_options)
         (Lines 251-289)
     -   [`INFORMATION_SCHEMA.SEARCH_INDEX_COLUMNS`](#information_schemasearch_index_columns)
@@ -34,29 +34,29 @@ Indexes, Configurations, and Recommendations.
     -   [`INFORMATION_SCHEMA.VECTOR_INDEX_COLUMNS`](#information_schemavector_index_columns)
         (Lines 354-379)
     -   [`INFORMATION_SCHEMA.BI_CAPACITIES` & `BI_CAPACITY_CHANGES`](#information_schemabi_capacities-bi_capacity_changes)
-        (Lines 380-404)
+        (Lines 380-407)
 -   [8. Security, Access Control, Governance & Policy Views](#8-security-access-control-governance-policy-views)
-    (Lines 405-441)
+    (Lines 408-480)
     -   [`INFORMATION_SCHEMA.OBJECT_PRIVILEGES`](#information_schemaobject_privileges)
-        (Lines 407-432)
-    -   [Row-Level Access Policies (CLI / REST API Only)](#row-level-access-policies-cli-rest-api-only)
-        (Lines 433-441)
--   [9. Recommendations & Insights Views](#9-recommendations-insights-views)
-    (Lines 442-518)
-    -   [`INFORMATION_SCHEMA.RECOMMENDATIONS` (and `_BY_PROJECT`, `_BY_ORGANIZATION`)](#information_schemarecommendations-and-_by_project-_by_organization)
+        (Lines 410-443)
+    -   [`INFORMATION_SCHEMA.ROW_ACCESS_POLICIES`](#information_schemarow_access_policies)
         (Lines 444-480)
+-   [9. Recommendations & Insights Views](#9-recommendations-insights-views)
+    (Lines 481-567)
+    -   [`INFORMATION_SCHEMA.RECOMMENDATIONS` (and `_BY_PROJECT`, `_BY_ORGANIZATION`)](#information_schemarecommendations-and-_by_project-_by_organization)
+        (Lines 483-525)
     -   [`INFORMATION_SCHEMA.INSIGHTS` (and `_BY_PROJECT`)](#information_schemainsights-and-_by_project)
-        (Lines 481-518)
+        (Lines 526-567)
 -   [10. Project & Organization Configuration Views](#10-project-organization-configuration-views)
-    (Lines 519-615)
+    (Lines 568-680)
     -   [`INFORMATION_SCHEMA.PROJECT_OPTIONS`](#information_schemaproject_options)
-        (Lines 521-547)
+        (Lines 570-597)
     -   [`INFORMATION_SCHEMA.EFFECTIVE_PROJECT_OPTIONS`](#information_schemaeffective_project_options)
-        (Lines 548-573)
+        (Lines 598-626)
     -   [`INFORMATION_SCHEMA.ORGANIZATION_OPTIONS`](#information_schemaorganization_options)
-        (Lines 574-595)
-    -   [`INFORMATION_SCHEMA.ORGANIZATION_OPTIONS_CHANGES`](#information_schemaorganization_options_changes)
-        (Lines 596-615)
+        (Lines 627-653)
+    -   [`INFORMATION_SCHEMA.ORGANIZATION_OPTIONS_CHANGES` (and `PROJECT_OPTIONS_CHANGES`)](#information_schemaorganization_options_changes-and-project_options_changes)
+        (Lines 654-680)
 
 ## View Scoping & Qualification Matrix
 
@@ -66,14 +66,14 @@ Platform, acceleration, and governance views fall into **Dual-Scoped**,
 <!-- mdformat off -->
 | View Family | INFORMATION_SCHEMA View(s) | Qualification Scope | Syntax Pattern & Scoping Rules |
 | :--- | :--- | :--- | :--- |
-| **BI Engine Acceleration** | `BI_CAPACITIES`, `BI_CAPACITY_CHANGES` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.BI_CAPACITIES*``<br>• In-memory RAM capacity and allocation modification logs. |
+| **BI Engine Acceleration** | `BI_CAPACITIES`, `BI_CAPACITY_CHANGES` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.BI_CAPACITIES``<br>• In-memory RAM capacity and allocation modification logs (`BI_CAPACITY_CHANGES`). |
 | **Search Indexes** | `SEARCH_INDEXES`, `SEARCH_INDEX_COLUMNS`, `SEARCH_INDEX_OPTIONS`, `SEARCH_INDEX_COLUMN_OPTIONS`<br><br>`SEARCH_INDEXES_BY_ORGANIZATION` | **Dataset-Only**<br><br><br>**Region-Only** | • Dataset views require `{dataset_id}`.<br>• Org view requires `region-{region}`. |
-| **Vector Indexes** | `VECTOR_INDEXES`, `VECTOR_INDEX_COLUMNS`, `VECTOR_INDEX_OPTIONS` | **Dual-Scoped** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.VECTOR_INDEXES*``<br>OR<br>`` `{project_id}`.`{dataset_id}`.INFORMATION_SCHEMA.VECTOR_INDEXES*`` |
-| **Access Control** | `OBJECT_PRIVILEGES` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.OBJECT_PRIVILEGES``<br>• IAM permissions on datasets, tables, and views. |
-| **Streaming Ingestion** | `STREAMING_TIMELINE_BY_PROJECT*`, `WRITE_API_TIMELINE_BY_PROJECT*` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.{view_name}``<br>• Streaming buffer and Storage Write API append throughput. |
-| **Configurations** | `PROJECT_OPTIONS*`, `EFFECTIVE_PROJECT_OPTIONS`, `ORGANIZATION_OPTIONS*` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.{view_name}``<br>• Default option settings and audit history. |
-| **Insights & Recommendations** | `RECOMMENDATIONS*`, `INSIGHTS` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.{view_name}``<br>• Slot rightsizing and partitioning recommendations. |
-| **Routines & Parameters** | `ROUTINES`, `PARAMETERS`, `ROUTINE_OPTIONS` | **Dual-Scoped** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.ROUTINES*``<br>OR<br>`` `{project_id}`.`{dataset_id}`.INFORMATION_SCHEMA.ROUTINES*`` |
+| **Vector Indexes** | `VECTOR_INDEXES`, `VECTOR_INDEX_COLUMNS`, `VECTOR_INDEX_OPTIONS` | **Dataset-Only** | `` `{project_id}`.`{dataset_id}`.INFORMATION_SCHEMA.{view_name}``<br>• Dataset-qualified vector index metadata, columns, and options. |
+| **Access Control** | `OBJECT_PRIVILEGES`<br><br>`ROW_ACCESS_POLICIES` | **Region-Only**<br><br>**Dual-Scoped** | • `OBJECT_PRIVILEGES` requires `region-{region}` and `WHERE object_name = ...`.<br>• `ROW_ACCESS_POLICIES` accepts `region-{region}` or `{dataset_id}`. |
+| **Streaming Ingestion** | `STREAMING_TIMELINE*`, `WRITE_API_TIMELINE*` (`_BY_PROJECT`, `_BY_FOLDER`, `_BY_ORGANIZATION`) | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.{view_name}``<br>• Streaming buffer and Storage Write API append throughput. |
+| **Configurations** | `PROJECT_OPTIONS`, `PROJECT_OPTIONS_CHANGES`, `EFFECTIVE_PROJECT_OPTIONS`, `ORGANIZATION_OPTIONS`, `ORGANIZATION_OPTIONS_CHANGES` | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.{view_name}``<br>• Default option settings and audit history. |
+| **Insights & Recommendations** | `RECOMMENDATIONS*` (`_BY_PROJECT`, `_BY_ORGANIZATION`), `INSIGHTS*` (`_BY_PROJECT`) | **Region-Only** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.{view_name}``<br>• Partitioning/clustering, materialized view, and dataset IAM role recommendations. |
+| **Routines & Parameters** | `ROUTINES`, `PARAMETERS`, `ROUTINE_OPTIONS` | **Dual-Scoped** | `` `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.{view_name}``<br>OR<br>`` `{project_id}`.`{dataset_id}`.INFORMATION_SCHEMA.{view_name}`` |
 <!-- mdformat on -->
 
 ## 5. Routines, Functions, Stored Procedures & ML Views
@@ -104,17 +104,17 @@ Cloud Function connection endpoints.
 | `routine_catalog` | `STRING` | Project ID | Catalog name. |
 | `routine_schema` | `STRING` | Dataset ID | Schema name. |
 | `routine_name` | `STRING` | Name | Function/procedure name. |
-| `routine_type` | `STRING` | Enum | `'FUNCTION'`, `'PROCEDURE'`, `'TABLE FUNCTION'`. |
+| `routine_type` | `STRING` | Enum | `'FUNCTION'`, `'AGGREGATE FUNCTION'`, `'PROCEDURE'`, `'TABLE FUNCTION'`. |
 | `data_type` | `STRING` | SQL Type | Return data type (or `NULL` for procedures). |
-| `routine_body` | `STRING` | Enum | `'SQL'` or `'EXTERNAL'`. |
+| `routine_body` | `STRING` | Enum | `'SQL'` or `'EXTERNAL'` (or `'REMOTE'` for remote functions). |
 | `routine_definition` | `STRING` | SQL Code | Routine body expression or JavaScript/Python function text. |
-| `external_language` | `STRING` | Enum | `'JAVASCRIPT'`, `'PYTHON'`, or `NULL` (when defined with SQL). |
+| `external_language` | `STRING` | Enum | `'JAVASCRIPT'` (or `'PYTHON'` for Python UDFs), or `NULL` when defined with SQL or as a remote function. |
 | `is_deterministic` | `STRING` | `'YES'` / `'NO'` | Indicates whether identical inputs always return identical results (`NULL` if unknown). |
 | `security_type` | `STRING` | Nullable | Security type of the routine (always `NULL`). |
 | `created` | `TIMESTAMP` | UTC Timestamp | Creation timestamp. |
 | `last_altered` | `TIMESTAMP` | UTC Timestamp | Last modification timestamp. |
 | `ddl` | `STRING` | SQL String | DDL statement to recreate the routine. |
-| `connection` | `STRING` | Resource Path | Cloud Resource connection path for BigQuery Remote Functions. |
+| `connection` | `STRING` | Resource Path | Connection name if the routine has one (e.g. Remote Functions or Python UDFs), otherwise `NULL`. |
 <!-- mdformat on -->
 
 ### `INFORMATION_SCHEMA.PARAMETERS`
@@ -277,7 +277,7 @@ footprints, text analyzers, and unindexed row backlogs.
 | `index_catalog` | `STRING` | Project ID | Project name. |
 | `index_name` | `STRING` | Index Name | Search index name. |
 | `index_schema` | `STRING` | Dataset ID | Dataset name. |
-| `index_status` | `STRING` | Enum | `'ACTIVE'`, `'PENDING'`, `'STALE'`, `'DISABLED'`. |
+| `index_status` | `STRING` | Enum | `'ACTIVE'`, `'PENDING DISABLEMENT'`, `'TEMPORARILY DISABLED'`, `'PERMANENTLY DISABLED'`. |
 | `last_index_alteration_info` | `RECORD` | Alteration Struct | Details of latest user-triggered index alteration (`status`, `message`, `new_coverage_percentage`, `start_time`, `end_time`, `ddl`). |
 | `last_modification_time` | `TIMESTAMP` | UTC Timestamp | Last index modification timestamp. |
 | `last_refresh_time` | `TIMESTAMP` | UTC Timestamp | Last completed index build timestamp. |
@@ -387,19 +387,22 @@ capacities, and capacity alteration events.
 #### Required IAM Permissions & Predefined Roles
 
 *   Requires `bigquery.bireservations.get` on the project.
-*   **Predefined Roles:** **BigQuery Resource Viewer**
-    (`roles/bigquery.resourceViewer`), **BigQuery Resource Admin**
-    (`roles/bigquery.resourceAdmin`), or **BigQuery Admin**
-    (`roles/bigquery.admin`).
+*   **Predefined Roles:** **BigQuery Resource Admin**
+    (`roles/bigquery.resourceAdmin`), **BigQuery Resource Editor**
+    (`roles/bigquery.resourceEditor`), **BigQuery Resource Viewer**
+    (`roles/bigquery.resourceViewer`), **BigQuery User**
+    (`roles/bigquery.user`), or **BigQuery Admin** (`roles/bigquery.admin`).
 
 <!-- mdformat off -->
 | Column Name | Data Type | Physical Unit | Description |
 | :--- | :--- | :--- | :--- |
-| `bi_capacity_name` | `STRING` | Resource Path | BI Engine capacity identifier. |
-| `preferred_tables` | `ARRAY<STRING>` | Array | Pinned tables prioritized for memory caching (`NULL` = all tables in project). |
+| `bi_capacity_name` | `STRING` | String | Name of the capacity object (always `'default'`). |
+| `change_timestamp` | `TIMESTAMP` | UTC Timestamp | (In `BI_CAPACITY_CHANGES`) Timestamp when the update was made. |
+| `preferred_tables` | `ARRAY<STRING>` | Array | Set of preferred tables this BI Engine capacity must be used for (`NULL` = all queries in project). |
 | `project_id` | `STRING` | Project ID | Project hosting the BI Engine capacity. |
 | `project_number` | `INT64` | Numeric ID | Project number. |
 | `size` | `INT64` | **Bytes** | Configured in-memory RAM capacity allocation. |
+| `user_email` | `STRING` | Email | (In `BI_CAPACITY_CHANGES`) Administrator or identity who made the change (`'google'` if automated; `NULL` if unknown). |
 <!-- mdformat on -->
 
 ## 8. Security, Access Control, Governance & Policy Views
@@ -409,15 +412,23 @@ capacities, and capacity alteration events.
 #### High-Level Description
 
 Lists explicit IAM role bindings across datasets, tables, views, and external
-tables.
+tables (excludes inherited bindings). Queries **must** include a `WHERE` clause
+filtering to a single resource (`WHERE object_name = '{dataset_id}'` for a
+dataset, or
+`WHERE object_schema = '{dataset_id}' AND object_name = '{table_id}'` for a
+table or view).
 
 #### Required IAM Permissions & Predefined Roles
 
 *   Requires `bigquery.datasets.get` on datasets or
     `bigquery.tables.getIamPolicy` on tables and views.
-*   **Predefined Roles:** **BigQuery Data Owner** (`roles/bigquery.dataOwner`),
-    **BigQuery Admin** (`roles/bigquery.admin`), or **Security Admin**
-    (`roles/iam.securityAdmin`).
+*   **Predefined Roles:** **BigQuery Metadata Viewer**
+    (`roles/bigquery.metadataViewer` - Least Privilege), **BigQuery Data
+    Viewer** (`roles/bigquery.dataViewer`), **BigQuery Data Editor**
+    (`roles/bigquery.dataEditor`), **BigQuery Data Owner**
+    (`roles/bigquery.dataOwner`), **BigQuery Security Admin**
+    (`roles/bigquery.securityAdmin`), or **BigQuery Admin**
+    (`roles/bigquery.admin`).
 
 <!-- mdformat off -->
 | Column Name | Data Type | Physical Unit | Description |
@@ -425,19 +436,47 @@ tables.
 | `grantee` | `STRING` | Principal | Grantee identity (`'user:alice@example.com'`, `'group:analysts@example.com'`, `'serviceAccount:app@proj.iam.gserviceaccount.com'`). |
 | `object_catalog` | `STRING` | Project ID | Project containing the resource. |
 | `object_name` | `STRING` | Resource Name | Name of table, view, or dataset. |
-| `object_schema` | `STRING` | Dataset ID | Dataset containing the resource. |
+| `object_schema` | `STRING` | Dataset ID | Dataset containing the resource (`NULL` if the resource itself is a dataset). |
 | `object_type` | `STRING` | Enum | `'SCHEMA'`, `'TABLE'`, `'VIEW'`, `'EXTERNAL'`. |
 | `privilege_type` | `STRING` | Role ID | IAM Role ID granted (e.g. `'roles/bigquery.dataViewer'`). |
 <!-- mdformat on -->
 
-### Row-Level Access Policies (CLI / REST API Only)
+### `INFORMATION_SCHEMA.ROW_ACCESS_POLICIES`
 
-BigQuery does not expose `INFORMATION_SCHEMA` views for row-level access
-policies. List row-level access policies on a table using `bq ls
---row_access_policies {dataset_id}.{table_id}` or the `RowAccessPolicies.List`
-REST API method (requires `bigquery.rowAccessPolicies.list`, plus
-`bigquery.rowAccessPolicies.getIamPolicy` to view policy grantees, granted by
-`roles/bigquery.dataOwner` or `roles/bigquery.admin`).
+#### High-Level Description
+
+Lists active row-level access policies and their SQL `filter_predicate`
+expressions across tables in a dataset (`{dataset_id}`) or across a project in a
+region (`region-{region}`). This view omits policy grantees and `ddl`, and
+returns zero rows without error for hidden, BigLake, or Analytics Hub linked
+datasets (for linked datasets, inspect the publisher source dataset instead). To
+inspect policy grantees, use
+`bq ls --row_access_policies {dataset_id}.{table_id}` (which calls
+`rowAccessPolicies.getIamPolicy` for each listed policy) or call the
+`rowAccessPolicies.getIamPolicy` REST API method after listing policy IDs via
+`INFORMATION_SCHEMA.ROW_ACCESS_POLICIES` or `rowAccessPolicies.list` (requires
+`bigquery.rowAccessPolicies.getIamPolicy` for grantees).
+
+#### Required IAM Permissions & Predefined Roles
+
+*   Requires `bigquery.rowAccessPolicies.get` and
+    `bigquery.rowAccessPolicies.list` on the dataset (for dataset-qualified
+    queries) or project (for region-qualified queries).
+*   **Predefined Roles:** **BigQuery Data Owner** (`roles/bigquery.dataOwner`),
+    **BigQuery Security Admin** (`roles/bigquery.securityAdmin`), or **BigQuery
+    Admin** (`roles/bigquery.admin`).
+
+<!-- mdformat off -->
+| Column Name | Data Type | Physical Unit | Description |
+| :--- | :--- | :--- | :--- |
+| `table_catalog` | `STRING` | Project ID | ID of the project containing the row access policy. |
+| `table_schema` | `STRING` | Dataset ID | Name of the dataset containing the row access policy. |
+| `table_name` | `STRING` | Table Name | Name of the table containing the row access policy. |
+| `row_access_policy_name` | `STRING` | Policy Name | Name of the row access policy. |
+| `filter_predicate` | `STRING` | SQL Expression | Boolean SQL expression defining which rows are accessible by the policy. |
+| `creation_time` | `TIMESTAMP` | UTC Timestamp | Timestamp when the row access policy was created. |
+| `last_modified_time` | `TIMESTAMP` | UTC Timestamp | Timestamp when the row access policy was last modified. |
+<!-- mdformat on -->
 
 ## 9. Recommendations & Insights Views
 
@@ -446,19 +485,25 @@ REST API method (requires `bigquery.rowAccessPolicies.list`, plus
 #### High-Level Description
 
 Surfaces automated BigQuery Recommender recommendations for cost savings,
-performance optimization, partition/cluster suggestions, and reservation
-rightsizing.
+performance optimization, partition/cluster suggestions, materialized views, and
+dataset IAM role recommendations.
 
 #### Required IAM Permissions & Predefined Roles
 
-*   **Project-Level (Least Privilege):** Requires
-    `recommender.bigqueryCapacityCommitmentsRecommendations.get` and
-    `recommender.bigqueryCapacityCommitmentsRecommendations.list` on the
-    project. Granted by **Recommender Viewer** (`roles/recommender.viewer` /
-    `roles/recommender.bigqueryViewer`) or **BigQuery Admin**
-    (`roles/bigquery.admin`).
-*   **`_BY_ORGANIZATION`:** Requires recommender permissions at the organization
-    level.
+*   **Project-Level (Least Privilege):** Returns recommendations for each
+    supported recommender whose `.get` and `.list` permissions the caller holds
+    (`recommender.bigqueryPartitionClusterRecommendations.get`/`list`,
+    `recommender.bigqueryMaterializedViewRecommendations.get`/`list`, and
+    `recommender.iamPolicyRecommendations.get`/`list`), granted by **Recommender
+    Viewer** (`roles/recommender.viewer`), **BigQuery Partitioning Clustering
+    Recommender Viewer** (`roles/recommender.bigqueryPartitionClusterViewer`),
+    **BigQuery Materialized View Recommender Viewer**
+    (`roles/recommender.bigqueryMaterializedViewViewer`), or **IAM Recommender
+    Viewer** (`roles/recommender.iamViewer`). Dataset IAM role recommendations
+    also check `iam.roles.get`/`list` on the project and
+    `bigquery.datasets.getIamPolicy` on the dataset.
+*   **`_BY_ORGANIZATION`:** Requires the corresponding recommender permissions
+    at the organization level.
 
 <!-- mdformat off -->
 | Column Name | Data Type | Physical Unit | Description |
@@ -470,7 +515,7 @@ rightsizing.
 | `primary_impact` | `RECORD` | Struct | Cost, performance, or security impact (`category`, `cost_projection.duration_seconds`). |
 | `priority` | `STRING` | Enum | `'P1'`, `'P2'`, `'P3'`, `'P4'`. |
 | `project_id` | `STRING` | Project ID | Project ID. |
-| `project_number` | `INT64` | Numeric ID | Project number. |
+| `project_number` | `STRING` | Numeric ID | Project number. |
 | `recommendation_id` | `STRING` | Base64 ID | Unique recommendation identifier. |
 | `recommender` | `STRING` | String | Recommender type (e.g. `'google.bigquery.table.PartitionClusterRecommender'`). |
 | `state` | `STRING` | Enum | `'ACTIVE'`, `'CLAIMED'`, `'SUCCEEDED'`, `'DISMISSED'`. |
@@ -482,19 +527,23 @@ rightsizing.
 
 #### High-Level Description
 
-Surfaces underlying workload signals, slot bottlenecks, table scan patterns, and
-stats that trigger recommender actions.
+Surfaces underlying workload signals, dataset IAM permission usage, table scan
+patterns, and stats that trigger recommender actions.
 
 #### Required IAM Permissions & Predefined Roles
 
-*   **Project-Level (Least Privilege):** Requires
-    `recommender.bigqueryCapacityCommitmentsInsights.get/list` or
-    `recommender.bigqueryPartitionClusterInsights.get/list` on the project.
-    Granted by **Recommender Viewer** (`roles/recommender.viewer` /
-    `roles/recommender.bigqueryViewer`) or **BigQuery Admin**
-    (`roles/bigquery.admin`).
-*   **`_BY_ORGANIZATION`:** Requires insight permissions at the organization
-    level.
+*   **Project-Level (Least Privilege):** Returns insights for each supported
+    recommender whose insight `.get` and `.list` permissions the caller holds
+    (`recommender.bigqueryTableStatsInsights.get`/`list`,
+    `recommender.bigqueryMaterializedViewInsights.get`/`list`, and
+    `recommender.iamPolicyInsights.get`/`list`), granted by **Recommender
+    Viewer** (`roles/recommender.viewer`), **BigQuery Partitioning Clustering
+    Recommender Viewer** (`roles/recommender.bigqueryPartitionClusterViewer`),
+    **BigQuery Materialized View Recommender Viewer**
+    (`roles/recommender.bigqueryMaterializedViewViewer`), or **IAM Recommender
+    Viewer** (`roles/recommender.iamViewer`). Dataset IAM insights also check
+    `iam.roles.get`/`list` on the project and `bigquery.datasets.getIamPolicy`
+    on the dataset.
 
 <!-- mdformat off -->
 | Column Name | Data Type | Physical Unit | Description |
@@ -507,7 +556,7 @@ stats that trigger recommender actions.
 | `insight_type` | `STRING` | String | Insight type (e.g. `'google.bigquery.table.StatsInsight'`). |
 | `last_updated_time` | `TIMESTAMP` | UTC Timestamp | Generation timestamp. |
 | `project_id` | `STRING` | Project ID | Project ID. |
-| `project_number` | `INT64` | Numeric ID | Project number. |
+| `project_number` | `STRING` | Numeric ID | Project number. |
 | `severity` | `STRING` | Enum | `'LOW'`, `'MEDIUM'`, `'HIGH'`, `'CRITICAL'`. |
 | `state` | `STRING` | Enum | `'ACTIVE'`, `'ACCEPTED'`, `'DISMISSED'`. |
 | `subtype` | `STRING` | String | Subtype classification (`'TABLE_STATS'`). |
@@ -529,9 +578,10 @@ assignments).
 #### Required IAM Permissions & Predefined Roles
 
 *   Requires `bigquery.config.get` on the project.
-*   **Predefined Roles:** **BigQuery Metadata Viewer**
-    (`roles/bigquery.metadataViewer` - Least Privilege), **BigQuery Resource
-    Viewer** (`roles/bigquery.resourceViewer`), or **BigQuery Admin**
+*   **Predefined Roles:** **BigQuery Job User** (`roles/bigquery.jobUser` -
+    Least Privilege), **BigQuery User** (`roles/bigquery.user`), **BigQuery Data
+    Editor** (`roles/bigquery.dataEditor`), **BigQuery Data Owner**
+    (`roles/bigquery.dataOwner`), or **BigQuery Admin**
     (`roles/bigquery.admin`).
 
 <!-- mdformat off -->
@@ -539,7 +589,7 @@ assignments).
 | :--- | :--- | :--- | :--- |
 | `project_number` | `INT64` | Numeric ID | Project number. |
 | `project_id` | `STRING` | Project ID | Project identifier. |
-| `option_name` | `STRING` | Option Name | Option identifier (e.g. `'default_time_travel_hours'`, `'default_query_job_timeout_ms'`). |
+| `option_name` | `STRING` | Option Name | Option identifier (e.g. `'default_time_zone'`, `'default_kms_key_name'`, `'default_query_job_timeout_ms'`). |
 | `option_description` | `STRING` | Text | Description of the option's behavior. |
 | `option_type` | `STRING` | SQL Type | GoogleSQL data type. |
 | `option_value` | `STRING` | Value String | Configured parameter value. |
@@ -549,15 +599,16 @@ assignments).
 
 #### High-Level Description
 
-Lists effective project options accounting for organization and folder
+Lists effective project options accounting for organization, folder, and project
 inheritance hierarchy.
 
 #### Required IAM Permissions & Predefined Roles
 
 *   Requires `bigquery.config.get` on the project.
-*   **Predefined Roles:** **BigQuery Metadata Viewer**
-    (`roles/bigquery.metadataViewer` - Least Privilege), **BigQuery Resource
-    Viewer** (`roles/bigquery.resourceViewer`), or **BigQuery Admin**
+*   **Predefined Roles:** **BigQuery Job User** (`roles/bigquery.jobUser` -
+    Least Privilege), **BigQuery User** (`roles/bigquery.user`), **BigQuery Data
+    Editor** (`roles/bigquery.dataEditor`), **BigQuery Data Owner**
+    (`roles/bigquery.dataOwner`), or **BigQuery Admin**
     (`roles/bigquery.admin`).
 
 <!-- mdformat off -->
@@ -566,9 +617,11 @@ inheritance hierarchy.
 | `project_number` | `INT64` | Numeric ID | Project number. |
 | `project_id` | `STRING` | Project ID | Project identifier. |
 | `option_name` | `STRING` | Option Name | Option identifier. |
+| `option_description` | `STRING` | Text | Description of the option's behavior. |
+| `option_type` | `STRING` | SQL Type | GoogleSQL data type of `option_value`. |
 | `option_value` | `STRING` | Value String | Effective option value. |
-| `option_set_level` | `STRING` | Enum | Definition level: `'DEFAULT'`, `'ORGANIZATION'`, `'FOLDER'`, `'PROJECT'`, `'USER'`. |
-| `option_set_on_id` | `STRING` | Resource ID | GCP resource ID where the setting was overridden. |
+| `option_set_level` | `STRING` | Enum | Hierarchy level where the setting is defined (`'projects'`, `'folders'`, `'organizations'`; unset options are omitted). |
+| `option_set_on_id` | `STRING` | Resource ID | Project ID for `'projects'`, slash-separated folder numbers (`parent/.../child`) for `'folders'`, or `""` for `'organizations'`. |
 <!-- mdformat on -->
 
 ### `INFORMATION_SCHEMA.ORGANIZATION_OPTIONS`
@@ -580,9 +633,14 @@ projects.
 
 #### Required IAM Permissions & Predefined Roles
 
-*   Requires `bigquery.config.get` on the organization.
-*   **Predefined Roles:** **BigQuery Admin** (`roles/bigquery.admin`) on the
-    organization resource.
+*   Requires `bigquery.config.get` on the target project (defaults to the
+    query-execution project when `{project_id}` is omitted; also satisfied via
+    organization/folder IAM inheritance).
+*   **Predefined Roles:** **BigQuery Job User** (`roles/bigquery.jobUser` -
+    Least Privilege), **BigQuery User** (`roles/bigquery.user`), **BigQuery Data
+    Editor** (`roles/bigquery.dataEditor`), **BigQuery Data Owner**
+    (`roles/bigquery.dataOwner`), or **BigQuery Admin**
+    (`roles/bigquery.admin`).
 
 <!-- mdformat off -->
 | Column Name | Data Type | Physical Unit | Description |
@@ -593,23 +651,30 @@ projects.
 | `option_value` | `STRING` | Value String | Configured organization-wide value. |
 <!-- mdformat on -->
 
-### `INFORMATION_SCHEMA.ORGANIZATION_OPTIONS_CHANGES`
+### `INFORMATION_SCHEMA.ORGANIZATION_OPTIONS_CHANGES` (and `PROJECT_OPTIONS_CHANGES`)
 
 #### High-Level Description
 
-Maintains an audit log of organization-level setting updates.
+Maintains an audit log of organization-level and project-level configuration
+changes (`PROJECT_OPTIONS_CHANGES` scopes to a single project).
 
 #### Required IAM Permissions & Predefined Roles
 
-*   Requires `bigquery.config.get` on the organization.
+*   Requires `bigquery.config.update` on the **organization** (for
+    `ORGANIZATION_OPTIONS_CHANGES`, enforced at the organization level) or on
+    the **target project** (for `PROJECT_OPTIONS_CHANGES`; defaults to the
+    query-execution project when `{project_id}` is omitted, or inherited from
+    folder/organization).
 *   **Predefined Roles:** **BigQuery Admin** (`roles/bigquery.admin`) on the
-    organization resource.
+    organization (for `ORGANIZATION_OPTIONS_CHANGES`) or target project (for
+    `PROJECT_OPTIONS_CHANGES`).
 
 <!-- mdformat off -->
 | Column Name | Data Type | Physical Unit | Description |
 | :--- | :--- | :--- | :--- |
-| `project_id` | `STRING` | Project ID | Project where change originated. |
+| `project_id` | `STRING` | Project ID | Project ID (`NULL` for organization-level changes). |
+| `project_number` | `INT64` | Numeric ID | Project number (`NULL` for organization-level changes). |
 | `update_time` | `TIMESTAMP` | UTC Timestamp | Timestamp of option change. |
-| `username` | `STRING` | User Identity | Identity of administrator who committed change. |
-| `updated_options` | `JSON` | JSON Struct | JSON object containing old and new setting values. |
+| `username` | `STRING` | User Identity | Email or federated identity of administrator who committed the change. |
+| `updated_options` | `JSON` | JSON Struct | JSON object containing previous and new setting values. |
 <!-- mdformat on -->

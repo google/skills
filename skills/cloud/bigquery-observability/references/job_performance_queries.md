@@ -10,19 +10,19 @@ verifying BI Engine / metadata cache (cmeta) acceleration.
 -   [Single Job Performance & Stage Bottleneck Flags](#single-job-performance-stage-bottleneck-flags)
     (Lines 27-76)
 -   [REST API Single-Job Point-Lookup & Stage Bottlenecks](#rest-api-single-job-point-lookup-stage-bottlenecks)
-    (Lines 77-97)
--   [Finding Comparable Jobs](#finding-comparable-jobs) (Lines 98-129)
+    (Lines 77-98)
+-   [Finding Comparable Jobs](#finding-comparable-jobs) (Lines 99-130)
 -   [BI Engine Acceleration Usage](#bi-engine-acceleration-usage) (Lines
-    130-152)
+    131-153)
 -   [Table Metadata Cache (cmeta) Usage](#table-metadata-cache-cmeta-usage)
-    (Lines 153-179)
--   [Search Index Usage](#search-index-usage) (Lines 180-208)
+    (Lines 154-180)
+-   [Search Index Usage](#search-index-usage) (Lines 181-209)
 -   [Materialized View Rewrite Usage](#materialized-view-rewrite-usage) (Lines
-    209-244)
+    210-245)
 -   [Query Performance Variance & Outlier Discovery](#query-performance-variance-outlier-discovery)
-    (Lines 245-279)
+    (Lines 246-280)
 -   [Stage Row Expansion, Shuffle Spill & Join Insights](#stage-row-expansion-shuffle-spill-join-insights)
-    (Lines 280-338)
+    (Lines 281-341)
 
 ## Single Job Performance & Stage Bottleneck Flags
 
@@ -91,9 +91,10 @@ Key fields in JSON response:
     `stagePerformanceChangeInsights[].inputDataChange`,
     `avgPreviousExecutionMs`).
 -   `statistics.query.queryPlan[]`: Stage-by-stage stats including `slotMs`,
-    `shuffleOutputBytes`, `recordsRead`, `recordsWritten`, `computeRatioAvg`,
-    `computeRatioMax`, `waitRatioAvg`, `waitRatioMax`, `readRatioAvg`,
-    `readRatioMax`, `writeRatioAvg`, `writeRatioMax`.
+    `shuffleOutputBytes`, `shuffleOutputBytesSpilled`, `recordsRead`,
+    `recordsWritten`, `computeMsAvg`, `computeMsMax`, `waitMsAvg`, `waitMsMax`,
+    `computeRatioAvg`, `computeRatioMax`, `waitRatioAvg`, `waitRatioMax`,
+    `readRatioAvg`, `readRatioMax`, `writeRatioAvg`, `writeRatioMax`.
 
 ## Finding Comparable Jobs
 
@@ -310,6 +311,8 @@ SELECT
   stage.wait_ms_max,
   stage.compute_ratio_avg,
   stage.compute_ratio_max,
+  stage.compute_ms_avg,
+  stage.compute_ms_max,
   insight.slot_contention,
   insight.insufficient_shuffle_quota,
   insight.high_cardinality_joins,
