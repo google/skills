@@ -84,7 +84,15 @@ Works on native Windows too; no WSL needed.
 
 ### OpenCode
 
-1.  Install the plugin:
+1.  On Windows, enable long paths in Git first. OpenCode clones the whole
+    repository, and some of its files have paths longer than Windows allows
+    by default:
+
+    ```powershell
+    git config --global core.longpaths true
+    ```
+
+2.  Install the plugin:
 
     ```bash
     opencode plugin add 'github:google/skills#main::path:plugins/cloud/google-cloud'
@@ -93,19 +101,38 @@ Works on native Windows too; no WSL needed.
     This adds it to your global `~/.config/opencode/opencode.json(c)`, so it
     works in the terminal, the desktop app and the web UI. Restart OpenCode.
 
+To update the plugin, remove it and add it again; `opencode plugin update`
+doesn't fetch a newer version:
+
+```bash
+opencode plugin remove 'github:google/skills#main::path:plugins/cloud/google-cloud'
+opencode plugin add 'github:google/skills#main::path:plugins/cloud/google-cloud'
+```
+
+**Next:** [Setup](#setup): sign in to Google Cloud and connect Cloud Operator.
+
 ### Pi
 
-1.  Clone the Google Agent Skills repository, then install the plugin folder as
-    a Pi package:
+1.  Clone just the plugin folder of the Google Agent Skills repository, then
+    install it as a Pi package:
 
     ```bash
-    git clone https://github.com/google/skills
+    git clone --depth 1 --filter=blob:none --sparse https://github.com/google/skills
+    git -C skills sparse-checkout set plugins/cloud/google-cloud
     pi install ./skills/plugins/cloud/google-cloud
     ```
 
-    Pi loads the plugin from that folder, so run `git pull` in the clone to
-    update it. Add `--local` to install it for the current project only.
-    Restart Pi, or run `/reload` in a running session.
+    Add `--local` to install it for the current project only, and `--approve`
+    if Pi says the project isn't trusted. Restart Pi, or run `/reload` in a
+    running session.
+
+To update the plugin, pull the clone, then restart Pi or run `/reload`:
+
+```bash
+git -C skills pull
+```
+
+**Next:** [Setup](#setup): sign in to Google Cloud and connect Cloud Operator.
 
 --------------------------------------------------------------------------------
 
