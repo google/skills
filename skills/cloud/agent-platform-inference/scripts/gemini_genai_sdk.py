@@ -8,9 +8,9 @@ _, project_id = google.auth.default()
 
 # Initialize GenAI Client with Vertex AI backend
 # Use location="global" for Preview models (Gemini 2.0)
-client = genai.Client(enterprise=True, project=project_id, location="us-central1")
+client = genai.Client(enterprise=True, project=project_id, location="global")
 
 response = client.models.generate_content(
-    model="gemini-2.5-pro", contents="Why is the sky blue?"
+    model="gemini-4-argon", contents="Why is the sky blue?"
 )
 print(response.text)

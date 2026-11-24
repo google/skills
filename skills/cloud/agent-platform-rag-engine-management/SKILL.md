@@ -1,7 +1,7 @@
 ---
 name: agent-platform-rag-engine-management
 metadata:
-  version: "1.0.3"
+  version: "1.0.4"
   category: AiAndMachineLearning
 description: >-
   Manage and query Agent Platform RAG Engine Corpora and retrieve grounded
@@ -246,7 +246,7 @@ grounded response:
 from google import genai
 from google.genai import types
 
-client = genai.Client(enterprise=True, project="{project_id}", location="{region}")
+client = genai.Client(vertexai=True, project="{project_id}", location="{region}")
 corpus_name = (
     "projects/{project_id}/locations/{region}/ragCorpora/{corpus_id}"
 )
