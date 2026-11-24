@@ -1,7 +1,7 @@
 ---
 name: google-cloud-filestore-nfs-browser
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: Storage
 description: >-
   Inspects, searches, and reads files and POSIX metadata on Filestore (NFS)
