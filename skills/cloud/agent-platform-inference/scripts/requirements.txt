@@ -1,4 +1,4 @@
-google-genai
+google-genai>=1.74.0
 google-cloud-aiplatform
 openai
 google-auth

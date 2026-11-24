@@ -1,7 +1,7 @@
 ---
 name: agent-platform-inference
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   category: AiAndMachineLearning
 description: >-
   Connects to and performs inference with Google Cloud Agent Platform GenAI
@@ -60,7 +60,7 @@ read-only; other safety tiers are omitted):
             `123456789012`, `my-project`).
         *   **Region / Location**: The target region (e.g. `us-central1`,
             `global`).
-        *   **Model ID**: The exact model ID (e.g. `gemini-2.5-flash`,
+        *   **Model ID**: The exact model ID (e.g. `gemini-3.8-flash`,
             `deepseek-ai/deepseek-v3.2-maas`).
         *   **SDK**: The SDK choice (e.g. `Google GenAI SDK (google-genai)`,
             `OpenAI SDK`).
@@ -78,8 +78,8 @@ read-only; other safety tiers are omitted):
         > I will perform model inference with the following parameters. Please
         > confirm this information before I proceed:
         > * **Project ID**: `my-project`
-        > * **Region**: `us-central1`
-        > * **Model ID**: `gemini-2.5-pro`
+        > * **Region**: `global`
+        > * **Model ID**: `gemini-4-argon`
         > * **SDK**: Google GenAI SDK (`google-genai`)
         > * **Input Prompt**: "Summarize the plot of Hamlet in 3 sentences"
         >
@@ -89,7 +89,7 @@ read-only; other safety tiers are omitted):
         via the SDK, the response returning the generated text **MUST
         explicitly confirm the execution parameters** alongside the model's
         output. Never return a bare model response alone. Always include:
-        *   **Model ID**: The exact model ID used (e.g. `gemini-2.5-pro`
+        *   **Model ID**: The exact model ID used (e.g. `gemini-4-argon`
             or `<MODEL_ID>`).
         *   **SDK**: The SDK used (e.g. `Google GenAI SDK (google-genai)`
             or `OpenAI SDK`).
@@ -170,7 +170,7 @@ all necessary parameters are grounded:
         DeepSeek a question" without model version), or has not specified the
         SDK preference:
     *   **NEVER** guess, volunteer, or default to a model (such as
-        `gemini-2.5-flash`, `gemini-2.5-pro`, or `deepseek-v3.2-maas`).
+        `gemini-3.8-flash`, `gemini-4-argon`, or `deepseek-v3.2-maas`).
         Proposing a defaulted model in a confirmation card without asking
         violates parameter grounding.
     *   **YOU MUST STOP AND ASK THE USER**: "Which model (or model family,
@@ -222,7 +222,7 @@ all necessary parameters are grounded:
     *   **Yes** -> Proceed to Step 2.
 
 2.  **Model Family & SDK Selection**:
-    *   **Gemini** (e.g., `gemini-2.5-pro`, `gemini-2.5-flash`) -> Preferred:
+    *   **Gemini** (e.g., `gemini-4-argon`, `gemini-3.8-flash`) -> Preferred:
         **GenAI SDK** (`google-genai`). Proceed to [1. Gemini Models].
     *   **OpenMaaS** (e.g., `deepseek-ai/*`, `meta/llama-*`, `qwen/*`) ->
         Preferred: **OpenAI SDK** (`openai`). Proceed to [2. OpenMaaS Models].
@@ -277,14 +277,14 @@ a minimal valid payload:
 curl -sS -o /dev/null -w "%{http_code}\n" \
     -H "Authorization: Bearer $(gcloud auth print-access-token)" \
     -H "Content-Type: application/json" \
-    "https://${LOCATION_ID}-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}/locations/${LOCATION_ID}/publishers/google/${MODEL_ID}:generateContent" \
+    "https://${LOCATION_ID}-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}/locations/${LOCATION_ID}/publishers/google/models/${MODEL_ID}:generateContent" \
     -d "{\"contents\":{\"role\":\"user\",\"parts\":{\"text\":\"${PROBE_TEXT:-hi}\"}}}"
 ```
 
 For inference against a fine-tuned Gemini LoRA adapter, probe the **base
 model** in the target region using the same `:generateContent` call above with
-`${MODEL_ID}` set to the base (e.g. `gemini-2.5-flash` if the adapter was
-tuned on `gemini-2.5-flash`). The LoRA adapter cannot serve in a region where
+`${MODEL_ID}` set to the base (e.g. `gemini-3.5-flash` if the adapter was
+tuned on `gemini-3.5-flash`). The LoRA adapter cannot serve in a region where
 its base model isn't available.
 
 Interpret the probe result and act:
@@ -307,7 +307,7 @@ Interpret the probe result and act:
 
 ## 1. Gemini Models
 
-For Gemini models (e.g., `gemini-2.5-pro`, `gemini-3-flash-preview`), the
+For Gemini models (e.g., `gemini-4-argon`, `gemini-3-flash-preview`), the
 **GenAI SDK** (`google-genai`) is the **PREFERRED** method. The legacy
 `vertexai` SDK is still supported but GenAI SDK is recommended for new projects.
 
