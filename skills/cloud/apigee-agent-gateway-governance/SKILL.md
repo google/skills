@@ -1,7 +1,7 @@
 ---
 name: apigee-agent-gateway-governance
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   category: AiAndMachineLearning
 description: >-
   Stands up an Apigee API proxy that a Google Cloud Agent Gateway calls as an
@@ -370,8 +370,9 @@ list. See `references/recipes.md`.
 which buckets exist; it does not create them. A bucket is real only when it has
 an `LLMTokenQuota` step in `feature-token-metering.yaml` and a matching
 `*_TOKEN_LIMIT` parameter. Three exist: `gemini-pro`, `gemini-flash` and `other`
-— the catch-all for any model whose name contains neither `pro` nor `flash`.
-Adding a fourth entry to the list meters nothing, and **omitting `other`
+— the catch-all for any model whose name contains neither `pro`/`argon` nor
+`flash`/`hydrogen`. Adding a fourth entry to the list meters nothing, and
+**omitting `other`
 silently unmeters every non-Gemini model**: the count is extracted and then
 discarded, with no `ratelimit` reference anywhere in the transaction. Adding a
 model is a feature-file edit, not a config change.
@@ -477,7 +478,7 @@ that both present as "it never refuses": `references/gotchas.md`.
 
 **Normalize the model to a bucket.** With an OpenAI-compatible endpoint the
 model is an alias in the request body and the *resolved* name is in the response
-body (`google/gemini-2.5-pro`). Exact-matching a raw name fails on the response
+body (`google/gemini-4-argon`). Exact-matching a raw name fails on the response
 path.
 
 **`jsonPath` needs its third argument `true`** so it returns a scalar. Without

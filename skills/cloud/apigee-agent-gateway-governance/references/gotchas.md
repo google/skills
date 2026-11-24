@@ -7,10 +7,10 @@ and **Agent Gateway** gotchas were hit standing this up against a live org.
 
 ## Contents
 
--   [Runtime](#runtime): lines 15-563
--   [Authoring (AFT)](#authoring-aft): lines 564-632
--   [Tooling and environment](#tooling-and-environment): lines 633-717
--   [Agent Gateway](#agent-gateway): lines 718-833
+-   [Runtime](#runtime): lines 15-566
+-   [Authoring (AFT)](#authoring-aft): lines 567-635
+-   [Tooling and environment](#tooling-and-environment): lines 636-720
+-   [Agent Gateway](#agent-gateway): lines 721-836
 
 ## Runtime
 
@@ -91,7 +91,7 @@ the import has already left an undeployed revision behind, so
 **A non-root base path does work, if you need one.** Verified live: the same
 proxy rebuilt with `basePath: "/v1beta1"` was invoked normally and the whole
 policy chain ran — the Vertex path the gateway forwards is
-`/v1beta1/projects/…/models/gemini-2.5-flash:generateContent`, so `/v1beta1`
+`/v1beta1/projects/…/models/gemini-4-hydrogen:generateContent`, so `/v1beta1`
 matches it. Proof it really metered rather than merely returning 200: the flash
 counter moved 235 → 302, exactly the turn's own 67 tokens.
 
@@ -148,7 +148,8 @@ extraction resolves empty, the policy raises, and the turn fails.
 Whether this bites depends on how broadly the AuthzPolicy matches. With a
 suffix list holding only model-call paths, only model calls reach Apigee —
 with `:generateContent` alone, unfiltered debug sessions capture exactly one
-transaction per turn — so every call the proxy sees carries a prompt. Broaden the match and the ext-proc sees
+transaction per turn — so every call the proxy sees carries a prompt. Broaden
+the match and the ext-proc sees
 *every* agent egress instead: session create and read, `appendEvent`, and the
 OpenTelemetry `/v1/metrics`, `/v1/logs` and `/v1/traces` posts. Measured by
 widening the policy to `prefix: /` for one single-question turn: **12
@@ -159,7 +160,7 @@ it costs a condition and it is what lets the policy be widened safely.
 **Token counts never match the per-model counter.** Normalize the model to a
 bucket. On an OpenAI-compatible endpoint the request body carries an alias
 (`gemini-flash`) and the response body carries the resolved name
-(`google/gemini-2.5-pro`); an exact-match condition on the raw string fails on
+(`google/gemini-4-argon`); an exact-match condition on the raw string fails on
 the response path.
 
 **The quota policy errors on the token source.** `jsonPath` needs its third
@@ -272,7 +273,7 @@ before concluding a policy does not fire.
 the requested model, and testing the whole URI for a model name is unsafe:
 
 ```
-/v1beta1/projects/.../models/gemini-2.5-flash:generateContent
+/v1beta1/projects/.../models/gemini-4-hydrogen:generateContent
                 ^^^ contains "pro" inside *pro*jects
 ```
 
@@ -392,7 +393,8 @@ half-substituted bundle.
 **The findNeighbors host cannot be derived, so it is not an input.** The index
 endpoint's domain has a leading label assigned at creation time that matches
 neither the index id, the endpoint id, nor the project number. It can only be
-read back, which is why `apigee-agent-gateway-governance.example.yaml` has no field for it and
+read back, which is why `apigee-agent-gateway-governance.example.yaml` has no
+field for it and
 `deploy_proxy.sh --index-endpoint-id` substitutes it at deploy time.
 
 **Semantic cache re-populates on a hit.** On a no-route proxy the response flow
@@ -476,8 +478,8 @@ satisfies any model's question; and **metering misattribution**, because
 `extract-model.js` reads the model out of `response.content`, which on a hit
 is the *cached* response, so the request is billed to the wrong bucket.
 
-The priority-15 normalisation is what makes this reachable — giving Model Armor and
-the cache a shape-agnostic `agw.user_prompt` is exactly what lets a Gemini
+The priority-15 normalisation is what makes this reachable — giving Model Armor
+and the cache a shape-agnostic `agw.user_prompt` is exactly what lets a Gemini
 prompt and an OpenAI prompt produce the same key. Both changes are still
 right; this is the seam between them.
 
@@ -510,8 +512,9 @@ attached to that request rather than raised separately. That request is the
 restricts idea asked at the layer that can grant it.
 
 **A non-Gemini model consumes no quota at all, silently.** `agw.model_name`
-buckets on the substrings `pro` and `flash`, and only those two buckets had a
-quota bound to them. Measured with `gpt-oss-120b-maas`: the token count was
+buckets on the substrings `pro`/`argon` and `flash`/`hydrogen`, and only those
+two buckets had a quota bound to them. Measured with `gpt-oss-120b-maas`: the
+token count was
 extracted correctly (`agw.total_tokens = 223`) and then discarded — **zero**
 `ratelimit` references in the whole transaction. This is worse than a
 resolution failure, which at least raises `FailedToResolveTokenUsageCount`
@@ -827,7 +830,7 @@ rejected. Attaching one to an existing gateway returned `code 13, an internal
 error has occurred` after ten minutes; treat the template path as unproven.
 
 **Budget ten minutes per import.** `AgentGateway` and `AuthzPolicy` imports both
-take roughly that. They are not hung.
+take roughly that. They have not stopped responding.
 
 **A fresh VPC may have no firewall rules at all**, so SSH to a test instance
 times out before you get far enough to debug anything else.

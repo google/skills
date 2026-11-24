@@ -170,8 +170,9 @@ parameters:
     displayName: Non-Gemini model token allowance
     description: >-
       Token allowance per interval for the catch-all "other" bucket, which is
-      every model whose name contains neither "pro" nor "flash" -- gpt-oss,
-      Llama, Qwen, DeepSeek. Without it those calls consume no quota at all
+      every model whose name contains neither "pro"/"argon" nor
+      "flash"/"hydrogen" -- gpt-oss, Llama, Qwen, DeepSeek. Without it those
+      calls consume no quota at all
       and nothing reports the gap. See references/gotchas.md, Runtime.
     default: "40000"
 
