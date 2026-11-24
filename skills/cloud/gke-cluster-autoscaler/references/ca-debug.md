@@ -36,7 +36,12 @@
 ## Performance & Sluggishness
 - **Required Anti-affinity:** Explodes scheduler cost at scale. Use `preferred` or `topologySpreadConstraints`.
 - **Pool Count:** Beyond ~200 pools, autoscaling slows down. Consolidate near-duplicate ComputeClasses.
-- **Spot Grace Period:** Preemption notice is ~30s and is not extensible via ComputeClass fields. Keep `terminationGracePeriodSeconds` and SIGTERM handling within it; rely on replicas and PDBs to absorb churn.
+- **Spot Grace Period:** Default preemption notice is ~30s, extensible up to
+  120s on GKE `1.36.0-gke.3204000+` via
+  `nodeSystemConfig.kubeletConfig.shutdownGracePeriodSeconds` (`0`, `30`, or
+  `120`) on `spot: true` ComputeClass priorities. Keep
+  `terminationGracePeriodSeconds` and SIGTERM handling within the configured
+  window; rely on replicas and PDBs to absorb churn.
 
 ## Segregating System Pods (Expert Pattern)
 Symptom: `kube-system` pods (metrics-server, coredns) land on expensive nodes and pin them.

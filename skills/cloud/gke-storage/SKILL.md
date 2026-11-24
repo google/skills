@@ -8,13 +8,15 @@ description: >-
   gke-storage-troubleshooting. Don't use for database
   administration or replication strategies outside volume provisioning context.
 metadata:
-  version: "1.0.3"
+  version: "1.0.4"
   category: Storage
 ---
 
 # GKE Storage
 
-> **Routing Note:** For Cloud Storage FUSE (`gcsfuse`) mounts or the GKE `gcsfuse.csi.storage.gke.io` CSI driver, open `google-cloud-storage-fuse/SKILL.md`.
+> **Routing Note:** For Cloud Storage FUSE (`gcsfuse`) mounts or the GKE
+> `gcsfuse.csi.storage.gke.io` CSI driver, use the `google-cloud-storage-fuse`
+> skill.
 
 This reference covers storage configuration for GKE clusters including
 persistent disks, file storage, and cloud storage integration.
@@ -44,7 +46,7 @@ The golden path Autopilot config enables these CSI drivers:
 : Filestore CSI   :                   :                 : multi-pod access     :
 | Cloud Storage   | Enabled           | ReadWriteMany / | Mount GCS buckets as |
 : FUSE CSI        :                   : ReadOnlyMany    : volumes              :
-| Parallelstore   | Enabled           | ReadWriteMany   | High-performance     |
+| Managed Lustre  | Disabled (opt-in) | ReadWriteMany   | High-performance     |
 : CSI             :                   :                 : parallel file system :
 | Boot disk type  | `pd-balanced`     | N/A             | Node boot disks      |
 
@@ -56,7 +58,7 @@ GKE provides built-in StorageClasses:
 
 StorageClass   | Disk Type             | Use Case
 -------------- | --------------------- | ------------------------------
-`standard-rwo` | `pd-standard`         | Cost-effective, low IOPS
+`standard-rwo` | `pd-balanced`         | Balanced persistent disk (default)
 `premium-rwo`  | `pd-ssd`              | High IOPS, databases
 `standard-rwx` | Filestore (Basic HDD) | Shared NFS
 `premium-rwx`  | Filestore (Basic SSD) | Shared NFS, higher performance
@@ -139,7 +141,7 @@ spec:
 ```
 
 > Requires Workload Identity for the pod's service account to have
-> `storage.objectViewer` on the bucket.
+> `roles/storage.objectViewer` on the bucket.
 
 ## Volume Expansion
 
