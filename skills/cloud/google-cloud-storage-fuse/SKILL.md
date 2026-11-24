@@ -16,7 +16,7 @@ description: >-
   POSIX shared file systems (Filestore, Managed Lustre; use gke-storage).
 license: Apache-2.0
 metadata:
-  version: "1.0.3"
+  version: "1.0.4"
   publisher: google
   tags: "gcs, gcsfuse, fuse, mount, file-system"
   category: Storage

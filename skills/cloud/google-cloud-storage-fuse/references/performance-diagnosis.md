@@ -27,12 +27,20 @@ operations-dominated bill.
 
 ## Step 1 — Establish telemetry
 
-Environment                           | How to get client metrics
-:------------------------------------ | :------------------------
-GKE ≥ 1.33.0-gke.2248000              | `gcsfusecsi/*` metrics are in Cloud Monitoring by default — no action.
-Self-managed mount → Cloud Monitoring | Remount with `--cloud-metrics-export-interval-secs=60` (needs `roles/monitoring.metricWriter` on the mount's service account; native metrics are Preview).
-Self-managed mount → local scrape     | Remount with `--prometheus-port=9920`, then `curl -s localhost:9920/metrics`.
-No remount possible yet               | Server-side: `storage.googleapis.com/api/request_count` grouped by the `method` label.
+-   **GKE ≥ 1.37.2-gke.1467000:** `gcsfusecsi/volume/*` metrics (monitored
+    resource `k8s_gcs_fuse_volume`) are in Cloud Monitoring by default — no
+    action.
+-   **GKE 1.33.0-gke.2248000 to < 1.37.2-gke.1467000:** `gcsfusecsi/*` metrics
+    (monitored resource `k8s_pod`) are in Cloud Monitoring by default — no
+    action.
+-   **Self-managed mount → Cloud Monitoring:** Remount with
+    `--cloud-metrics-export-interval-secs=60` (needs
+    `roles/monitoring.metricWriter` on the mount's service account; native
+    metrics are Preview).
+-   **Self-managed mount → local scrape:** Remount with
+    `--prometheus-port=9920`, then `curl -s localhost:9920/metrics`.
+-   **No remount possible yet:** Server-side:
+    `storage.googleapis.com/api/request_count` grouped by the `method` label.
 
 ```bash
 # Self-managed: remount with metrics, reproduce the workload, then inspect
@@ -59,9 +67,51 @@ Metric (Cloud Monitoring / Prometheus form)                                     
 `fs/ops_error_count` by `fs_error_category`                                                | Errors surfacing to the app.
 Server-side `api/request_count` by `method` (e.g. `ReadObject`)                            | Request mix without any mount change; also the bridge to billing.
 
-On GKE the same client metrics appear prefixed and underscored:
-`gcsfusecsi/file_cache_read_count`, `gcsfusecsi/gcs_request_count`,
-`gcsfusecsi/fs_ops_count`, etc.
+On GKE (≥ 1.33.0-gke.2248000), the same client metrics appear prefixed and
+underscored in Cloud Monitoring according to your cluster version:
+
+-   **GKE ≥ 1.37.2-gke.1467000:**
+    -   **Monitored resource:** `k8s_gcs_fuse_volume`
+    -   **Resource labels:** `project_id`, `location`, `cluster_name`,
+        `namespace_name`, `pod_name`, `volume_name`, `bucket_name` (promotes
+        `volume_name` and `bucket_name` to resource labels while retaining
+        `pod_name`)
+    -   **Metric prefix:** `kubernetes.io/gcsfusecsi/volume/`
+    -   **File system latency metric:** `gcsfusecsi/volume/fs_ops_latencies`
+    -   **Workload aggregation labels:** `k8s_controller_type` and
+        `k8s_controller_name` metric labels — populated only for supported
+        workload controllers (`deployment`, `replicaset`, `statefulset`,
+        `daemonset`, `jobset`, `leaderworkerset`), and emitted as empty strings
+        (`""`) for standalone Pods and unsupported controllers (such as
+        standalone `Job`s)
+    -   **Metric-specific labels:** `cache_hit` (`file_cache_read_count`,
+        `file_cache_read_latencies`), `read_type` (`file_cache_read_count`,
+        `file_cache_read_bytes_count`, `gcs_download_bytes_count`,
+        `gcs_read_count`), `fs_op` (`fs_ops_count`, `fs_ops_error_count`,
+        `fs_ops_latencies`), `fs_error_category` (`fs_ops_error_count`),
+        `gcs_method` (`gcs_request_count`, `gcs_request_latencies`), and
+        `io_method` (`gcs_reader_count`)
+    -   **`pod_uid` label:** Removed from schema
+    -   **Sample period and latency units:** `60 s` `sample_period` (up from
+        `10 s` on `k8s_pod`), and `gcs_request_latencies` unit metadata changes
+        from `ms` to `us` (`fs_ops_latencies` and `file_cache_read_latencies`
+        remain in `us`)
+-   **GKE 1.33.0-gke.2248000 to < 1.37.2-gke.1467000:**
+    -   **Monitored resource:** `k8s_pod`
+    -   **Resource labels:** `project_id`, `location`, `cluster_name`,
+        `namespace_name`, `pod_name`
+    -   **Metric prefix:** `kubernetes.io/gcsfusecsi/`
+    -   **File system latency metric:** `gcsfusecsi/fs_ops_latencies`
+    -   **`volume_name` and `bucket_name`:** Metric labels on `k8s_pod`
+    -   **Metric-specific labels:** Same per-metric labels as
+        `k8s_gcs_fuse_volume` (`cache_hit`, `read_type`, `fs_op`,
+        `fs_error_category`, `gcs_method`, `io_method`)
+    -   **Workload aggregation labels:** Not available
+    -   **`pod_uid` label:** Metric label on `k8s_pod` (empty string `""` in ≥
+        1.35.2-gke.1442000; per-Pod UID in earlier 1.33–1.35 builds)
+    -   **Sample period and latency units:** `10 s` `sample_period`, with
+        `gcs_request_latencies` unit metadata in `ms` (`fs_ops_latencies` and
+        `file_cache_read_latencies` in `us`)
 
 ## Step 3 — Map the signature to the misconfiguration
 

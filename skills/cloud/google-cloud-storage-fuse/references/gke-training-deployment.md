@@ -35,11 +35,12 @@ CLOUDSDK_METRICS_ENVIRONMENT="gcs-skills gcs-skills/1.0 (skill:google-cloud-stor
 Requirements: `GcsFuseCsiDriver` addon enabled, a Workload Identity pool set,
 and the cluster version against these gates:
 
-Feature                                  | Minimum GKE version
-:--------------------------------------- | :------------------
-Profile StorageClasses (`gcsfusecsi-*`)  | 1.35.1-gke.1616000
-Default gcsfuse metrics (`gcsfusecsi/*`) | 1.33.0-gke.2248000
-`gcsfuseMetadataPrefetchOnMount`         | 1.32.1-gke.1357001
+-   **Volume-scoped gcsfuse metrics (`k8s_gcs_fuse_volume`,
+    `gcsfusecsi/volume/*`):** ≥ 1.37.2-gke.1467000
+-   **Profile StorageClasses (`gcsfusecsi-*`):** ≥ 1.35.1-gke.1616000
+-   **Pod-scoped gcsfuse metrics (`k8s_pod`, `gcsfusecsi/*`):**
+    1.33.0-gke.2248000 to < 1.37.2-gke.1467000
+-   **`gcsfuseMetadataPrefetchOnMount`:** ≥ 1.32.1-gke.1357001
 
 Check node cache media (drives step 4):
 
@@ -266,11 +267,16 @@ Then confirm the cache engaged and troubleshoot common blockers:
     entry for the `decision` block (`fileCacheBytes`, `fileCacheMedium`); the
     warning "No suitable file cache medium found" means the cache was silently
     disabled — fix node media or sidecar limits.
--   After the first epoch, read `gcsfusecsi/file_cache_read_count` in Cloud
-    Monitoring (exported by default on GKE ≥ 1.33.0-gke.2248000; disable via the
-    `disableMetrics: "true"` volume attribute): hits should approach 100% of
-    reads from epoch 2 onward. For the full diagnosis workflow and metric map,
-    see [Performance & Cost Diagnosis](performance-diagnosis.md).
+-   **Cache hit rate (Cloud Monitoring):** Exported by default on GKE ≥
+    1.33.0-gke.2248000 (disable via the `disableMetrics: "true"` volume
+    attribute). After the first epoch, `cache_hit="true"` reads should approach
+    100% from epoch 2 onward (see
+    [Performance & Cost Diagnosis](performance-diagnosis.md) for the full metric
+    map):
+    -   **GKE ≥ 1.37.2-gke.1467000:** `gcsfusecsi/volume/file_cache_read_count`
+        on monitored resource `k8s_gcs_fuse_volume`
+    -   **GKE < 1.37.2-gke.1467000:** `gcsfusecsi/file_cache_read_count` on
+        monitored resource `k8s_pod`
 
 ## Non-GKE variants
 
