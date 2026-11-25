@@ -1,28 +1,26 @@
 ---
 name: cloud-operator-setup
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   category: CloudInfrastructureAndServices
 description: >-
   Sets up the user's personal operator agent in a Google Cloud organization via
-  the `ask_cloud_operator` MCP tool (the autocloud server, or any server that
-  offers it): finds the project's organization, checks or creates
-  the agent, saves the project and organization, and offers to share the user's
-  existing Google Cloud operating context with the operator agent's memory. Use
-  when the user runs this skill, asks to set up the operator or create their
-  operator agent, or chooses setup when the cloud-operator skill asks. Don't
-  use for ordinary GCP requests or installing gcloud.
+  the `autocloud` MCP server: finds the project's organization, checks or
+  creates the agent, saves the project and organization, and offers to share the
+  user's existing Google Cloud operating context with the operator agent's
+  memory. Use when the user runs this skill, asks to set up the operator or
+  create their operator agent, or chooses setup when the cloud-operator skill
+  asks. Don't use for ordinary GCP requests or installing gcloud.
 ---
 
 # Set up the operator agent
 
 Walk the user through setting up the operator agent one step at a time. Follow
-the `cloud-operator` skill's `agentId` rules if installed. If no MCP server
-offers `ask_cloud_operator` (the plugins name it `autocloud`, but any server
-name works),
-tell the user it isn't connected, help them sign in with Application Default
-Credentials (`gcloud auth application-default login`), and stop until they
-reconnect.
+the `cloud-operator` skill's `agentId` rules if installed. If the `autocloud`
+MCP server doesn't offer `ask_cloud_operator`, it's disconnected: don't set it
+up another way. Tell the user how
+to sign in again and reconnect, and stop until it's connected
+([Server not connected](#server-not-connected)).
 
 ## Usage Attribution
 
@@ -103,6 +101,32 @@ operator project to choose or create.
    Then return to any request that was waiting when setup started.
 
 ## Troubleshooting
+
+### Server not connected
+
+When the `autocloud` MCP server offers no tools, or a call fails with a sign-in
+error (for example a 401, "invalid authentication credentials", "Incompatible
+auth server", or "Authentication required"):
+
+1. Tell the user in one line that Cloud Operator is disconnected, and why if
+   you know (for example, their sign-in expired).
+2. Give both fix steps, in order:
+   - **Sign in again.** The user runs `gcloud auth application-default login`
+     (you can't: it opens a browser). If the user has already confirmed that
+     `gcloud auth application-default print-access-token` works, skip this
+     step: the sign-in is fine. If a call failed, see
+     [Other errors](#other-errors); if `autocloud` offers no tools, still
+     reconnect. If the server instead signs in through your own MCP settings
+     (OAuth), the user signs in again there.
+   - **Reconnect the server.** In Claude Code: `/mcp`, select `autocloud`,
+     **Reconnect** (for ADC servers, **Authenticate** doesn't work). In other
+     agents, the user restarts the agent. Don't name a command or menu you
+     aren't sure you have.
+3. Stop, and continue the setup once the user says it's connected. If it still
+   fails after the user reconnects, don't repeat these steps: say it's still
+   disconnected, and check [Other errors](#other-errors).
+
+### Other errors
 
 For an error not listed here, follow the `cloud-operator` skill's
 troubleshooting table if it's installed.
