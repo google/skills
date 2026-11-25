@@ -1,14 +1,16 @@
 ---
 name: google-agents-cli-onboarding
 metadata:
-  version: "1.0.1"
+  version: "1.1.0"
   category: DevOps
 description: >-
-  Onboarding entrypoint for agents-cli in Agent Platform. It should be used
-  when the user wants to "create a new agent", "develop an agent", "build an agent using ADK",
-  "run the agent locally", "debug agent code", "test an agent", "evaluate an agent",
-  "deploy an agent", "publish an agent", "monitor an agent", or needs the ADK (Agent Development Kit)
-  development lifecycle.
+  Onboarding entrypoint for agents-cli on Google Cloud (Gemini Enterprise Agent
+  Platform). It should be used when the user wants to "create a new agent",
+  "develop an agent", "build an agent using ADK", "build an agent using
+  LangChain, LangGraph, or the Claude Agent SDK", "run the agent locally",
+  "debug agent code", "test an agent", "evaluate an agent", "deploy an agent",
+  "publish an agent", "monitor an agent", or needs the end-to-end production
+  agent development lifecycle.
 ---
 
 # Google Agents CLI Onboarding
@@ -39,41 +41,47 @@ and append `agent-skills/1.0 (skill:google-agents-cli-onboarding)` to `User-Agen
 ## Overview
 
 This skill serves as the entrypoint for **agents-cli** — Google's toolkit for
-building, evaluating, and deploying AI agents on the Gemini Enterprise Agent
-Platform.
+building, evaluating, deploying, and observing production AI agents on the
+Gemini Enterprise Agent Platform. It works with ADK out of the box as well as
+other frameworks (such as LangChain/LangGraph and the Claude Agent SDK, or
+custom extensions) via first-party templates in `google/agents-cli-extensions`.
 
 Use this skill to perform the initial setup and identify the correct specialized
 workflows for your task.
 
 ## The Agent Development Lifecycle
 
-After running the setup, the following specialized skills become available and
-will activate automatically based on your requests. Use this table to identify
-which skill to load for your current phase:
+After running `uvx google-agents-cli setup` (or
+`npx skills add google/agents-cli`), all 7 specialized skills become available
+and **activate automatically in your coding agent** based on your requests — no
+manual skill invocation is needed. When guiding a user through any lifecycle
+step, always name the phase number, the corresponding specialized skill, and
+note that specialized skills activate automatically after setup:
 
 | Phase | Specialized Skill | Purpose / When to Load |
 | :--- | :--- | :--- |
 | **0 — Understand** | `google-agents-cli-workflow` | **Clarify intent.** Define the agent spec in `.agents-cli-spec.md` before coding. |
 | **1 — Study** | `google-agents-cli-workflow` | **Leverage samples.** Study existing agent samples (e.g., `ambient-expense`) before scaffolding. |
-| **2 — Scaffold** | `google-agents-cli-scaffold` | **Create/Enhance.** Initialize the project structure, CI/CD, and infrastructure templates. |
+| **2 — Scaffold** | `google-agents-cli-scaffold` | **Create/Enhance.** Run after setup and before writing custom agent logic; initializes project structure, CI/CD, and infrastructure templates (ADK or extensions). |
 | **3 — Build** | `google-agents-cli-adk-code` | **Implement.** Write agent logic, tools, callbacks, and manage state using ADK APIs. |
-| **4 — Evaluate** | `google-agents-cli-eval` | **Validate Quality.** Run systematic evaluations (LLM-as-judge). |
-| **5 — Deploy** | `google-agents-cli-deploy` | **Go Production.** Deploy to Agent Runtime (Vertex AI), Cloud Run, or GKE. |
-| **6 — Publish** | `google-agents-cli-publish` | **Register.** Make your agent available as a tool in Gemini Enterprise. |
+| **4 — Evaluate** | `google-agents-cli-eval` | **Validate Quality.** Run systematic evaluations using an LLM-as-judge setup (`agents-cli eval run`). |
+| **5 — Deploy** | `google-agents-cli-deploy` | **Go Production.** Deploy to Agent Runtime, Cloud Run, or GKE (`agents-cli deploy`). |
+| **6 — Publish** | `google-agents-cli-publish` | **Register.** Register your deployed agent in Gemini Enterprise (`agents-cli publish gemini`). |
 | **7 — Observe** | `google-agents-cli-observability` | **Monitor.** Set up Cloud Trace, prompt-response logging, and BigQuery analytics. |
 
 ## Key CLI Commands
 
-Below are the primary commands you will use throughout the development
-lifecycle:
+Below are the primary commands mapped to their lifecycle phase and specialized
+skill:
 
-| Command | Description |
-| :--- | :--- |
-| `agents-cli setup` | Install the CLI and configure skills in your coding agent. |
-| `agents-cli scaffold <name>` | Create a new agent project from a template. |
-| `agents-cli eval run` | Run the agent and grade the traces in a single step (generate + grade). |
-| `agents-cli deploy` | Deploy your agent to Google Cloud (Agent Runtime, Cloud Run, GKE). |
-| `agents-cli publish gemini-enterprise` | Register your deployed agent with Gemini Enterprise. |
+| Command | Phase & Skill | Description |
+| :--- | :--- | :--- |
+| `agents-cli setup` | One-time setup | Install the CLI and enable all 7 specialized skills (they activate automatically in your coding agent). |
+| `agents-cli create <name>` | Phase 2 — Scaffold (`google-agents-cli-scaffold`) | Create a new agent project from a template (initializes project structure, CI/CD, and infrastructure templates after setup and before custom logic). |
+| `agents-cli create <name> --agent google/agents-cli-extensions/core/langchain/template -d cloud_run` | Phase 2 — Scaffold (`google-agents-cli-scaffold`) | Scaffold a first-party extension template (e.g., `core/langchain` for LangChain/LangGraph or `core/claude` for Claude Agent SDK) from `google/agents-cli-extensions`. |
+| `agents-cli eval run` | Phase 4 — Evaluate (`google-agents-cli-eval`) | Run the agent over an evaluation dataset and grade traces using an LLM-as-judge setup. |
+| `agents-cli deploy` | Phase 5 — Deploy (`google-agents-cli-deploy`) | Deploy your agent to Google Cloud (Agent Runtime, Cloud Run, or GKE). |
+| `agents-cli publish gemini` | Phase 6 — Publish (`google-agents-cli-publish`) | Register your deployed agent with Gemini Enterprise (run after deploying to a cloud runtime). |
 
 *For the full list of available commands and global options, run `agents-cli
 --help`.*
@@ -96,4 +104,5 @@ Report bugs or improvements at [Google Agents CLI Issues](https://github.com/goo
 
 ## Supporting Links
 
-*   [Google Agents CLI Documentation](https://github.com/google/agents-cli/tree/main/docs/src)
+*   [Google Agents CLI Documentation](https://google.github.io/agents-cli/)
+*   [Google Agents CLI Extensions](https://github.com/google/agents-cli-extensions)
