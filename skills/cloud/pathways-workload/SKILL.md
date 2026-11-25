@@ -13,7 +13,7 @@ description: >-
   use for GKE workloads that don't use Pathways, or for creating clusters or
   deploying new Pathways workloads.
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   category: AiAndMachineLearning
 ---
 
@@ -97,6 +97,25 @@ if the first error is not in it.
     the RM or a worker). A configuration change that avoids that code path
     (a different checkpoint handler, flag or topology) is a workaround or a
     contributing factor: list it under the fix, not as the root cause.
+-   Do not stop at the first plausible error. List the candidate causes, then
+    confirm or rule out each one with a query, and classify every finding you
+    report as one of the four classes below. This is in addition to the
+    preflight, the crash sweep, the container walk of Step 3 and any matching
+    special scenario of Step 4, not instead of them; when a scenario matches,
+    follow its steps.
+    -   **Root cause**: the earliest failure that explains the symptom and its
+        timing.
+    -   **Contributing**: makes the failure more likely or the recovery slower,
+        but does not explain it alone.
+    -   **Side effect**: caused by the root cause, e.g. restarts, lost
+        connections, reconnect errors, or core dumps filling the node disk
+        after crashes.
+    -   **Noise**: errors that also occur in healthy periods, were retried
+        successfully, or do not line up in time with the failure.
+-   Rule out a cause only with a check that can see it: an empty result rules
+    out only what that query matches (e.g. a kernel OOM search does not see
+    kubelet evictions, and `--first_per_pod` skips lines). A query that timed
+    out (`[timeout]`) or failed is incomplete, not clean: say so in the report.
 -   When you compare with other runs (an earlier attempt, a sibling test that
     passed, or the same test on other days), use the comparison to narrow down
     which code path is affected, not as proof of the cause. A setting that
@@ -179,6 +198,10 @@ component exist in its image.
 
 ## Step 1.5: Quick Triage - Preflight, Then Crash Sweep
 
+`scripts/debug_workload.py` needs only Python 3.10 or later and the `gcloud`
+CLI (no Python packages to install). Without `--execute`, it prints the
+`gcloud logging read` command and a Cloud Console link instead of running them.
+
 First run the preflight check. It verifies that you can read the project's logs
 and that the workload logged in the time window. An empty result from any
 other action is not a clean result until preflight passes. If you cannot run
@@ -212,9 +235,19 @@ python3 scripts/debug_workload.py \
 ```
 
 The container of the earliest hit is usually where the root cause is; then use
-the container-specific playbook in Step 3 for that container. If the sweep is
-empty, also run `--action=node-ooms` (OOM kills often do not appear in container
-logs) and `--action=pod-events`.
+the container-specific playbook in Step 3 for that container. Whatever the
+sweep finds, also run `--action=node-ooms` (OOM kills and memory-pressure
+evictions often do not appear in container logs; it needs `--execute` to
+discover the workload's nodes, or `--node_names`), `--action=pod-events`, and,
+for restarts or SIGTERMs, `--action=interruptions`: a host or infrastructure
+event that comes before the first container error is the more likely root
+cause. If the job is slow or hangs rather than crashing, first follow
+[scenario 14](references/special-scenarios.md#14-the-job-hangs-without-failing):
+find the last progress line of every container (user steps, RM slice state,
+worker program launches and proxy requests) and the component that stopped
+first. Then also sweep warnings
+(`--min_severity=WARNING` on the container actions): a repeated warning can
+explain the slowdown even when there is no error.
 
 If a cascade fills the output (hundreds of pods logging the same error), you
 may add `--first_per_pod=N` to keep only the first N matching log lines of each
@@ -373,12 +406,12 @@ symptom matches a row, read that scenario in
 Error or symptom | Scenario
 :--------------- | :-------
 `JaxRuntimeError` with `DATA_LOSS` during scale changes; elastic recovery or checkpoint restore fails | [1. Elastic training and checkpoint restore](references/special-scenarios.md#1-elastic-training-and-checkpoint-restore)
-Container restarts or exit code 137 without `OOMKilled`; `Memory cgroup out of memory`, `oom-kill`, `OOMKilling` | [2. Host OOM kills on the head pod or TPU hosts](references/special-scenarios.md#2-host-oom-kills-on-the-head-pod-or-tpu-hosts)
+Container restarts or exit code 137 without `OOMKilled`; `Memory cgroup out of memory`, `oom-kill`, `OOMKilling`; `Evicted` with `The node was low on resource: memory`, `NodeHasInsufficientMemory` | [2. Host OOM kills and memory-pressure evictions](references/special-scenarios.md#2-host-oom-kills-and-memory-pressure-evictions)
 `Unable to initialize backend 'proxy': Backend 'proxy' is not in the list of known backends` | [3. Backend proxy is not in the list of known backends](references/special-scenarios.md#3-backend-proxy-is-not-in-the-list-of-known-backends)
-`SIGTERM received by PID 1`; containers stop without a clear error | [4. SIGTERM received by PID 1](references/special-scenarios.md#4-sigterm-received-by-pid-1)
+`SIGTERM received by PID 1`; containers stop without a clear error; a preemption or maintenance event followed by `DATA_LOSS`, proxy restarts or a client crash | [4. SIGTERM received by PID 1](references/special-scenarios.md#4-sigterm-received-by-pid-1)
 `FAILED_PRECONDITION: The newly added instance does not match with the expected instances` | [5. Newly added instance does not match the expected instances](references/special-scenarios.md#5-newly-added-instance-does-not-match-the-expected-instances)
 `Connection to IFRT proxy server was terminated: FAILED_PRECONDITION: GrpcClientSession: writes no longer allowed` | [6. Connection to the IFRT proxy server was terminated](references/special-scenarios.md#6-connection-to-the-ifrt-proxy-server-was-terminated)
-`XlaRuntimeError: ABORTED: ... The metadata for object was edited during the operation` | [7. Cached executable metadata was edited during the operation](references/special-scenarios.md#7-cached-executable-metadata-was-edited-during-the-operation)
+`XlaRuntimeError: ABORTED: ... The metadata for object was edited during the operation`; `PERMISSION_DENIED` or `FAILED_PRECONDITION` from the persistent compilation cache | [7. Persistent compilation cache errors](references/special-scenarios.md#7-persistent-compilation-cache-errors)
 `DEADLINE_EXCEEDED: lost connection to peer` or `DATA_LOSS: Pipe from scheduler to aggregator` | [8. Lost connection to peer](references/special-scenarios.md#8-lost-connection-to-peer)
 `Status 11 from handshaker service: Input frame length is out of range` | [9. ALTS handshake error from a client outside Google Cloud](references/special-scenarios.md#9-alts-handshake-error-from-a-client-outside-google-cloud)
 `Lifecycle matches_prefix cannot specify more than 50 prefixes per config` | [10. Cloud Storage lifecycle prefix limit](references/special-scenarios.md#10-cloud-storage-lifecycle-prefix-limit)

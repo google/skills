@@ -7,20 +7,20 @@ directory, as in SKILL.md.
 ## Contents
 
 -   [1. Elastic training and checkpoint restore](#1-elastic-training-and-checkpoint-restore): lines 27-62
--   [2. Host OOM kills on the head pod or TPU hosts](#2-host-oom-kills-on-the-head-pod-or-tpu-hosts): lines 63-91
--   [3. Backend proxy is not in the list of known backends](#3-backend-proxy-is-not-in-the-list-of-known-backends): lines 92-100
--   [4. SIGTERM received by PID 1](#4-sigterm-received-by-pid-1): lines 101-139
--   [5. Newly added instance does not match the expected instances](#5-newly-added-instance-does-not-match-the-expected-instances): lines 140-154
--   [6. Connection to the IFRT proxy server was terminated](#6-connection-to-the-ifrt-proxy-server-was-terminated): lines 155-165
--   [7. Cached executable metadata was edited during the operation](#7-cached-executable-metadata-was-edited-during-the-operation): lines 166-178
--   [8. Lost connection to peer](#8-lost-connection-to-peer): lines 179-192
--   [9. ALTS handshake error from a client outside Google Cloud](#9-alts-handshake-error-from-a-client-outside-google-cloud): lines 193-205
--   [10. Cloud Storage lifecycle prefix limit](#10-cloud-storage-lifecycle-prefix-limit): lines 206-217
--   [11. JAX and Pathways version mismatch](#11-jax-and-pathways-version-mismatch): lines 218-230
--   [12. Pods stuck in ImagePullBackOff or ErrImagePull](#12-pods-stuck-in-imagepullbackoff-or-errimagepull): lines 231-247
--   [13. Port collisions with hostNetwork](#13-port-collisions-with-hostnetwork): lines 248-256
--   [14. The job hangs without failing](#14-the-job-hangs-without-failing): lines 257-270
--   [15. Proxy-to-worker transfers stall](#15-proxy-to-worker-transfers-stall): lines 271-289
+-   [2. Host OOM kills and memory-pressure evictions](#2-host-oom-kills-and-memory-pressure-evictions): lines 63-117
+-   [3. Backend proxy is not in the list of known backends](#3-backend-proxy-is-not-in-the-list-of-known-backends): lines 118-126
+-   [4. SIGTERM received by PID 1](#4-sigterm-received-by-pid-1): lines 127-187
+-   [5. Newly added instance does not match the expected instances](#5-newly-added-instance-does-not-match-the-expected-instances): lines 188-202
+-   [6. Connection to the IFRT proxy server was terminated](#6-connection-to-the-ifrt-proxy-server-was-terminated): lines 203-213
+-   [7. Persistent compilation cache errors](#7-persistent-compilation-cache-errors): lines 214-248
+-   [8. Lost connection to peer](#8-lost-connection-to-peer): lines 249-265
+-   [9. ALTS handshake error from a client outside Google Cloud](#9-alts-handshake-error-from-a-client-outside-google-cloud): lines 266-281
+-   [10. Cloud Storage lifecycle prefix limit](#10-cloud-storage-lifecycle-prefix-limit): lines 282-293
+-   [11. JAX and Pathways version mismatch](#11-jax-and-pathways-version-mismatch): lines 294-311
+-   [12. Pods stuck in ImagePullBackOff or ErrImagePull](#12-pods-stuck-in-imagepullbackoff-or-errimagepull): lines 312-328
+-   [13. Port collisions with hostNetwork](#13-port-collisions-with-hostnetwork): lines 329-337
+-   [14. The job hangs without failing](#14-the-job-hangs-without-failing): lines 338-351
+-   [15. Proxy-to-worker transfers stall](#15-proxy-to-worker-transfers-stall): lines 352-370
 
 --------------------------------------------------------------------------------
 
@@ -60,13 +60,13 @@ Then answer, in order:
     `--action=pod-events`) with the wait timeout.
 6.  Was the proxy started in elastic mode?
 
-## 2. Host OOM kills on the head pod or TPU hosts
+## 2. Host OOM kills and memory-pressure evictions
 
 OOMs on the head pod (python, proxy, or RM containers) and on TPU hosts (worker,
 colocated Python sidecar) often **do not** appear in container logs or as an
 `OOMKilled` pod event, but in the underlying node's kernel logs. A container
 restart or exit code 137 without an `OOMKilled` reason also points here. Query
-the node kernel logs for OOM kills:
+the node logs for OOM kills and memory-pressure evictions:
 
 ```bash
 python3 scripts/debug_workload.py \
@@ -79,12 +79,41 @@ python3 scripts/debug_workload.py \
   --execute
 ```
 
+The node can also run out of memory without a kernel OOM kill: the kubelet
+then evicts pods to free memory. Signs: an `Evicted` pod event with `The node
+was low on resource: memory. Container <name> was using <N>Ki, request is
+<M>...`, and `EvictionThresholdMet` or `NodeHasInsufficientMemory` node
+events. An eviction for memory is host memory exhaustion, just like a kernel
+OOM kill. So **no kernel OOM kill does not rule out a memory problem**: rule it
+out only after the `node-ooms` action (which matches both) and
+`--action=pod-events` show neither.
+
+The pod-evictions part of `node-ooms` matches evictions for any resource, so
+read the message: `low on resource: memory` is host memory exhaustion, while
+`ephemeral-storage` or disk evictions that follow crashes (e.g. core dumps
+filling the node disk) are usually side effects, not the root cause.
+
+With `--execute`, `node-ooms` runs its parts one by one (node events, pod
+evictions, kernel log lines, serial console), each limited by
+`--query_timeout`. The kernel log search is free text and can time out on large
+or old windows; if a part prints `[timeout]`, report that part as not checked
+and narrow the window or pass `--node_names` to retry it.
+
 When you find a host OOM kill (`Memory cgroup out of memory: Killed process`,
-`oom-kill` or `OOMKilling`):
+`oom-kill` or `OOMKilling`) or a memory-pressure eviction:
 
 -   Say in the report that it is host (CPU) RAM, not TPU HBM. An HBM OOM shows
     up as `RESOURCE_EXHAUSTED` in the worker or user-workload logs instead, and
     needs different fixes (sharding, batch size), not more container memory.
+-   Name the container that used the memory (the eviction message and the
+    kernel OOM line both name it) and compare its usage with its memory request
+    and limit. A container without a limit, or using far more than its
+    request, can starve the other containers on the node, e.g. a colocated
+    Python sidecar or data-loading process that grows while loading data or
+    weights.
+-   Line up the time of the kill or eviction with the first errors of the
+    other containers: the errors that follow (lost connections, worker or
+    proxy restarts) are side effects, not separate causes.
 
 ## 3. Backend proxy is not in the list of known backends
 
@@ -114,8 +143,9 @@ logs which is hosting the corresponding container by searching for the string
 `oom-killer`. It would describe the specific process (if any) that OOMed on the
 pathways head node. The query filter to get that information is covered by
 `--action=node-ooms`, which checks node-problem-detector
-`OOMKilling`/`SystemOOM` events, kernel `Memory cgroup out of memory` lines on
-the cluster's nodes, and serial-console logs of the JobSet's nodes (discovered
+`OOMKilling`/`SystemOOM` events, kubelet memory-pressure evictions, kernel
+`Memory cgroup out of memory` lines on the cluster's nodes, and serial-console
+logs of the JobSet's nodes (discovered
 automatically from the pods' `Scheduled` events, or pass
 `--node_names=gke-...,gke-...`). To look at a single node manually:
 
@@ -133,6 +163,27 @@ Container             | Recommended Memory&nbsp;&nbsp; | Recommended CPU
 JAX Client            | 100 GiB                        | 16
 Pathways Proxy        | 100 GiB                        | 16
 Resource Manager (RM) | 32 GiB                         | 16
+
+**Preemption or maintenance cascade.** A node preemption or maintenance event
+often produces a chain of errors across components, and the last one in the
+chain is usually the most visible. A typical order:
+
+1.  The preemption or maintenance notice (`--action=interruptions`), sometimes
+    also forwarded in the pathways-rm logs.
+2.  The RM or workers try to suspend or drain the slice; this can fail.
+3.  The worker on the lost host is marked dead, and the others report
+    `DATA_LOSS` or lost connections ([8](#8-lost-connection-to-peer)).
+4.  The proxy restarts or drops its clients
+    ([6](#6-connection-to-the-ifrt-proxy-server-was-terminated)).
+5.  The JAX client fails, or crashes (e.g. a segmentation fault) while
+    disconnecting.
+
+Report the interruption as the root cause and steps 2-5 as its effects, with
+their timestamps; do not report the client crash as a separate bug unless it
+also happens without an interruption. After the restart, replacement pods may
+stay `Pending` (e.g. no capacity); report that as a separate issue that delays
+recovery. Side effects of the crashes, such as core dumps filling the node disk
+(`DiskPressure`, ephemeral-storage evictions), are not the root cause either.
 
 ## 5. Newly added instance does not match the expected instances
 
@@ -160,7 +211,14 @@ client was connected to has terminated or restarted since the original
 connection was established. Try restarting your workload to see if the issue
 goes away.
 
-## 7. Cached executable metadata was edited during the operation
+## 7. Persistent compilation cache errors
+
+Errors about the compilation cache in Cloud Storage (often the
+`--gcs_scratch_location` bucket) are common, but most of them are not fatal.
+Before you report one as the root cause, check whether the job kept running
+after it and whether the time of the error lines up with the failure.
+
+**Cached executable metadata was edited during the operation:**
 
 ```
 XlaRuntimeError: ABORTED: Permanent error, with a last message “” of The metadata for object was edited during the operation. Please try again
@@ -172,6 +230,21 @@ in GCS. We
 using GCSFuse to mount your GCS bucket as a local directory. It translates the
 GCS preconditions to the filesystem level to do parallel writes atomically and
 prevent metadata conflicts you are seeing.
+
+**Permission denied on the cache bucket** (`PERMISSION_DENIED`, e.g. on
+`storage.buckets.update` or `storage.objects.*`, while initializing the
+persistent cache): the service account cannot set up or use the cache. Pathways
+usually falls back to an in-memory cache and keeps running, so this is not the
+cause of a crash, but every restart recompiles from scratch, which makes
+startup and recovery slower. Fix: grant the service account the missing role on
+the bucket, or point the cache at a bucket it administers. Report it as a
+contributing issue, and keep looking for the actual failure.
+
+**`FAILED_PRECONDITION` on cache object updates** (e.g. updating an object's
+metadata or custom time): possibly several writers updating the same cache
+object at once. Like the race above, it is usually retried or skipped. If it
+repeats on every startup, try the GCSFuse mount above or a separate cache
+prefix per job, and compare startup time with and without the cache.
 
 ## 8. Lost connection to peer
 
@@ -185,7 +258,10 @@ DATA_LOSS: Pipe from scheduler to aggregator
 A TPU worker likely exited either due to a hardware failure or a software fatal
 error like OOMs. The GKE instance ID is generally part of the error message and
 should be used to navigate to the instance logs to find more pointers for
-determining the root cause.
+determining the root cause. Check `--action=interruptions` and
+`--action=node-ooms` for that host around the time of the error: a preemption
+or host OOM there is the root cause (see the cascade in
+[4](#4-sigterm-received-by-pid-1) and [2](#2-host-oom-kills-and-memory-pressure-evictions)).
 
 ## 9. ALTS handshake error from a client outside Google Cloud
 
