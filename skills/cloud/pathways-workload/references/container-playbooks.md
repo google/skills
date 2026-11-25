@@ -11,9 +11,9 @@ error. Run the commands from the skill directory, as in SKILL.md.
 -   [B. IFRT proxy server](#b-ifrt-proxy-server): lines 92-117
 -   [C. Resource manager (pathways-rm)](#c-resource-manager-pathways-rm): lines 118-139
 -   [D. Pathways workers (pathways-worker)](#d-pathways-workers-pathways-worker): lines 140-186
--   [E. Colocated Python sidecar](#e-colocated-python-sidecar): lines 187-253
--   [F. All logs of a container](#f-all-logs-of-a-container): lines 254-259
--   [G. When the error is still not clear](#g-when-the-error-is-still-not-clear): lines 260-290
+-   [E. Colocated Python sidecar](#e-colocated-python-sidecar): lines 187-257
+-   [F. All logs of a container](#f-all-logs-of-a-container): lines 258-263
+-   [G. When the error is still not clear](#g-when-the-error-is-still-not-clear): lines 264-294
 
 --------------------------------------------------------------------------------
 
@@ -189,7 +189,11 @@ logging gotcha above).
 Container `colocated-python-sidecar`, or the custom name found in Step 1 of
 SKILL.md. Used in some workloads for colocated dataloading or checkpointing.
 Look for workers that stopped responding indefinitely waiting for colocated
-Python sidecars (often because one sidecar process died quietly).
+Python sidecars (often because one sidecar process died quietly). A sidecar
+that died without an error in its own logs was often killed for memory: the
+sidecar shares the TPU host's memory with `pathways-worker`, and it can grow
+while loading data or weights. Run `--action=node-ooms` for its node (see
+[Special Scenarios 2](special-scenarios.md#2-host-oom-kills-and-memory-pressure-evictions)).
 
 The sidecar container is usually named `colocated-python-sidecar`, but customer
 workloads may use a different name. The sidecar always runs **in the TPU worker

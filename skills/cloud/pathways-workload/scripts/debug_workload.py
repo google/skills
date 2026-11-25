@@ -4,9 +4,11 @@ r"""CLI helper to filter and analyze logs for Pathways on Cloud GKE workloads.
 It constructs optimized queries for GCP Cloud Logging and provides commands
 to read logs from GKE containers and nodes.
 
-This script is shared with EXTERNAL users.
+This script is shared with EXTERNAL users. It only depends on the Python 3
+standard library and the gcloud CLI, so it runs without installing packages.
 """
 
+import argparse
 from collections.abc import Callable, Sequence
 import dataclasses
 import datetime
@@ -14,47 +16,165 @@ import json
 import re
 import shlex
 import subprocess
+import sys
 from typing import Any
 import urllib.parse
-from absl import app
-from absl import flags
 
-_PROJECT = flags.DEFINE_string(
+
+class UsageError(Exception):
+  """Raised for invalid command-line usage."""
+
+
+@dataclasses.dataclass
+class _Flag:
+  """A command-line flag; `value` is set by `_parse_flags`."""
+
+  name: str
+  value: Any
+  multi: bool = False
+
+
+_PARSER = argparse.ArgumentParser(
+    description=__doc__,
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    allow_abbrev=False,
+)
+_FLAGS: list[_Flag] = []
+
+
+def _define(
+    name: str, default: Any, help_text: str, multi: bool = False, **kwargs: Any
+) -> _Flag:
+  """Registers the command-line flag --<name> and returns its handle.
+
+  Args:
+    name: Flag name, without the leading dashes.
+    default: Value used when the flag is not given.
+    help_text: Help text shown by --help.
+    multi: Whether the flag can be repeated; its value is then a list.
+    **kwargs: Extra arguments for `argparse.ArgumentParser.add_argument`.
+
+  Returns:
+    The flag, whose `value` is set by `_parse_flags`.
+  """
+  flag = _Flag(name, default, multi)
+  _FLAGS.append(flag)
+  _PARSER.add_argument(
+      f"--{name}",
+      dest=name,
+      default=None if multi else default,
+      help=help_text,
+      **kwargs,
+  )
+  return flag
+
+
+def _parse_bool(value: str) -> bool:
+  """Parses a boolean flag value such as true/false, yes/no or 1/0."""
+  if value.lower() in ("true", "t", "1", "yes", "y"):
+    return True
+  if value.lower() in ("false", "f", "0", "no", "n"):
+    return False
+  raise argparse.ArgumentTypeError(f"invalid boolean value: {value!r}")
+
+
+def _parse_list(value: str) -> list[str]:
+  """Parses a comma-separated flag value into a list of non-empty items."""
+  return [v.strip() for v in value.split(",") if v.strip()]
+
+
+def _define_string(
+    name: str, default: str | None, help_text: str, required: bool = False
+) -> _Flag:
+  """Defines a string flag."""
+  return _define(name, default, help_text, required=required)
+
+
+def _define_integer(name: str, default: int, help_text: str) -> _Flag:
+  """Defines an integer flag."""
+  return _define(name, default, help_text, type=int)
+
+
+def _define_enum(
+    name: str, default: str | None, choices: Sequence[str], help_text: str
+) -> _Flag:
+  """Defines a string flag restricted to `choices`."""
+  return _define(name, default, help_text, choices=choices)
+
+
+def _define_boolean(name: str, default: bool, help_text: str) -> _Flag:
+  """Defines --<name>, --<name>=true|false and --no<name>."""
+  flag = _define(
+      name, default, help_text, nargs="?", const=True, type=_parse_bool
+  )
+  _PARSER.add_argument(
+      f"--no{name}", dest=name, action="store_false", help=argparse.SUPPRESS
+  )
+  return flag
+
+
+def _define_list(name: str, default: list[str], help_text: str) -> _Flag:
+  """Defines a comma-separated list flag."""
+  return _define(name, default, help_text, type=_parse_list)
+
+
+def _define_multi_string(
+    name: str, default: list[str], help_text: str
+) -> _Flag:
+  """Defines a flag that can be repeated; its value is the list of values."""
+  del default  # Always [] when the flag is not given.
+  return _define(name, [], help_text, multi=True, action="append")
+
+
+def _parse_flags(argv: Sequence[str]) -> None:
+  """Parses `argv` (without the program name) into the defined flags."""
+  args = _PARSER.parse_args(argv)
+  for flag in _FLAGS:
+    value = getattr(args, flag.name)
+    flag.value = (value or []) if flag.multi else value
+  if _START_TIME.value and _END_TIME.value and _DURATION.value:
+    raise UsageError(
+        "At most two of --start_time, --end_time and --duration may be"
+        " specified."
+    )
+
+
+_PROJECT = _define_string(
     "project",
     None,
     "GCP project ID. Please verify with the user if this is correct.",
     required=True,
 )
-_CLUSTER_NAME = flags.DEFINE_string(
+_CLUSTER_NAME = _define_string(
     "cluster_name", None, "Target GKE cluster name", required=True
 )
-_LOCATION = flags.DEFINE_string(
+_LOCATION = _define_string(
     "location", None, "Cluster location (zone or region)", required=True
 )
-_JOBSET_NAME = flags.DEFINE_string(
+_JOBSET_NAME = _define_string(
     "jobset_name",
     None,
     "k8s JobSet name. Shorthand for --workload=jobset:<name>.",
 )
-_LWS_NAME = flags.DEFINE_string(
+_LWS_NAME = _define_string(
     "lws_name",
     None,
     "LeaderWorkerSet name (e.g. Pathways inference). Shorthand for"
     " --workload=lws:<name>.",
 )
-_JOB_NAME = flags.DEFINE_string(
+_JOB_NAME = _define_string(
     "job_name",
     None,
     "Plain k8s Job name (not part of a JobSet). Shorthand for"
     " --workload=job:<name>.",
 )
-_POD_PREFIX = flags.DEFINE_string(
+_POD_PREFIX = _define_string(
     "pod_prefix",
     None,
     "Pod name prefix, for workloads not created by a JobSet, LeaderWorkerSet or"
     " Job (e.g. bare pods). Shorthand for --workload=pod:<prefix>.",
 )
-_WORKLOADS = flags.DEFINE_multi_string(
+_WORKLOADS = _define_multi_string(
     "workload",
     [],
     "Workload to debug as <kind>:<name>, where <kind> is one of jobset, lws,"
@@ -63,8 +183,8 @@ _WORKLOADS = flags.DEFINE_multi_string(
     " Job: --workload=jobset:my-pw --workload=job:my-client. Combined with"
     " --jobset_name, --lws_name, --job_name and --pod_prefix.",
 )
-_NAMESPACE = flags.DEFINE_string("namespace", "default", "k8s namespace")
-_SIDECAR_CONTAINER = flags.DEFINE_string(
+_NAMESPACE = _define_string("namespace", "default", "k8s namespace")
+_SIDECAR_CONTAINER = _define_string(
     "sidecar_container",
     "colocated-python-sidecar",
     "Container name of the colocated Python sidecar. Workloads may use a"
@@ -72,19 +192,19 @@ _SIDECAR_CONTAINER = flags.DEFINE_string(
     " the TPU worker pods (see the JobSet YAML or the pods' container names).",
 )
 
-_START_TIME = flags.DEFINE_string(
+_START_TIME = _define_string(
     "start_time",
     None,
     "Start timestamp (ISO 8601 / RFC 3339, e.g. 2026-10-22T00:00:00Z)."
     " Timestamps without a timezone are interpreted as UTC.",
 )
-_END_TIME = flags.DEFINE_string(
+_END_TIME = _define_string(
     "end_time",
     None,
     "End timestamp (ISO 8601 / RFC 3339, e.g. 2026-10-22T02:00:00Z)."
     " Timestamps without a timezone are interpreted as UTC.",
 )
-_DURATION = flags.DEFINE_string(
+_DURATION = _define_string(
     "duration",
     None,
     "Length of the time window, e.g. 30s, 30m, 2h, 1d, or combinations such"
@@ -94,16 +214,7 @@ _DURATION = flags.DEFINE_string(
     " --end_time.",
 )
 
-flags.register_multi_flags_validator(
-    ["start_time", "end_time", "duration"],
-    lambda f: not (f["start_time"] and f["end_time"] and f["duration"]),
-    message=(
-        "At most two of --start_time, --end_time and --duration may be"
-        " specified."
-    ),
-)
-
-_ACTION = flags.DEFINE_enum(
+_ACTION = _define_enum(
     "action",
     "summary",
     [
@@ -126,17 +237,17 @@ _ACTION = flags.DEFINE_enum(
     " always runs, with or without --execute).",
 )
 
-_EXECUTE = flags.DEFINE_boolean(
+_EXECUTE = _define_boolean(
     "execute",
     False,
     "If True, will attempt to run the constructed gcloud command locally.",
 )
 
-_LIMIT = flags.DEFINE_integer(
+_LIMIT = _define_integer(
     "limit", 100, "Maximum number of log entries to fetch if executing."
 )
 
-_ORDER = flags.DEFINE_enum(
+_ORDER = _define_enum(
     "order",
     "asc",
     ["asc", "desc"],
@@ -146,7 +257,7 @@ _ORDER = flags.DEFINE_enum(
     " completed step).",
 )
 
-_NODE_NAMES = flags.DEFINE_list(
+_NODE_NAMES = _define_list(
     "node_names",
     [],
     "GKE node names (e.g. gke-tpu-1a2b3c4d-xyz1) the workload ran on, used by"
@@ -154,7 +265,7 @@ _NODE_NAMES = flags.DEFINE_list(
     " they are discovered from the pods' 'Scheduled' events.",
 )
 
-_EXTRA_TERMS = flags.DEFINE_multi_string(
+_EXTRA_TERMS = _define_multi_string(
     "extra_terms",
     [],
     "Additional plain-text strings to match, appended to the built-in list of"
@@ -165,7 +276,7 @@ _EXTRA_TERMS = flags.DEFINE_multi_string(
     " built-in list: errors, user-workload, proxy, pathways-rm, workers.",
 )
 
-_MIN_SEVERITY = flags.DEFINE_enum(
+_MIN_SEVERITY = _define_enum(
     "min_severity",
     None,
     ["DEFAULT", "DEBUG", "INFO", "NOTICE", "WARNING", "ERROR", "CRITICAL"],
@@ -177,7 +288,7 @@ _MIN_SEVERITY = flags.DEFINE_enum(
     " Only supported by the same actions as --extra_terms.",
 )
 
-_FIRST_PER_POD = flags.DEFINE_integer(
+_FIRST_PER_POD = _define_integer(
     "first_per_pod",
     0,
     "If > 0 (with --execute), keep only the first N matching entries of each"
@@ -187,12 +298,23 @@ _FIRST_PER_POD = flags.DEFINE_integer(
     " --fetch_limit entries and prints at most --limit of the kept ones.",
 )
 
-_FETCH_LIMIT = flags.DEFINE_integer(
+_FETCH_LIMIT = _define_integer(
     "fetch_limit",
     1000,
     "Maximum entries fetched from Cloud Logging when --first_per_pod is set."
     " Larger values cover more pods but are slower; narrow the time window"
     " first.",
+)
+
+_QUERY_TIMEOUT = _define_integer(
+    "query_timeout",
+    180,
+    "Seconds to wait for each gcloud query (with --execute) before giving up"
+    " on it. Free-text searches over large or old time windows can take many"
+    " minutes; on a timeout, narrow the window or run the printed gcloud"
+    " command directly. Also applies to node discovery and --first_per_pod"
+    " fetches (up to --fetch_limit entries); raise it (e.g. 600) for very"
+    " large workloads. 0 waits forever.",
 )
 
 # Node names per query for node-scoped actions (node-ooms, neighbors); larger
@@ -444,7 +566,7 @@ def get_time_filter() -> list[str]:
         _START_TIME.value, _END_TIME.value, _DURATION.value
     )
   except ValueError as e:
-    raise app.UsageError(str(e)) from e
+    raise UsageError(str(e)) from e
   filters = []
   if start:
     filters.append(f'timestamp >= "{_to_rfc3339(start)}"')
@@ -751,11 +873,18 @@ def pod_events_query(w: Workload) -> list[str]:
 
 
 def node_ooms_query(w: Workload) -> list[str]:
-  """Out-of-memory kills on the cluster's nodes (head pod and TPU hosts).
+  """Out-of-memory kills and memory-pressure evictions on the cluster's nodes.
 
   Head-pod OOMs (JAX client, proxy, RM) often never reach container logs. They
   show up as node-problem-detector events (OOMKilling/SystemOOM), kernel
   "Memory cgroup out of memory" lines, and serial-console output.
+
+  The kubelet can also run out of node memory before the kernel does: it then
+  evicts pods ("The node was low on resource: memory. Container X was using
+  ...") and records EvictionThresholdMet / NodeHasInsufficientMemory node
+  events. There is no kernel OOM kill in that case, so these are matched too.
+  Evictions for other resources (e.g. ephemeral-storage) also match; the
+  message names the resource.
 
   Serial-console logs live on `gce_instance`, which has no cluster label, and
   TPU node VMs are named gke-tpu-<hash>, so they are scoped to the workload's
@@ -766,39 +895,85 @@ def node_ooms_query(w: Workload) -> list[str]:
     w: The workload.
 
   Returns:
-    The Cloud Logging filter clauses, one per line.
+    The Cloud Logging filter clauses, one per line: the OR of
+    `node_ooms_parts`, for the printed link and gcloud command.
+  """
+  lines = ["("]
+  for i, (_, clauses) in enumerate(node_ooms_parts(w)):
+    if i:
+      lines.append("  OR")
+    lines += ["  ("] + [f"    {c}" for c in clauses] + ["  )"]
+  return lines + [")"]
+
+
+def node_ooms_parts(w: Workload) -> list[tuple[str, list[str]]]:
+  """The parts of `node_ooms_query`, run one by one with --execute.
+
+  The combined query can take many minutes or fail with a backend error on
+  large or old time windows, mostly because of the free-text kernel log search.
+  Running the parts separately (fast, indexed ones first) means the others
+  still answer when one of them times out.
+
+  Args:
+    w: The workload.
+
+  Returns:
+    (label, filter clauses) pairs.
   """
   if w.node_names:
     names = " OR ".join(f'"{n}"' for n in w.node_names)
-    serial_scope = (
-        f'    labels."compute.googleapis.com/resource_name"=({names})'
-    )
+    serial_scope = f'labels."compute.googleapis.com/resource_name"=({names})'
+    # Other workloads' OOMs on the cluster's other nodes are noise and can
+    # fill --limit, so node logs are scoped to the workload's nodes too.
+    node_scope = [f"resource.labels.node_name=({names})"]
   else:
-    serial_scope = f'    resource.labels.zone:"{w.location}"'
+    serial_scope = f'resource.labels.zone:"{w.location}"'
+    node_scope = []
   return [
-      "(",
-      "  (",
-      *(f"    {f}" for f in _cluster_filters(w, "k8s_node")),
-      "    (",
       (
-          '      (log_id("events") AND'
-          ' jsonPayload.reason:("OOMKilling" OR "SystemOOM"))'
+          "node OOM and memory-pressure events",
+          _cluster_filters(w, "k8s_node")
+          + node_scope
+          + [
+              'log_id("events")',
+              (
+                  'jsonPayload.reason:("OOMKilling" OR "SystemOOM" OR'
+                  ' "EvictionThresholdMet" OR "NodeHasInsufficientMemory")'
+              ),
+          ],
       ),
-      '      OR "Memory cgroup out of memory"',
-      '      OR "Out of memory"',
-      '      OR "oom_reaper"',
-      '      OR "oom-kill"',
-      "    )",
-      "  )",
-      "  OR",
-      "  (",
-      '    resource.type="gce_instance"',
-      f'    resource.labels.project_id="{w.project}"',
-      serial_scope,
-      '    log_id("serialconsole.googleapis.com/serial_port_1_output")',
-      '    "Memory cgroup out of memory"',
-      "  )",
-      ")",
+      (
+          "pod evictions (any resource; the message names it)",
+          _cluster_filters(w, "k8s_pod")
+          + [
+              'log_id("events")',
+              f'resource.labels.namespace_name="{w.namespace}"',
+              _pod_name_filter(w),
+              'jsonPayload.reason="Evicted"',
+          ],
+      ),
+      (
+          "kernel OOM lines in node logs",
+          _cluster_filters(w, "k8s_node")
+          + node_scope
+          + [
+              'NOT log_id("events")',
+              (
+                  '("Memory cgroup out of memory" OR "Out of memory" OR'
+                  ' "oom_reaper" OR "oom-kill")'
+              ),
+          ],
+      ),
+      (
+          "serial console of the nodes",
+          [
+              'resource.type="gce_instance"',
+              f'resource.labels.project_id="{w.project}"',
+              serial_scope,
+              'log_id("serialconsole.googleapis.com/serial_port_1_output")',
+              '"Memory cgroup out of memory"',
+          ],
+      ),
   ]
 
 
@@ -946,7 +1121,7 @@ _LOG_ACTIONS: dict[str, LogAction] = {
         pod_events_query,
     ),
     "node-ooms": LogAction(
-        "node-ooms (Node-level OOM validation)",
+        "node-ooms (Node-level OOM kills and memory-pressure evictions)",
         node_ooms_query,
         needs_nodes=True,
     ),
@@ -975,13 +1150,27 @@ _LOG_ACTIONS: dict[str, LogAction] = {
 
 def _run_command(cmd: list[str], tool_name: str) -> str | None:
   """Runs `cmd`, returning its stdout, or None (after reporting) on failure."""
+  timeout = _QUERY_TIMEOUT.value or None
   try:
     return subprocess.run(
-        cmd, capture_output=True, text=True, check=True
+        cmd, capture_output=True, text=True, check=True, timeout=timeout
     ).stdout
   except subprocess.CalledProcessError as e:
     print(f"Error executing {tool_name}: {e.stderr}")
     return None
+  except subprocess.TimeoutExpired:
+    print(_timeout_message(tool_name, timeout))
+    return None
+
+
+def _timeout_message(tool_name: str, timeout: float | None) -> str:
+  """Returns the message printed when a gcloud query times out."""
+  return (
+      f"[timeout] {tool_name} did not finish within {timeout}s"
+      " (--query_timeout). This check is INCOMPLETE, not clean: narrow the"
+      " time window (or pass --node_names), raise --query_timeout, or run the"
+      " printed gcloud command directly."
+  )
 
 
 def print_console_url(query: str, project: str) -> None:
@@ -1164,7 +1353,7 @@ def discover_workload_nodes(w: Workload) -> tuple[str, ...]:
         _START_TIME.value, _END_TIME.value, _DURATION.value
     )
   except ValueError as e:
-    raise app.UsageError(str(e)) from e
+    raise UsageError(str(e)) from e
   time_filters = []
   if start:
     time_filters.append(
@@ -1219,11 +1408,11 @@ def build_action_query(
     min_severity: If set, also match every entry at or above this severity.
 
   Raises:
-    app.UsageError: If `extra_terms` or `min_severity` is given for an action
+    UsageError: If `extra_terms` or `min_severity` is given for an action
       without terms.
   """
   if (extra_terms or min_severity) and not action.terms:
-    raise app.UsageError(
+    raise UsageError(
         "--extra_terms and --min_severity are only supported by actions with"
         " a built-in list of terms: "
         + ", ".join(name for name, a in _LOG_ACTIONS.items() if a.terms)
@@ -1323,8 +1512,36 @@ def do_log_action(action: LogAction, w: Workload) -> None:
     return
   if action.build_query is neighbors_query:
     run_neighbors(queries, w)
+  elif action.build_query is node_ooms_query:
+    run_parts(node_ooms_parts, batches, w.project)
   else:
     run_gcloud(queries, w.project)
+
+
+def run_parts(
+    parts: Callable[[Workload], list[tuple[str, list[str]]]],
+    batches: Sequence[Workload],
+    project: str,
+) -> None:
+  """Runs each part of a multi-part action as its own query, in order.
+
+  A part that fails or times out is reported, and the next part still runs.
+
+  Args:
+    parts: Returns the (label, filter clauses) parts for a node batch.
+    batches: The workload, split into node batches.
+    project: The GCP project.
+  """
+  time_filters = get_time_filter()
+  per_batch = [parts(b) for b in batches]
+  for i, (label, _) in enumerate(per_batch[0]):
+    # Parts that are not scoped to nodes are the same in every batch.
+    queries = list(
+        dict.fromkeys("\n".join(p[i][1] + time_filters) for p in per_batch)
+    )
+    print(f"--- Part {i + 1}/{len(per_batch[0])}: {label} ---")
+    run_gcloud(queries, project)
+    print()
 
 
 def _probe(query: str, project: str) -> tuple[bool | None, str]:
@@ -1339,9 +1556,17 @@ def _probe(query: str, project: str) -> tuple[bool | None, str]:
       "--format=value(timestamp)",
   ]
   try:
-    out = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    out = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=_QUERY_TIMEOUT.value or None,
+    )
   except subprocess.CalledProcessError as e:
     return None, e.stderr
+  except subprocess.TimeoutExpired:
+    return None, _timeout_message("preflight query", _QUERY_TIMEOUT.value)
   return bool(out.stdout.strip()), ""
 
 
@@ -1418,8 +1643,7 @@ def run_preflight(w: Workload) -> None:
 
 
 def main(argv: Sequence[str]) -> None:
-  if len(argv) > 1:
-    raise app.UsageError("Too many command-line arguments.")
+  _parse_flags(argv[1:])
 
   try:
     targets = parse_targets(
@@ -1430,7 +1654,7 @@ def main(argv: Sequence[str]) -> None:
         pod_prefix=_POD_PREFIX.value,
     )
   except ValueError as e:
-    raise app.UsageError(str(e)) from e
+    raise UsageError(str(e)) from e
   workload = Workload(
       project=_PROJECT.value,
       cluster=_CLUSTER_NAME.value,
@@ -1459,7 +1683,7 @@ def main(argv: Sequence[str]) -> None:
           f" '{workload.location}' and may include unrelated VMs.\n"
       )
     else:
-      raise app.UsageError(
+      raise UsageError(
           f"--action={_ACTION.value} needs the workload's nodes: pass"
           " --node_names, or --execute to discover them from the pods'"
           " 'Scheduled' events."
@@ -1468,4 +1692,7 @@ def main(argv: Sequence[str]) -> None:
 
 
 if __name__ == "__main__":
-  app.run(main)
+  try:
+    main(sys.argv)
+  except UsageError as e:
+    _PARSER.error(str(e))
