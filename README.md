@@ -41,7 +41,6 @@ This command gives you an option to also remove obsolete skills.
   - [**Agentic analytics across cloud providers and data types**](./skills/cloud/google-cloud-solution-agentic-analytics-spark-knowledge-catalog)
   - [**Borderless open data lakehouse agentic AI system**](./skills/cloud/google-cloud-solution-agentic-ai-borderless-data-lakehouse)
   - [**Build and deploy AI agents on Google Cloud**](./skills/cloud/google-cloud-solution-build-deploy-agents)
-  - [**Data science workflow with AI agents solution**](./skills/cloud/google-cloud-solution-agentic-ai-data-science-workflow)
   - [**Dynamic Hybrid Search using AlloyDB**](./skills/cloud/google-cloud-solution-hybrid-search-alloydb)
   - [**Event-driven decoupling with Pub/Sub**](./skills/cloud/google-cloud-solution-event-driven-decoupling)
   - [**Google Skill Finder**](./skills/developers/finding-google-skills)
