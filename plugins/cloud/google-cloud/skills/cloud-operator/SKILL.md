@@ -1,11 +1,10 @@
 ---
 name: cloud-operator
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
   category: CloudInfrastructureAndServices
 description: >-
-  Google Cloud (GCP) assistant and operator via the `ask_cloud_operator` MCP
-  tool (the autocloud server, or any server that offers it). Use
+  Google Cloud (GCP) assistant and operator via the `autocloud` MCP server. Use
   for any GCP request: how-to, resources, Terraform/Kubernetes/Helm, rollouts,
   incidents, costs. Invoke it before answering a GCP question from your own
   knowledge or documentation search, and before proposing an architecture or
@@ -21,11 +20,13 @@ review, resource management, rollouts, incidents, costs) to the **Cloud Operator
 Agent**, through `ask_cloud_operator` (on the `autocloud` MCP server in the
 plugins). Keep using it for GCP follow-ups in the same conversation.
 
-If no MCP server offers `ask_cloud_operator` (the plugins name it `autocloud`,
-but any server name works), don't use this skill: handle the request with the
-other available tools and skills. If the user asks for Cloud
-Operator, tell them it isn't available here, and offer to handle the request
-with the other available tools and skills.
+If the `autocloud` MCP server doesn't offer `ask_cloud_operator`, or its calls
+fail with a sign-in error, it's disconnected, usually because the user's sign-in
+expired. Don't answer the request yet, not even in part: tell the user Cloud
+Operator is disconnected and how to sign in again
+(`gcloud auth application-default login`) and reconnect, and ask whether to
+retry after that or answer now without it. The steps are in
+[Server not connected](#server-not-connected).
 
 ## Usage Attribution
 
@@ -212,10 +213,11 @@ Make one call per logical request. If a call fails, see
   new session (omit `contextId`) and tell the user it went to their agent in
   that organization. Within one organization, keep the session and name the new
   project in `userQuery`.
-- On session or token-expiry errors, drop `contextId`, re-include the full
+- On session-expiry errors, drop `contextId`, re-include the full
   conversation context and current files, and start one clean turn; if the
   failed turn may have changed resources, tell the user and ask before
-  re-sending.
+  re-sending. For sign-in or token-expiry errors, see
+  [Server not connected](#server-not-connected).
 - **Timeouts and dropped connections**: the request keeps running after a call
   stops waiting, so a timeout or dropped connection rarely means it failed. Its
   session (`search_operator_sessions` and `fetch_operator_session`, with the
@@ -225,9 +227,11 @@ Make one call per logical request. If a call fails, see
   user asks to try again, doesn't make it faster: it starts a second run from
   scratch. A busy session rejects new requests, and a new session starts
   without the earlier context.
-- **Failures**: if a request fails, tell the user it failed, then answer their
-  original question yourself with the other available tools and skills, rather
-  than stopping or retrying. Say where the answer came from.
+- **Failures**: for a sign-in error, follow
+  [Server not connected](#server-not-connected) instead. If any other request
+  fails, tell the user it failed, then answer their original question yourself
+  with the other available tools and skills, rather than stopping or retrying.
+  Say where the answer came from.
 
 ## Working with files
 
@@ -277,39 +281,43 @@ Make one call per logical request. If a call fails, see
 
 ## Troubleshooting
 
-### Sign-in errors
+### Server not connected
 
-If a call fails with an authentication error (for example a 401, "invalid
-authentication credentials", "Incompatible auth server", or a rejected
-credential), tell the user the issue in one line, and ask whether they'd like
-to sign in again now or get an answer from the other available tools and
-skills. Don't silently fall back to running `gcloud` yourself.
+Follow these steps when the `autocloud` MCP server offers no tools, or a call
+fails with a sign-in error (for example a 401, "invalid authentication
+credentials", "Incompatible auth server", or "Authentication required"):
 
-To help them sign in again, first find out how the server signs in, from its
-entry in the MCP configuration: the plugin folder this skill came from (for
-example `.mcp.json` or `mcp_config.json`), or your own MCP settings. Then follow
-the matching item:
+1. Don't answer the request yet, not even with a warning, until the user
+   chooses (step 4).
+2. Tell the user in one line that Cloud Operator is disconnected, and why if
+   you know (for example, their sign-in expired).
+3. Give both fix steps, in order:
+   - **Sign in again.** The user runs `gcloud auth application-default login`
+     (you can't: it opens a browser). If the user has already confirmed that
+     `gcloud auth application-default print-access-token` works, skip this
+     step: the sign-in is fine. If a call failed, see the errors below; if
+     `autocloud` offers no tools, still reconnect. If the server instead signs
+     in through your own MCP settings (OAuth), the user signs in again there.
+   - **Reconnect the server.** In Claude Code: `/mcp`, select `autocloud`,
+     **Reconnect** (for ADC servers, **Authenticate** doesn't work). In other
+     agents, the user restarts the agent. Don't name a command or menu you
+     aren't sure you have.
+4. Ask whether to retry after the user reconnects, or answer now with the
+   other available tools and skills. If the user chooses to answer now, say in
+   that answer that it doesn't come from Cloud Operator, and don't ask again in
+   this conversation unless the user asks to retry. If it still fails after the
+   user reconnects, don't repeat these steps: say it's still disconnected, check
+   the errors below, and offer to answer now without Cloud Operator.
 
-- **Application Default Credentials (ADC):** the entry runs a helper script
-  that gets a token from `gcloud auth application-default`, or has
-  `"authProviderType": "google_credentials"`.
-  1. Check first: if `gcloud auth application-default print-access-token`
-     succeeds, the credentials are fine and the problem is elsewhere (see
-     [Organization and agent errors](#organization-and-agent-errors)).
-  2. Otherwise, the user runs `gcloud auth application-default login`, and
-     `gcloud auth application-default set-quota-project {project_id}` with a
-     project they work in, if no quota project is set. If gcloud isn't
-     installed, help them install the Google Cloud CLI first, with other
-     available skills that cover it or the
-     [install guide](https://docs.cloud.google.com/sdk/docs/install-sdk.md.txt).
-- **OAuth:** the entry has an `oauth` block, or no credentials configured, and
-  you sign in to the server yourself. The user signs in to the server again
-  from your MCP settings.
+For example: "Cloud Operator is disconnected: your Google sign-in may have
+expired. To fix it, run `gcloud auth application-default login`, then run
+`/mcp`, select `autocloud`, and choose **Reconnect**. Should I retry after
+that, or answer now without Cloud Operator?"
 
-Then reconnect the server from your MCP settings, or restart, and retry the
-request. Some agents report any 403 as a rejected credential, including when
-Cloud Operator isn't available for the organization: if signing in again
-doesn't fix it, see the errors below.
+If `gcloud auth application-default print-access-token` works but the server
+still fails, the problem isn't the sign-in: see the errors below. Some agents
+also report any 403 as a sign-in error, including when Cloud Operator isn't
+available for the organization.
 
 ### Organization and agent errors
 
@@ -327,5 +335,5 @@ doesn't fix it, see the errors below.
 | A permission error, or `RUN_NOT_ALLOWED`, from `fetch_operator_session` or `search_operator_sessions` when `ask_cloud_operator` works | Usually a wrong session ID, or a different `organization` or `agentId` than the session's | Check the session ID, `organization` and `agentId`. Don't send the user to an administrator for this. |
 | "… has not been used in project {project} before or it is disabled" | The API is off in that project, usually the quota project | With the user's permission, run `gcloud services enable geminicloudassist.googleapis.com --project {project}`, or set a quota project where it's on. |
 | "Request contains an invalid argument." | Often a malformed `organization` (it must be `organizations/` and the numeric ID), or an `agentId` from another organization | Fix the value, or omit `agentId` to use their own agent. |
-| "caller does not own agent" | The signed-in account doesn't own that agent | Sign in with the account that owns it, or omit `agentId` to use their own agent. |
+| "caller does not own agent", or a permission or unknown-session error for a call that worked earlier in this conversation | The signed-in account doesn't own that agent or session. Often the user signed in as another account: a connected server keeps its account until it reconnects, while new `gcloud` commands use the new one | Ask whether they switched accounts. If so, they reconnect the server, and you start a new session (omit `contextId` and `agentId`). Otherwise, sign in with the account that owns the agent, or omit `agentId` to use their own. |
 | "The service is currently unavailable." | Usually temporary; after several minutes with an `agentId`, the agent ID may not exist | If you passed an `agentId`, check it with the user. Otherwise retry once a little later. |

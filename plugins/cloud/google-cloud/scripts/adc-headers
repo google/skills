@@ -15,12 +15,18 @@
 
 # Headers helper for the plugin's MCP servers: Claude Code's headersHelper
 # (.mcp.json) and Codex's http_headers_helper (~/.codex/config.toml). Prints the
-# HTTP headers for one connection as a JSON object: a fresh Application Default
+# HTTP headers for one connection as a JSON object: an Application Default
 # Credentials access token (gcloud auth application-default print-access-token)
 # and the quota project (x-goog-user-project): the ADC file's quota_project_id,
 # else gcloud's billing/quota_project, else the gcloud project. Google APIs
 # reject ADC user tokens without a quota project. Never prints anything but the
 # headers; errors go to stderr.
+#
+# Each client runs this when it connects a server, and again when the server
+# rejects the token. If gcloud can't get a token, usually because the user's
+# sign-in has expired or they never signed in, the helper exits 1 with no
+# output and says on stderr to run gcloud auth application-default login, then
+# reconnect the server.
 #
 # .mcp.json names this file without an extension, so bash runs it on macOS,
 # Linux, WSL and Git Bash, and CMD on Windows finds adc-headers.cmd beside it,
@@ -61,15 +67,25 @@ fi
 # reused. One helper at a time removes or releases a lock, holding a second
 # lock, so none removes a lock another one just took. A helper killed while its
 # gcloud call runs leaves the lock for the next waiter to remove once that call
-# ends. Claude Code stops a helper after about 9 s, so a helper waits at most
-# 6 s, then gets the token without the lock (ADC_HEADERS_LOCK_WAIT changes this
-# for tests).
+# ends. While it waits, a helper also checks for a token the lock's holder has
+# just shared (see read_shared), and uses it at once. Claude Code stops a
+# helper after about 9 s and Codex after 10 s, so a helper waits at most 8 s,
+# then gets the token without the lock (ADC_HEADERS_LOCK_WAIT changes this for
+# tests), still checking for the holder's shared token while that call runs: a
+# holder that shares before the client's time limit saves every waiter.
 lock="$config/adc-headers.lock"
-lock_wait="${ADC_HEADERS_LOCK_WAIT:-6}"
+lock_wait="${ADC_HEADERS_LOCK_WAIT:-8}"
 older_than() {
   local made
   made="$(stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null)" || return 1
   [ $(($(date +%s) - made)) -ge "$2" ]
+}
+# True only if $1's age is known and under $2 seconds: unlike older_than, an
+# unknown age (stat failed) counts as too old.
+newer_than() {
+  local made
+  made="$(stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null)" || return 1
+  [ $(($(date +%s) - made)) -lt "$2" ]
 }
 running() {
   local id
@@ -101,9 +117,22 @@ remove_lock() {
 remove_if_stale() {
   if lock_is_stale; then remove_lock; fi
 }
+# Tenths of a second since 1970 where bash knows them (bash 5's EPOCHREALTIME),
+# else whole seconds times 10: $SECONDS alone would end an 8 s wait anywhere
+# from 7 to 8 s.
+tenths() {
+  if [ -n "${EPOCHREALTIME:-}" ]; then
+    local t="${EPOCHREALTIME/,/.}"
+    echo $((${t%.*} * 10 + 10#${t#*.} / 100000))
+  else
+    echo $(($(date +%s) * 10))
+  fi
+}
+# Returns 0 holding the lock, 2 with a shared token in $token and $quota, or 1.
 take_lock() {
-  local start="$SECONDS"
-  while [ $((SECONDS - start)) -lt "$lock_wait" ]; do
+  local deadline=$(($(tenths) + lock_wait * 10))
+  while [ "$(tenths)" -lt "$deadline" ]; do
+    read_shared && return 2
     if mkdir "$lock" 2>/dev/null; then
       echo "$$" >"$lock/owner"
       return 0
@@ -117,6 +146,8 @@ take_lock() {
     fi
     sleep 0.1
   done
+  # The holder may have shared its token during the last sleep.
+  read_shared && return 2
   return 1
 }
 release_if_mine() {
@@ -133,53 +164,198 @@ release_lock() {
     sleep 0.1
   done
 }
+# Token sharing. A token is good for about an hour, but each client asks for a
+# new one whenever it connects a server, and with the lock the second server
+# waits for the first's gcloud call: on a machine where a call takes 4.5 s or
+# more, it misses the client's time limit. So the helper that gets a token
+# shares it, with its quota project, in a file in gcloud's folder that only the
+# user can read (gcloud keeps its own tokens there the same way), and other
+# helpers use it for 2 minutes, while more than 5 minutes are left. The file
+# also records which sign-in and settings it came from (sign_in_id), so a new
+# gcloud auth application-default login, another account, or other settings get
+# a new token at once.
+shared="$config/adc-headers.token"
+adc="$config/application_default_credentials.json"
+sign_in_id() {
+  local name="${CLOUDSDK_ACTIVE_CONFIG_NAME:-}"
+  [ -n "$name" ] || name="$(cat "$config/active_config" 2>/dev/null)"
+  name="${name%$'\r'}" # Windows tools may end it with \r\n.
+  {
+    env | grep -E '^(GOOGLE_APPLICATION_CREDENTIALS|CLOUDSDK_(ACTIVE_CONFIG_NAME|AUTH_|BILLING_|CORE_PROJECT))' | sort
+    cat "$adc" "${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}" "$config/configurations/config_${name:-default}" 2>/dev/null
+  } | cksum
+}
+id="$(sign_in_id)"
+valid_token() {
+  case "$1" in
+    "" | *[!A-Za-z0-9._~+/=-]*) return 1 ;;
+  esac
+}
+# Sets $token and $quota from the shared file, if it's usable.
+read_shared() {
+  local expires from shared_token shared_quota
+  [ -f "$shared" ] || return 1
+  # Clients run the helper again when a server rejects their token, which a
+  # revoked sign-in does before the token expires: that run needs a new one.
+  newer_than "$shared" 120 || return 1
+  { read -r expires && read -r from && read -r shared_token && read -r shared_quota; } 2>/dev/null <"$shared" || return 1
+  case "$expires" in
+    "" | *[!0-9]* | 0*) return 1 ;; # 0... would be read as octal.
+  esac
+  [ "$from" = "$id" ] && [ $((expires - $(date +%s))) -gt 300 ] || return 1
+  valid_token "$shared_token" || return 1
+  [ -z "$shared_quota" ] || valid_project "$shared_quota" || return 1
+  token="$shared_token"
+  quota="$shared_quota"
+}
+share() { # $1 = the token's expiry, in seconds since 1970
+  (
+    umask 077
+    printf '%s\n' "$1" "$id" "$token" "$quota" >"$shared.$$" && mv -f "$shared.$$" "$shared"
+  ) 2>/dev/null || rm -f "$shared.$$"
+}
+# gcloud prints a token's expiry (UTC) as datetime=...;day=23;...;year=2026.
+expiry_seconds() {
+  local s y m d
+  field() {
+    s=";$1;"
+    s="${s#*;$2=}"
+    s="${s%%;*}"
+    case "$s" in
+      "" | *[!0-9]*) return 1 ;;
+    esac
+    echo $((10#$s))
+  }
+  y="$(field "$1" year)" && m="$(field "$1" month)" && d="$(field "$1" day)" || return 1
+  local hh mm ss
+  hh="$(field "$1" hour)" && mm="$(field "$1" minute)" && ss="$(field "$1" second)" || return 1
+  # Days since 1970-01-01 for the date (Howard Hinnant's days_from_civil).
+  [ "$m" -le 2 ] && y=$((y - 1))
+  local era=$((y / 400))
+  local yoe=$((y - era * 400))
+  local doy=$(((153 * ((m + 9) % 12) + 2) / 5 + d - 1))
+  local doe=$((yoe * 365 + yoe / 4 - yoe / 100 + doy))
+  echo $(((era * 146097 + doe - 719468) * 86400 + hh * 3600 + mm * 60 + ss))
+}
+
+print_headers() {
+  if [ -n "$quota" ]; then
+    printf '{"Authorization":"Bearer %s","x-goog-user-project":"%s"}\n' "$token" "$quota"
+  else
+    printf '{"Authorization":"Bearer %s"}\n' "$token"
+  fi
+}
+
+token=""
+quota=""
 locked=""
-if [ -d "$config" ] && take_lock; then
-  locked=1
-  trap release_lock EXIT
-  trap 'exit 1' HUP INT TERM
+if [ -d "$config" ]; then
+  read_shared && print_headers && exit 0
+  take_lock
+  case "$?" in
+    2) print_headers && exit 0 ;;
+    0)
+      locked=1
+      trap release_lock EXIT
+      trap 'exit 1' HUP INT TERM
+      # The last holder may have shared a token just before releasing.
+      if read_shared; then
+        release_lock
+        print_headers
+        exit 0
+      fi
+      ;;
+  esac
 fi
-# gcloud.cmd ends lines with \r\n; some shells keep the \r in $(...), so strip it to keep the JSON valid.
+format='value(token,expiry)'
 if [ -n "$locked" ]; then
   # In the background, so the lock can record the gcloud call's process ID.
-  token="$(gcloud auth application-default print-access-token 2>/dev/null & echo "$!" >"$lock/pid"; wait "$!")" || token=""
+  got="$(gcloud auth application-default print-access-token --format="$format" 2>/dev/null & echo "$!" >"$lock/pid"; wait "$!")" || got=""
+elif [ -d "$config" ]; then
+  # The wait ran out, usually because the lock's holder has a slow gcloud call.
+  # Get a token without the lock, but keep checking for the token the holder
+  # shares, and use whichever comes first: a holder that shares before the
+  # client's time limit then still saves this connection. The output goes to a
+  # file only the user can read, in gcloud's folder.
+  out="$config/adc-headers.out.$$"
+  (umask 077 && : >"$out") 2>/dev/null || out=""
+  if [ -n "$out" ]; then
+    trap 'rm -f "$out"' EXIT
+    trap 'exit 1' HUP INT TERM
+    gcloud auth application-default print-access-token --format="$format" >"$out" 2>/dev/null &
+    call="$!"
+    while kill -0 "$call" 2>/dev/null; do
+      if read_shared; then
+        print_headers
+        exit 0
+      fi
+      sleep 0.1
+    done
+    wait "$call" && got="$(cat "$out" 2>/dev/null)" || got=""
+    rm -f "$out"
+    trap - EXIT HUP INT TERM
+    # The holder may have shared its token as this call failed.
+    if [ -z "$got" ] && read_shared; then
+      print_headers
+      exit 0
+    fi
+  else
+    got="$(gcloud auth application-default print-access-token --format="$format" 2>/dev/null)" || got=""
+  fi
 else
-  token="$(gcloud auth application-default print-access-token 2>/dev/null)" || token=""
+  got="$(gcloud auth application-default print-access-token --format="$format" 2>/dev/null)" || got=""
 fi
-token="${token%$'\r'}"
-release_lock
-trap - EXIT HUP INT TERM
+# gcloud.cmd ends lines with \r\n; some shells keep the \r in $(...), so strip it to keep the JSON valid.
+got="${got%$'\r'}"
+token="${got%%[[:space:]]*}"
+expiry="${got#"$token"}"
+expiry="${expiry#"${expiry%%[![:space:]]*}"}"
 if [ -z "$token" ]; then
-  echo "Couldn't get a token from \"gcloud auth application-default print-access-token\". If you haven't signed in, run: gcloud auth application-default login. Otherwise, run that command yourself to see the error." >&2
+  release_lock
+  trap - EXIT HUP INT TERM
+  echo "Couldn't get a token from \"gcloud auth application-default print-access-token\". If you haven't signed in, or your sign-in has expired, run: gcloud auth application-default login, then reconnect this server or restart your agent. Otherwise, run that command yourself to see the error." >&2
   exit 1
 fi
-case "$token" in
-  *[!A-Za-z0-9._~+/=-]*)
-    echo "\"gcloud auth application-default print-access-token\" printed something that isn't a token. Run it yourself to see why." >&2
-    exit 1
+# The token, then its expiry if gcloud knows it. An expiry in a form this
+# helper doesn't know only stops sharing: it asks again without --format, so a
+# change in how gcloud prints the expiry can't stop the server connecting. Text
+# that isn't a token still fails valid_token.
+case "$expiry" in
+  "" | datetime=*) ;;
+  *)
+    got="$(gcloud auth application-default print-access-token 2>/dev/null)" || got=""
+    token="${got%$'\r'}"
+    expiry=""
     ;;
 esac
+if ! valid_token "$token"; then
+  release_lock
+  echo "\"gcloud auth application-default print-access-token\" printed something that isn't a token. Run it yourself to see why." >&2
+  exit 1
+fi
 
-adc="$config/application_default_credentials.json"
 quota="$(sed -n 's/.*"quota_project_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$adc" 2>/dev/null | head -n 1)"
 valid_project "$quota" || quota=""
 if [ -z "$quota" ]; then
-  quota="$(gcloud config get-value billing/quota_project 2>/dev/null)"
-  quota="${quota%$'\r'}"
+  # Both settings in one gcloud call, tab-separated: waiters get the token only
+  # once it's shared, and each gcloud call takes a second or more.
+  settings="$(gcloud config list --format='value(billing.quota_project,core.project)' 2>/dev/null)"
+  settings="${settings%$'\r'}"
+  quota="${settings%%$'\t'*}"
   # Values gcloud accepts for billing/quota_project that aren't project IDs.
   case "$quota" in
     CURRENT_PROJECT | CURRENT_PROJECT_WITH_FALLBACK | LEGACY) quota="" ;;
   esac
-  valid_project "$quota" || quota=""
-fi
-if [ -z "$quota" ]; then
-  quota="$(gcloud config get-value project 2>/dev/null)"
-  quota="${quota%$'\r'}"
+  case "$settings" in
+    *$'\t'*) valid_project "$quota" || quota="${settings##*$'\t'}" ;;
+  esac
   valid_project "$quota" || quota=""
 fi
 
-if [ -n "$quota" ]; then
-  printf '{"Authorization":"Bearer %s","x-goog-user-project":"%s"}\n' "$token" "$quota"
-else
-  printf '{"Authorization":"Bearer %s"}\n' "$token"
+# Shared before the lock is released, so waiters find it.
+if [ -d "$config" ] && expires="$(expiry_seconds "$expiry")"; then
+  share "$expires"
 fi
+release_lock
+trap - EXIT HUP INT TERM
+print_headers

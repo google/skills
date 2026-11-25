@@ -239,7 +239,9 @@ clients), `.mcp.json` (Claude Code), `mcp_config.json` (Antigravity),
 
 Both servers use your Google credentials (Application Default Credentials).
 The plugin's `scripts/adc-headers` (`scripts/adc-headers.cmd` on Windows) gets
-a fresh token on each connection.
+the token when a server connects. When both servers start at the same time,
+the second reuses the token the first one just got, instead of asking gcloud
+again.
 
 -   **Claude Code** runs it for you.
 -   **Codex** needs [Codex CLI step 2](#codex-cli), which adds to
@@ -313,7 +315,7 @@ In a sandbox or behind a firewall or proxy, allow these URLs and commands.
 -   **MCP server sign-in** (Claude Code, Codex, OpenCode and Pi):
     `scripts/adc-headers` (`scripts/adc-headers.cmd` on Windows) runs
     `gcloud auth application-default print-access-token` and
-    `gcloud config get-value` on each connection.
+    `gcloud config list` when a server connects.
 -   **Codex setup** ([Codex CLI step 2](#codex-cli)):
     `com.google.codex-config/setup` (`setup.cmd` on Windows) runs
     `codex app-server`.
@@ -350,6 +352,22 @@ else, your agent explains the error and the fix.
 -   **`gcloud auth application-default login` says "This app is blocked":**
     your organization blocks Application Default Credentials, so the servers
     can't sign in. Ask your admin.
+-   **Your sign-in expired: the servers don't connect, or Claude Code shows
+    "Incompatible auth server: does not support dynamic client registration":**
+    This happens only when your Google sign-in itself expires (how often
+    depends on your organization's policy). The hourly tokens renew on their
+    own, so while you're signed in you never need to reconnect.
+    1.  Run `gcloud auth application-default login`.
+    2.  Reconnect the servers:
+        -   Claude Code: `/mcp`, select each server, then **Reconnect**.
+            **Authenticate** doesn't work for these servers.
+        -   Codex and Antigravity: restart it.
+        -   OpenCode and Pi: restart it. They keep a token for up to 30
+            minutes, so they don't pick up the new sign-in right away.
+-   **You signed in as another account, and calls fail or still use the old
+    one:** each server keeps the account it connected with. In Claude Code,
+    use `/mcp` -> **Reconnect** on each server; in Codex, Antigravity,
+    OpenCode, and Pi, restart your agent.
 -   **A server says it couldn't get a token, or "gcloud isn't installed":**
     install the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install),
     run `gcloud auth application-default login`, then restart your agent.
