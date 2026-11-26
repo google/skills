@@ -9,6 +9,9 @@
     "mergeStrategy": "upsert",
     "value": {
       "url": "https://developerknowledge.googleapis.com/mcp",
+      "http_headers": {
+        "X-Goog-Api-Client": "google-cloud/2.0.0 agent-skills/1.0 (plugin:google-cloud)"
+      },
       "http_headers_helper": "\"${PLUGIN_ROOT}/scripts/adc-headers\""
     }
   },
