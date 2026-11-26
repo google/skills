@@ -1,16 +1,20 @@
+<!-- disableFinding(LINE_OVER_80) -->
+
 # Client Authentication Reference (API Keys and JWT)
 
-- [API Key Configuration](#api-key-configuration): Lines 9-36
-- [API Key Restrictions and Managed Service](#api-key-restrictions-and-managed-service): Lines 38-58
-- [JWT Configuration in OpenAPI 2.0 and 3.x](#jwt-configuration-in-openapi-20-and-3x): Lines 60-111
-- [Identity Provider JWT Settings Table](#identity-provider-jwt-settings-table): Lines 113-122
-- [Security Composition and Override Rules](#security-composition-and-override-rules): Lines 124-136
+- [API Key Configuration](#api-key-configuration): Lines 11-40
+- [API Key Restrictions and Managed Service](#api-key-restrictions-and-managed-service): Lines 42-62
+- [JWT Configuration in OpenAPI 2.0 and 3.x](#jwt-configuration-in-openapi-20-and-3x): Lines 64-115
+- [Identity Provider JWT Settings Table](#identity-provider-jwt-settings-table): Lines 117-126
+- [Security Composition and Override Rules](#security-composition-and-override-rules): Lines 128-148
 
 ## API Key Configuration
 
 Use an API key to identify the calling Google Cloud consumer project for quota enforcement, billing, and usage tracking. Do not use an API key alone to authenticate end-user identity. **Rationale:** An API key identifies a Google Cloud project rather than a user or service principal, and callers can extract API keys from client applications.
 
-Pass the API key in the `x-api-key` HTTP header as the standard convention. Use the `key` query parameter only as an escape hatch when the client cannot set custom HTTP headers. **Rationale:** URL query parameters appear in proxy logs, browser history, and access logs.
+API Gateway reads an API key only from the `x-api-key` header, or from the `key` or `api_key` query parameter. Pass the API key in the `x-api-key` HTTP header as the standard convention. Use a query parameter only as an escape hatch when the client cannot set custom HTTP headers. **Rationale:** URL query parameters appear in proxy logs, browser history, and access logs.
+
+**Warning:** API Gateway ignores an `apiKey` scheme with any other `name` or `in` value, and it gives no error. An operation that requires only that scheme then accepts calls with no API key (the service config marks the operation `allowUnregisteredCalls: true`). Use one of the three names above, and test that a call with no key gets `401`.
 
 ### OpenAPI 2.0 (`securityDefinitions`)
 
@@ -61,10 +65,10 @@ Reference: [Restrict API keys](https://docs.cloud.google.com/docs/authentication
 
 Use JSON Web Tokens (JWTs) to authenticate end users or calling service accounts.
 
-- You MUST specify `x-google-jwks_uri` (OpenAPI 2.0) or `x-google-auth.jwksUri` (OpenAPI 3.x) on every JWT security definition. **Rationale:** API Gateway requires the public key set URI to verify the signature of incoming JWTs and caches the JWKS for 5 minutes (publish rotated signing keys at least 5 minutes before signing traffic).
+- You MUST specify `x-google-jwks_uri` (OpenAPI 2.0) or `x-google-auth.jwksUri` (OpenAPI 3.x) on every `oauth2` security scheme, also on a scheme that no operation uses. **Rationale:** API Gateway requires the public key set URI to verify the signature of incoming JWTs. Without it, `api-configs create` fails with `JWKS provider "..." is missing a JWKS URI`. API Gateway caches the JWKS for 5 minutes (publish rotated signing keys at least 5 minutes before signing traffic).
 - Give each JWT security scheme a unique `issuer` value. **Rationale:** API Gateway routes token verification by matching the `iss` claim to a unique security definition.
 - Required JWT claims are `iss`, `sub`, `aud`, `iat`, and `exp`. The `aud` claim cannot be an internal address or an IPv4/IPv6 address.
-- `audiences` (`x-google-audiences` in OpenAPI 2.0) is optional. If omitted, API Gateway accepts JWTs whose `aud` claim matches `https://{service_name}`, where `{service_name}` is the API Gateway `managedService` name (`host` in OpenAPI 2.0 or `servers.url` with `x-google-endpoint` in OpenAPI 3.x). In OpenAPI 2.0, specify multiple audiences as a single comma-separated string (`"aud1,aud2"`); in OpenAPI 3.x, specify a YAML list.
+- `audiences` (`x-google-audiences` in OpenAPI 2.0) is optional. If omitted, API Gateway accepts JWTs whose `aud` claim matches `https://{service_name}`, where `{service_name}` is the `managedService` name of the API (read it with `gcloud api-gateway apis describe`). In OpenAPI 3.x, a relative server URL such as `url: /v1` keeps the default name. In OpenAPI 2.0, specify multiple audiences as a single comma-separated string (`"aud1,aud2"`); in OpenAPI 3.x, specify a YAML list.
 - API Gateway validates JWT claims and signatures, but does not check IAM permissions of a calling service account and ignores OAuth `scopes` declared in the OpenAPI document.
 
 ### OpenAPI 2.0 JWT Definition
@@ -125,12 +129,20 @@ References:
 
 **Operation-level `security` replaces root-level `security`:** If an operation declares its own `security` block with only a JWT scheme (`- service_jwt: []`), it overrides the document-level `security` block and removes any root `api_key` requirement. To preserve per-project quota tracking on an operation that overrides `security`, you MUST include `api_key: []` in the same security requirement object (`- api_key: []` and `service_jwt: []` together).
 
+To drop the root requirement on one operation, set `security: []` on that operation. The operation then accepts calls with no credentials, so confirm with the user before you make an operation public. Do not do this on an operation with `x-google-quota`, because the quota needs the API key to find the consumer project.
+
 | Requirement Pattern | OpenAPI Syntax | Supported in API Gateway |
 | --- | --- | --- |
 | Require API key AND JWT (conjunction) | Single list item with two keys: `- api_key: []` and `service_jwt: []` in the same object | Yes. Use this pattern when an operation requires both user authentication and consumer project quota tracking. |
 | Require JWT scheme A OR JWT scheme B (disjunction) | Two list items: `- jwt_a: []` followed by `- jwt_b: []` | Yes. Each scheme must have a distinct `issuer`. |
-| Require JWT scheme A AND JWT scheme B (conjunction) | Single list item with two OAuth2 schemes | No. API Gateway does not support conjunctions of multiple OAuth2 schemes unless the additional scheme is an API key. |
-| Require API key OR JWT (disjunction) | Two list items where one is an `apiKey` scheme | No. API Gateway rejects logical OR security requirements between an API key and another scheme. |
-| Optional API key | `- {}` alongside `- api_key: []` | Yes (special-case exception for API keys only). Do not use `- {}` to make OAuth2/JWT optional. |
+| Require JWT scheme A AND JWT scheme B (conjunction) | Single list item with two OAuth2 schemes | No, in OpenAPI 2.0 and 3.x. API Gateway does not support conjunctions of multiple OAuth2 schemes unless the additional scheme is an API key. |
+| Require the same API key with JWT scheme A OR JWT scheme B | Two list items, each with the API key: `- api_key: []` and `jwt_a: []`, then `- api_key: []` and `jwt_b: []` | Yes. |
+| Require API key scheme A OR API key scheme B | Two list items: `- key_a: []` followed by `- key_b: []` | Yes. |
+| Require API key OR JWT (disjunction where only some alternatives have the API key) | Two list items: `- api_key: []` followed by `- service_jwt: []` | OpenAPI 3.x: No. `api-configs create` fails with `Combining API key and OAuth security requirements with a logical OR is not supported.` OpenAPI 2.0: the config is accepted, but the public docs say that it is not supported, so do not rely on it. Put the API key in every alternative instead. |
+| Optional API key | `- {}` alongside `- api_key: []` | Yes (special-case exception for API keys only). |
+| Optional JWT | `- {}` alongside `- service_jwt: []` | OpenAPI 3.x: No. `api-configs create` fails with `Optional OAuth security requirement is not supported.` OpenAPI 2.0: the config is accepted, but the public docs say that it is not supported, so do not rely on it. |
 
-Reference: [OpenAPI 3.x feature limitations](https://docs.cloud.google.com/api-gateway/docs/openapi-v3-limitations.md.txt)
+References:
+
+- [OpenAPI 3.x feature limitations](https://docs.cloud.google.com/api-gateway/docs/openapi-v3-limitations.md.txt)
+- [OpenAPI 2.0 feature limitations](https://docs.cloud.google.com/api-gateway/docs/openapi-limitations.md.txt)

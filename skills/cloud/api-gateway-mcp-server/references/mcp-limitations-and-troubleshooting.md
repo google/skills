@@ -1,8 +1,10 @@
+<!-- disableFinding(LINE_OVER_80) -->
+
 # MCP Verification, Limitations, and Troubleshooting Reference
 
-- [MCP Endpoint Verification with curl (JSON-RPC 2.0 Lifecycle)](#mcp-endpoint-verification-with-curl-json-rpc-20-lifecycle): Lines 7-93
-- [JSON-RPC and HTTP Error Diagnosis on /mcp](#json-rpc-and-http-error-diagnosis-on-mcp): Lines 95-135
-- [Mutual Exclusion with Model Routing and Preview Limits](#mutual-exclusion-with-model-routing-and-preview-limits): Lines 137-152
+- [MCP Endpoint Verification with curl (JSON-RPC 2.0 Lifecycle)](#mcp-endpoint-verification-with-curl-json-rpc-20-lifecycle): Lines 9-95
+- [JSON-RPC and HTTP Error Diagnosis on /mcp](#json-rpc-and-http-error-diagnosis-on-mcp): Lines 97-141
+- [Mutual Exclusion with Model Routing and Preview Limits](#mutual-exclusion-with-model-routing-and-preview-limits): Lines 143-158
 
 ## MCP Endpoint Verification with `curl` (JSON-RPC 2.0 Lifecycle)
 
@@ -100,7 +102,7 @@ Most MCP errors return `HTTP 200` with a JSON-RPC `error` object, because many M
 
 | What you see | Cause | Fix |
 | --- | --- | --- |
-| HTTP `404` with an HTML `Page not found` page | The gateway may not be deployed correctly, or a gateway create or update has not finished. | Check that the gateway state is `ACTIVE` (`gcloud api-gateway gateways describe {gateway_id} --location={region}`) and that the last operation finished. During an update, some requests can still reach the previous API config, so retry for a few minutes before you change the config. |
+| HTTP `404` with an HTML `Page not found` page | The gateway may not be deployed correctly, or a gateway create or update has not finished. | Check that the gateway state is `ACTIVE` (`gcloud api-gateway gateways describe {gateway_id} --location={region} --project={project_id}`) and that the last operation finished. During an update, some requests can still reach the previous API config, so retry for a few minutes before you change the config. If the 404 does not go away, compare the gateway `apiConfig` with the config that you deployed. |
 | HTTP `404` with the JSON message `The current request is not defined by this API.` | The request went to `{basepath}/mcp`, or the active API config does not enable MCP. | Send requests to `https://{default_hostname}/mcp` at the host root, and check that the deployed spec has `x-google-api-management.mcp`. |
 | HTTP `405` `Method Not Allowed` | The client sent `GET` or `OPTIONS` to `/mcp`. | Send HTTP `POST` only. The gateway has no SSE `GET` stream and does not handle CORS preflight (`OPTIONS`) on `/mcp`. |
 | HTTP `413` (transport body too large) | The raw HTTP request body is larger than the gateway transport limit. | Send a smaller request. |
@@ -109,8 +111,10 @@ Most MCP errors return `HTTP 200` with a JSON-RPC `error` object, because many M
 
 | What you see | Cause | Fix |
 | --- | --- | --- |
-| HTTP `401` or `403`, JSON-RPC `-32000` `Tool list response is invalid or has error status code.` (JWT scheme on `tools/list`) | `401`: the JWT is missing or malformed. `403`: the JWT has a wrong audience. The message does not name the cause. Today every failed `tools/list` request returns this code and message. Both can change, so check the HTTP status first. | Send `Authorization: Bearer <token>` with an audience from `x-google-auth.audiences`. The `WWW-Authenticate` header points at the protected resource metadata. |
-| HTTP `401` or `200`, JSON-RPC `-32000` `Tool list response is invalid or has error status code.` (API key scheme on `tools/list`) | `401`: the API key is missing, or the client sent it only as a query parameter. `200`: the API key is not valid. The code, the message, and the HTTP `200` are today's behavior and can change. | Send a valid key in the `x-api-key` header. Because an invalid key returns HTTP `200`, check the JSON-RPC `error` field as well as the HTTP status. |
+| HTTP `401` or `403`, JSON-RPC `-32000` `Tool list response is invalid or has error status code.` (JWT scheme on `tools/list`) | `401`: the JWT is missing or malformed. `403`: the JWT has a wrong audience. The message does not name the cause. Today every failed `tools/list` request with a JWT scheme returns this code and message. Both can change, so check the HTTP status first. | Send `Authorization: Bearer <token>` with an audience from `x-google-auth.audiences`. The `WWW-Authenticate` header points at the protected resource metadata. |
+| HTTP `401` or `200`, JSON-RPC `-32000` with a message such as `Method doesn't allow unregistered callers` or `API key not valid` (API key scheme on `tools/list`) | `401`: the API key is missing, or the client sent it only as a query parameter. `200`: the API key is not valid. The code, the messages, and the HTTP `200` are today's behavior and can change. | Send a valid key in the `x-api-key` header. Because an invalid key returns HTTP `200`, check the JSON-RPC `error` field as well as the HTTP status. |
+
+These rows cover `tools/list` only. If REST requests to the gateway return HTTP `401` or `403`, use the `api-gateway-troubleshooting` skill. If it is not installed, check that the request sends the credentials that the `security` of the operation requires.
 
 ### Protocol
 
@@ -131,6 +135,8 @@ Most MCP errors return `HTTP 200` with a JSON-RPC `error` object, because many M
 | HTTP `200`, `result.isError: true` | The backend returned a 4xx or 5xx error. | Read `result.content[0].text` for the backend's error body, and fix the request or the backend. |
 | HTTP `200`, JSON-RPC `-32000` (body too large) | The backend response is larger than the size limit. | Return a smaller response, for example with paging. |
 | HTTP `200`, JSON-RPC `-32000` `Server error` | An internal gateway error. It is not a backend error: backend errors return `result.isError: true`. | Retry. If the error continues, contact Cloud Customer Care. |
+
+If a backend error in `result.isError` also occurs on REST requests, or REST requests return HTTP `5xx` errors, use the `api-gateway-troubleshooting` skill. If it is not installed, read the backend error body in `result.content[0].text` and the backend logs.
 
 Reference: [Configure Model Context Protocol - Troubleshooting MCP failures](https://docs.cloud.google.com/api-gateway/docs/mcp-configure.md.txt)
 

@@ -1,10 +1,10 @@
 # 401 and 403 errors
 
 -   [Find the hop that failed](#find-the-hop-that-failed): Lines 9-19
--   [Gateway rejected the caller: API keys](#gateway-rejected-the-caller-api-keys): Lines 21-65
--   [Gateway rejected the caller: JWTs](#gateway-rejected-the-caller-jwts): Lines 67-91
--   [Backend rejected the gateway](#backend-rejected-the-gateway): Lines 93-168
--   [Fixes to avoid](#fixes-to-avoid): Lines 170-174
+-   [Gateway rejected the caller: API keys](#gateway-rejected-the-caller-api-keys): Lines 21-67
+-   [Gateway rejected the caller: JWTs](#gateway-rejected-the-caller-jwts): Lines 69-93
+-   [Backend rejected the gateway](#backend-rejected-the-gateway): Lines 95-170
+-   [Fixes to avoid](#fixes-to-avoid): Lines 172-176
 
 ## Find the hop that failed
 
@@ -61,6 +61,8 @@ Check, in order
     can only be combined with AND
     ([OpenAPI 2.0 limitations](https://docs.cloud.google.com/api-gateway/docs/openapi-limitations.md.txt),
     [OpenAPI 3.x limitations](https://docs.cloud.google.com/api-gateway/docs/openapi-v3-limitations.md.txt)).
+    API Gateway accepts a list in which every alternative has an API key
+    scheme, so such a list isn't the cause.
 
 Refer to keys by key ID or display name only. Never print a key value.
 

@@ -1,12 +1,14 @@
+<!-- disableFinding(LINE_OVER_80) -->
+
 # OpenAPI 3.x Extensions and Limits in API Gateway
 
-- [New Spec Template](#new-spec-template): Lines 11-69
-- [x-google-api-management](#x-google-api-management): Lines 71-85
-- [Backends](#backends): Lines 87-113
-- [Security](#security): Lines 115-145
-- [Quotas](#quotas): Lines 147-157
-- [Servers, Base Path, and CORS](#servers-base-path-and-cors): Lines 159-167
-- [Paths, Operations, and Schemas](#paths-operations-and-schemas): Lines 169-183
+- [New Spec Template](#new-spec-template): Lines 13-71
+- [x-google-api-management](#x-google-api-management): Lines 73-87
+- [Backends](#backends): Lines 89-115
+- [Security](#security): Lines 117-147
+- [Quotas](#quotas): Lines 149-159
+- [Servers, Base Path, and CORS](#servers-base-path-and-cors): Lines 161-170
+- [Paths, Operations, and Schemas](#paths-operations-and-schemas): Lines 172-186
 
 ## New Spec Template
 
@@ -148,7 +150,7 @@ Reference: [OpenAPI 3.x feature limitations](https://docs.cloud.google.com/api-g
 
 1. Define each metric in `x-google-api-management.metrics`, such as `read-requests: {displayName: Read requests}`.
 2. Define each limit in `x-google-api-management.quota.limits`, such as `read-limit: {metric: read-requests, values: 600}`. `values` is the number of requests per minute for each consumer Google Cloud project. Give each metric that an operation uses a limit, because API Gateway rejects a charged metric without a limit.
-3. Set `x-google-quota: {read-requests: 1}` on each operation that counts against the metric. The value is the cost of one request. **Rationale:** in OpenAPI 3.x, API Gateway ignores `x-google-quota` at the root or path level, without an error, even where a documentation example shows it at the root.
+3. Set `x-google-quota: {read-requests: 1}` on each operation that counts against the metric. The value is the cost of one request. **Rationale:** API Gateway ignores `x-google-quota` at the root or path level, without an error, in OpenAPI 3.x and in OpenAPI 2.0, even where a documentation example shows it at the root.
 4. Require an API key in every security alternative of each operation that has `x-google-quota`. **Rationale:** API Gateway uses the API key to identify the consumer project that the quota counts.
 5. Keep the metric and limit names the same in every API config of the API. **Rationale:** metrics and limits apply to the whole API, and the newest API config replaces them. If you rename or remove a metric, a gateway that still serves an older API config returns HTTP 500 (`Failed to call Service Control Quota`) on its quota-enforced operations.
 
@@ -162,6 +164,7 @@ Reference: [Quotas apply to the whole API](https://docs.cloud.google.com/api-gat
 - Use a relative URL, such as `url: /v1`. If the API has a managed service that you chose, and not the default `*.apigateway.{project_id}.cloud.goog` service, use `url: https://{managed_service}/v1`. **Rationale:** API Gateway reads the service name from the URL host for such an API.
 - A relative URL must start with `/`. Do not set `url` to null, and do not use a custom port or a server variable such as `{region}`. **Rationale:** API Gateway rejects these URLs. An empty `url` or `/` gives no base path.
 - If an API config has several OpenAPI files, give each file a server with the same `x-google-endpoint` settings and the same host, and give each file its own `apiName`. The base path can differ.
+- If the API uses MCP, the MCP endpoint `/mcp` stays at the host root, and the base path does not change it. Keep all MCP operations in one document. **Rationale:** API Gateway fails to create an API config that has MCP extensions in more than one document, and the error does not say why.
 - `allowCors: true` makes API Gateway pass CORS requests, including preflight `OPTIONS` requests, to the backend. API Gateway does not add CORS headers. Make the backend answer each preflight request and add the CORS response headers.
 
 Reference: [OpenAPI 3.x feature limitations: Servers](https://docs.cloud.google.com/api-gateway/docs/openapi-v3-limitations.md.txt)
@@ -176,8 +179,8 @@ Reference: [OpenAPI 3.x feature limitations: Servers](https://docs.cloud.google.
 - Give each schema one `type`. API Gateway rejects an OpenAPI 3.1 type list, such as `type: ["string", "null"]`. In OpenAPI 3.0, use `nullable: true` for a field that can be null.
 - Use a primitive type or an array of a primitive type for a request parameter. API Gateway rejects an object parameter.
 - API Gateway does not check required parameters, parameter types, request bodies, or content types. It forwards each request to the backend, so the backend must validate the input.
-- Use local references, such as `$ref: "#/components/schemas/Item"`. API Gateway rejects a `$ref` to a URL. Keep the schemas in the same file.
-- Use `$ref` instead of YAML anchors and aliases. API Gateway rejects an alias to a mapping, and the error (`string found, object expected`) does not name the alias.
+- Use local references, such as `$ref: "#/components/schemas/Item"`. API Gateway rejects a `$ref` to a URL. It also rejects a `$ref` to another file, unless you pass that file in the same API config. Keep the schemas in the same file.
+- Use `$ref` instead of YAML anchors and aliases. API Gateway rejects an alias to a mapping or to a sequence, and the error (`string found, object expected` or `string found, array expected`) does not name the alias. An alias to a scalar works, but avoid it.
 - Keep the files of one API config at 10 MB in total, and at most 50 files.
 
 Reference: [OpenAPI 3.x feature limitations](https://docs.cloud.google.com/api-gateway/docs/openapi-v3-limitations.md.txt) and [Path templating](https://docs.cloud.google.com/api-gateway/docs/path-templating.md.txt)

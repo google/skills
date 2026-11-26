@@ -1,9 +1,11 @@
+<!-- disableFinding(LINE_OVER_80) -->
+
 # API Config Errors and Silent Behaviors
 
-- [Errors from api-configs create](#errors-from-api-configs-create): Lines 8-65
-- [Silent Behaviors](#silent-behaviors): Lines 67-82
+- [Errors from api-configs create](#errors-from-api-configs-create): Lines 10-68
+- [Silent Behaviors](#silent-behaviors): Lines 70-85
 
-`gcloud api-gateway api-configs create` returns the first problems that it finds. Fix every error in the output, run `python3 scripts/validate_apigw_openapi.py --spec={spec_file}` again, and then create a new API config.
+`gcloud api-gateway api-configs create` returns the first problems that it finds. Fix every error in the output. For an OpenAPI 3.x spec, run `python3 scripts/validate_apigw_openapi.py --spec={spec_file}` again. Then create a new API config.
 
 ## Errors from api-configs create
 
@@ -40,6 +42,7 @@ Match a part of the error text. The text in braces changes with the spec. Some e
 | `Service name must be provided either explicitly or in OpenAPI 'host' value.` | A relative server URL in an API that uses a managed service that you chose. | Use `url: https://{managed_service}{base_path}`. |
 | `'$ref' fields must be local references and cannot contain an external URL.` | A `$ref` to a URL. | Copy the schema into `components.schemas`, and use `#/components/schemas/{name}`. If you cannot get the schema, ask the user for it. |
 | `Type definition reference path '{ref}' must begin with '#/components/schemas/'` | A schema `$ref` with another path, such as `#/definitions/{name}` from OpenAPI 2.0. | Move the schema to `components.schemas`, and use `#/components/schemas/{name}`. |
+| `found, but no Definitions section in OpenApi File` | A file `$ref` in OpenAPI 2.0. API Gateway rejects it also when the API config includes the file. | Copy the schema into `definitions`, and use `#/definitions/{name}`. |
 | `Security Scheme '{name}' that does not exist` | A `security` requirement that names an undefined scheme. | Define the scheme in `components.securitySchemes`, or fix the name. |
 | `Combining API key and OAuth security requirements with a logical OR is not supported.` | A `security` list with an API key in only some alternatives, such as `[{firebase: []}, {api_key: []}]`. | Put the API key in every alternative, or in none. |
 | `Optional OAuth security requirement is not supported.` | An empty requirement (`{}`) with a JWT scheme, such as `[{firebase: []}, {}]`. | Remove `{}`, or use it only with API key schemes. |
@@ -59,7 +62,7 @@ Match a part of the error text. The text in braces changes with the spec. Some e
 | `JWKS ... cannot route requests to localhost` | An `x-google-auth.jwksUri` that breaks the backend address rules, such as `localhost`. | Use the public key URL of the token issuer. |
 | `JWKS provider "{name}" is missing a JWKS URI` | A `type: oauth2` security scheme without `x-google-auth.jwksUri`, also a scheme that no operation uses. | Set `jwksUri` in `x-google-auth`, or remove the unused scheme. |
 | `which exceeds the maximum of 600 seconds supported by this Gateway` | A backend `deadline` above 600 seconds. `gateways create` or `gateways update` returns this error, not `api-configs create`. | Set `deadline` to 600 or less. A streaming gateway accepts up to 3600. |
-| `string found, object expected` | Often a YAML alias to a mapping (`*anchor`). | Replace the alias with a `$ref`, or copy the mapping. |
+| `string found, object expected` or `string found, array expected` (OpenAPI 2.0: `instance type (string) does not match any allowed primitive type (allowed: ["object"])` or `["array"]`) | Often a YAML alias (`*anchor`) to a mapping (`object expected`) or to a sequence (`array expected`). An alias to a scalar is accepted. | Replace the alias with a `$ref`, or copy the mapping or the sequence. |
 | `Invalid API name '{name}'` | An `apiName` that is not a lowercase letter followed by at most 39 lowercase letters or digits. | Use a name such as `orders`. |
 | `OpenAPI files includes conflicting API versions` | Two files in one API config with the same `apiName`, or without `apiName`, and the same major version. | Merge the files, or give each file its own `x-google-api-management.apiName`. |
 | `maximum allowed number of 50 files` or `maximum allowed size of 10MB` | Too many or too large OpenAPI files. | Merge or shrink the files. |
@@ -70,7 +73,7 @@ API Gateway accepts these specs without an error, but does not do what the autho
 
 | Spec | What API Gateway does | Fix |
 | --- | --- | --- |
-| `x-google-quota` at the root or on a path item | Ignores it in OpenAPI 3.x. No quota applies. | Set `x-google-quota` on each operation. |
+| `x-google-quota` at the root or on a path item | Ignores it, in OpenAPI 3.x and in OpenAPI 2.0. No quota applies. | Set `x-google-quota` on each operation. |
 | An operation-level `x-google-backend` whose backend has no `pathTranslation` | Uses `CONSTANT_ADDRESS`: it sends each request to the `address` unchanged, and sends path parameters as query parameters. | Set `pathTranslation: APPEND_PATH_TO_ADDRESS` on the backend if the backend routes by path. |
 | A Cloud Run `address` with a path, and no `jwtAudience` | Sends an ID token whose audience is the full address. Cloud Run rejects the token. | Set `jwtAudience` to the service URL without the path. |
 | `servers` entries without `x-google-endpoint` | Ignores them, and applies no base path. | Add `x-google-endpoint: {}` to the entry with the base path. |
