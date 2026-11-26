@@ -1,0 +1,30 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "google-home-developer",
+  "displayName": "Google Home Developer",
+  "version": "1.0.0",
+  "description": "Search official Google Home, Matter, and OpenThread documentation and query smart home user feedback integration diagnostics through the Google Home Developer MCP server.",
+  "logo": "assets/logo.svg",
+  "author": {
+    "name": "Google LLC",
+    "url": "https://developers.home.google.com"
+  },
+  "homepage": "https://github.com/google/skills/tree/main/plugins/home/google-home-developer",
+  "repository": "https://github.com/google/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "google-home",
+    "smart-home",
+    "matter",
+    "openthread",
+    "thread",
+    "smart-home-integration",
+    "mcp",
+    "documentation"
+  ],
+  "suggestedPrompts": [
+    "How do I commission a Matter device and read its OnOff trait using the Google Home APIs on Android?",
+    "Show me how to implement action.devices.SYNC and action.devices.EXECUTE for a smart home light device",
+    "How do I configure an OpenThread Border Router and form a Thread network?"
+  ]
+}

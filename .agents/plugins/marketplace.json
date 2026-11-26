@@ -179,6 +179,16 @@
       "category": "Storage"
     },
     {
+      "name": "google-home-developer",
+      "source": "./plugins/home/google-home-developer",
+      "description": "Search official Google Home, Matter, and OpenThread documentation and query smart home user feedback integration diagnostics through the Google Home Developer MCP server.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    },
+    {
       "name": "knowledge-catalog",
       "source": {
         "source": "url",

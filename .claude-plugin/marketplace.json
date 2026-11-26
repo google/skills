@@ -123,6 +123,11 @@
       "description": "Vetted Google Cloud Storage skills for your coding agent."
     },
     {
+      "name": "google-home-developer",
+      "source": "./plugins/home/google-home-developer",
+      "description": "Search official Google Home, Matter, and OpenThread documentation and query smart home user feedback integration diagnostics through the Google Home Developer MCP server."
+    },
+    {
       "name": "knowledge-catalog",
       "source": {
         "source": "github",
