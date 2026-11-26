@@ -1,0 +1,47 @@
+{
+  "name": "google-home-developer",
+  "version": "1.0.0",
+  "description": "Search official Google Home, Matter, and OpenThread documentation and query smart home user feedback integration diagnostics through the Google Home Developer MCP server.",
+  "author": {
+    "name": "Google LLC",
+    "url": "https://developers.home.google.com"
+  },
+  "homepage": "https://github.com/google/skills/tree/main/plugins/home/google-home-developer",
+  "repository": "https://github.com/google/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "google-home",
+    "smart-home",
+    "matter",
+    "openthread",
+    "thread",
+    "smart-home-integration",
+    "mcp",
+    "documentation"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Google Home Developer",
+    "shortDescription": "Google Home, Matter & OpenThread MCP",
+    "longDescription": "Search official Google Home, Matter, and OpenThread documentation and query smart home user feedback integration diagnostics through the Google Home Developer MCP server.",
+    "developerName": "Google LLC",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Google Home APIs guidance",
+      "Smart home fulfillment",
+      "Matter & OpenThread documentation",
+      "Smart home feedback diagnostics"
+    ],
+    "websiteURL": "https://developers.home.google.com",
+    "supportURL": "https://developers.home.google.com/mcp/developer",
+    "privacyPolicyURL": "https://policies.google.com/privacy",
+    "termsOfServiceURL": "https://policies.google.com/terms",
+    "defaultPrompt": [
+      "How do I commission a Matter device and read its OnOff trait using the Google Home APIs on Android?",
+      "Show me how to implement action.devices.SYNC and action.devices.EXECUTE for a smart home light device",
+      "How do I configure an OpenThread Border Router and form a Thread network?"
+    ],
+    "logo": "./assets/logo.svg",
+    "composerIcon": "./assets/logo.svg"
+  }
+}

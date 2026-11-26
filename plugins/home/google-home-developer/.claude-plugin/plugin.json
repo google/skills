@@ -1,0 +1,8 @@
+{
+  "name": "google-home-developer",
+  "version": "1.0.0",
+  "description": "Search official Google Home, Matter, and OpenThread documentation and query smart home user feedback integration diagnostics through the Google Home Developer MCP server.",
+  "author": {
+    "name": "Google LLC"
+  }
+}
