@@ -1,19 +1,23 @@
+<!-- disableFinding(LINE_OVER_80) -->
+
 # Quotas and Rate Limiting Reference
 
-- [How API Gateway Quotas Work](#how-api-gateway-quotas-work): Lines 9-21
-- [Critical Rule: Quotas Apply to the Whole API](#critical-rule-quotas-apply-to-the-whole-api): Lines 23-33
-- [OpenAPI 2.0 Quota Configuration](#openapi-20-quota-configuration): Lines 35-83
-- [OpenAPI 3.x Quota Configuration](#openapi-3x-quota-configuration): Lines 85-139
-- [Quota Migration from OpenAPI 2.0 to 3.x](#quota-migration-from-openapi-20-to-3x): Lines 141-150
+- [How API Gateway Quotas Work](#how-api-gateway-quotas-work): Lines 12-25
+- [Critical Rule: Quotas Apply to the Whole API](#critical-rule-quotas-apply-to-the-whole-api): Lines 27-37
+- [Unexpected HTTP 429 or HTTP 500 Errors](#unexpected-http-429-or-http-500-errors): Lines 39-54
+- [OpenAPI 2.0 Quota Configuration](#openapi-20-quota-configuration): Lines 56-106
+- [OpenAPI 3.x Quota Configuration](#openapi-3x-quota-configuration): Lines 108-163
+- [Quota Migration from OpenAPI 2.0 to 3.x](#quota-migration-from-openapi-20-to-3x): Lines 165-174
 
 ## How API Gateway Quotas Work
 
 API Gateway rate limits traffic as requests per minute per consumer Google Cloud project (`1/min/{project}`).
 
-- **API key required:** Every quota-enforced operation MUST require an API key (`api_key: []`). **Rationale:** Service Control uses the API key to identify the consumer Google Cloud project and increment its per-project request counter.
+- **API key required:** Every quota-enforced operation MUST require an API key (`api_key: []`) in every security alternative. **Rationale:** Service Control uses the API key to identify the consumer Google Cloud project and increment its per-project request counter. A call that matches an alternative without the API key has no consumer project, so API Gateway cannot count it.
+- **Operations only:** API Gateway reads `x-google-quota` only on operations, in OpenAPI 2.0 and 3.x. It ignores `x-google-quota` at the root and path levels with no error, so the limits for those metrics are never enforced.
+- **Limit for each charged metric:** Give each metric that an operation charges a limit in `quota.limits`. Otherwise `api-configs create` fails with `Metric rule defined on metric '...', but has no quota limits defined.`
 - **One project per consumer:** Because quotas are tracked per Google Cloud project rather than per end user, create or require a separate Google Cloud project for each API consumer tenant that needs an isolated rate limit. To override a quota limit for one specific consumer project, configure a consumer override using that consumer's project number under **IAM & Admin > Quotas & System Limits** in the Google Cloud console.
 - **Runtime behavior (`HTTP 429`):** When a consumer project exceeds its configured limit, API Gateway rejects the request before forwarding it to the backend and returns `HTTP 429 Too Many Requests` (or gRPC `ResourceExhausted`). Instruct client applications to catch `429` responses and retry with exponential backoff.
-- **Fail-closed on 4xx quota errors:** API Gateway rejects requests (fails closed) when a 4xx client-side quota check failure occurs.
 - **Approximate enforcement:** The gateway aggregates and batches quota calls to keep request latency low, so quota enforcement is approximate. A consumer can get more or fewer requests than the configured limit, and the difference is not a fixed percentage. Do not use API Gateway quotas for exact billing ledgers, spike arrest, or high-accuracy rate limiting.
 
 References:
@@ -32,15 +36,34 @@ You declare quota `metrics` and `quota.limits` inside an API config, but API Gat
 
 Reference: [Quotas apply to the whole API](https://docs.cloud.google.com/api-gateway/docs/quotas-overview.md.txt)
 
+## Unexpected HTTP 429 or HTTP 500 Errors
+
+To diagnose an unexpected HTTP 429 or HTTP 500, use the `api-gateway-troubleshooting` skill. If it is not installed, read the gateway log entry for the failed request:
+
+```bash
+gcloud logging read 'resource.type="apigateway.googleapis.com/Gateway" AND resource.labels.gateway_id="{gateway_id}" AND httpRequest.status>=429' \
+  --project={project_id} --freshness=1h --limit=20 \
+  --format="json(timestamp,httpRequest.status,httpRequest.requestUrl,jsonPayload.responseDetails,jsonPayload.apiConfig)"
+```
+
+`httpRequest.requestUrl` can contain an API key in the `key` query parameter. Redact it before you show the output.
+
+If `jsonPayload.responseDetails` is `service_control_quota_error`:
+
+- With status `429`, the consumer project exceeded the limit. This is the expected behavior. Tell client applications to retry with exponential backoff, or raise the limit.
+- With status `500`, the gateway serves an API config with a quota metric that the newest API config of the API no longer defines. Fix it with Path A or Path B in [Critical Rule: Quotas Apply to the Whole API](#critical-rule-quotas-apply-to-the-whole-api).
+
 ## OpenAPI 2.0 Quota Configuration
 
-In OpenAPI 2.0, declare `metrics` and `quota.limits` under root `x-google-management` as lists of objects, and attach costs on operations using `x-google-quota.metricCosts`:
+In OpenAPI 2.0, declare `metrics` and `quota.limits` under root `x-google-management` as lists of objects, and attach costs on operations using `x-google-quota.metricCosts`. API Gateway ignores `x-google-quota` at the root and path levels:
 
 ```yaml
 swagger: "2.0"
 info:
   title: Orders API
   version: 1.0.0
+x-google-backend:
+  address: https://{backend_service}-{hash}.a.run.app
 x-google-management:
   metrics:
     - name: "read-requests"
@@ -84,7 +107,7 @@ paths:
 
 ## OpenAPI 3.x Quota Configuration
 
-In OpenAPI 3.x, declare `metrics` and `quota.limits` as YAML maps under root `x-google-api-management`, and set `x-google-quota` on each operation as a `{metric_name}: {integer_cost}` map. API Gateway reads `x-google-quota` only on operations. It ignores `x-google-quota` at the root and path levels with no error, so the limits for those metrics are never enforced:
+In OpenAPI 3.x, declare `metrics` and `quota.limits` as YAML maps under root `x-google-api-management`, and set `x-google-quota` on each operation as a `{metric_name}: {integer_cost}` map. As in OpenAPI 2.0, API Gateway ignores `x-google-quota` at the root and path levels:
 
 ```yaml
 openapi: 3.0.4
@@ -96,6 +119,7 @@ x-google-api-management:
     orders-backend:
       address: https://{backend_service}-{hash}.a.run.app
       jwtAudience: https://{backend_service}-{hash}.a.run.app
+      pathTranslation: APPEND_PATH_TO_ADDRESS
   metrics:
     read-requests:
       displayName: "Read requests"
