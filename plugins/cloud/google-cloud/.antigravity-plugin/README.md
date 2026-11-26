@@ -88,6 +88,9 @@ in; ask your admin.
     organization of a project you choose, checks your operator agent there or
     walks you through creating it, then offers to share your existing Google
     Cloud context with it.
+-   **[cloud-operator-admin-setup](./skills/cloud-operator-admin-setup)**:
+    Helps an organization administrator turn Cloud Operator on or off and set
+    its organization-wide controls, with gcloud or in the Google Cloud console.
 -   **[cloud-operator-share-context](./skills/cloud-operator-share-context)**:
     Finds Google Cloud operating context you already have (environments,
     product preferences, runbooks) in instruction files, memory and docs, and
@@ -152,10 +155,12 @@ and terminal commands.
 > `google-cloud-recipe-onboarding`) and the `developer-knowledge` MCP server
 > only require `gcloud` and HTTPS access to `*.googleapis.com`,
 > `docs.cloud.google.com`, and `developers.google.com`. Access to GitHub domains
-> (`raw.githubusercontent.com`, `api.github.com`) and `curl` is only required at
-> runtime for dynamic skill discovery (`finding-google-skills`) and the REST API
-> fallback in `retrieving-developer-knowledge`. Dynamically fetched skills may
-> require additional product-specific CLI tools or API endpoints.
+> (`raw.githubusercontent.com`, `api.github.com`) is only required at runtime
+> for dynamic skill discovery (`finding-google-skills`). `curl` is required for
+> that, the REST API fallback in `retrieving-developer-knowledge`, and the REST
+> calls in `cloud-operator-setup` and `cloud-operator-admin-setup`. Dynamically
+> fetched skills may require additional product-specific CLI tools or API
+> endpoints.
 
 ### 1. Required Outbound URL Allowlist
 
@@ -164,9 +169,9 @@ and terminal commands.
 | `https://raw.githubusercontent.com` (`githubusercontent.com`) | `finding-google-skills` | Fetches the `index.json` catalog and on-demand `SKILL.md` / reference files from `google/skills`. |
 | `https://github.com`, `https://api.github.com` | Installer, `finding-google-skills`, `google-cloud-discovery` | Installs the plugin and queries the GitHub Trees API fallback (`/repos/google/skills/git/trees/main`). |
 | `https://developerknowledge.googleapis.com` | `developer-knowledge` MCP, `retrieving-developer-knowledge` | Connects to the remote MCP server (`/mcp`) and REST API v1 fallback (`/v1/documents:*`, `/v1:answerQuery`). |
-| `https://geminicloudassist.googleapis.com` | `autocloud` MCP, `cloud-operator`, `cloud-operator-setup`, `cloud-operator-share-context` | Connects to the Autocloud MCP server (`/mcp/autocloud`). |
+| `https://geminicloudassist.googleapis.com` | `autocloud` MCP, `cloud-operator`, `cloud-operator-setup`, `cloud-operator-admin-setup`, `cloud-operator-share-context` | Connects to the Autocloud MCP server (`/mcp/autocloud`), and the REST calls `:getOrgEnablement` (setup) and `agentAdminSettings` (admin setup). |
 | `https://oauth2.googleapis.com` | Both MCP servers | Refreshes your Google credentials. |
-| `https://*.googleapis.com` | `gcloud`, `google-cloud-recipe-auth`, `google-cloud-recipe-onboarding` | Authenticates and executes `gcloud` CLI commands against Google Cloud APIs. |
+| `https://*.googleapis.com` | `gcloud`, `google-cloud-recipe-auth`, `google-cloud-recipe-onboarding`, `cloud-operator-admin-setup` | Authenticates and executes `gcloud` CLI commands against Google Cloud APIs. |
 | `https://docs.cloud.google.com`, `https://developers.google.com` | `gcloud`, `google-cloud-recipe-auth`, `google-cloud-recipe-onboarding` | Reads official Google Cloud documentation (`*.md.txt`). |
 
 ### 2. Required Terminal Command Permissions
@@ -183,8 +188,13 @@ and terminal commands.
     `gcloud billing accounts list`, `gcloud compute regions list`,
     `gcloud compute zones list`.
 -   **Cloud Operator** (`cloud-operator`, `cloud-operator-setup`,
-    `cloud-operator-share-context`): `gcloud projects get-ancestors`, to
-    find the organization of the project a request is about;
+    `cloud-operator-admin-setup`, `cloud-operator-share-context`):
+    `curl` for read-only REST calls (`:getOrgEnablement`,
+    `agentAdminSettings` reads, `:testIamPermissions`);
+    `gcloud organizations describe` and `gcloud config get-value account`, to
+    tell whether the organization is your own;
+    `gcloud projects get-ancestors`, to find the organization of the project a
+    request is about;
     `gcloud organizations list`, when that fails;
     `gcloud config get-value project`, offered only as a suggestion; and
     `gcloud auth application-default print-access-token`, to check your
@@ -195,5 +205,7 @@ and terminal commands.
     `gcloud auth application-default login`,
     `gcloud auth application-default set-quota-project`, `gcloud config set`,
     `gcloud projects create`, `gcloud billing projects link`,
-    `gcloud services enable`. Do not auto-allow these commands; keep them gated
-    behind confirmation (**Ask**) or run them manually beforehand.
+    `gcloud services enable`, and for `cloud-operator-admin-setup`,
+    `gcloud organizations add-iam-policy-binding` and the `curl -X PATCH` that
+    changes `agentAdminSettings`. Do not auto-allow these commands; keep them
+    gated behind confirmation (**Ask**) or run them manually beforehand.

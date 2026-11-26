@@ -218,6 +218,9 @@ Say you're new to Google Cloud and ask your agent:
 -   **[cloud-operator-setup](./skills/cloud-operator-setup)**: finds your
     project's organization, checks or creates your operator agent there, then
     offers to share your Google Cloud context with it.
+-   **[cloud-operator-admin-setup](./skills/cloud-operator-admin-setup)**:
+    helps an organization administrator turn Cloud Operator on or off and set
+    its organization-wide controls, with gcloud or in the Google Cloud console.
 -   **[cloud-operator-share-context](./skills/cloud-operator-share-context)**:
     copies Google Cloud context you already have (environments, preferences,
     runbooks) into your operator agent's memory, with your approval.
@@ -282,9 +285,10 @@ In a sandbox or behind a firewall or proxy, allow these URLs and commands.
 >     `google-cloud-recipe-onboarding`) and Developer Knowledge need only
 >     `gcloud` and HTTPS to `*.googleapis.com`, `docs.cloud.google.com` and
 >     `developers.google.com`.
-> -   GitHub (`raw.githubusercontent.com`, `api.github.com`) and `curl` are
->     needed only for skill discovery (`finding-google-skills`) and the REST
->     fallback in `retrieving-developer-knowledge`.
+> -   GitHub (`raw.githubusercontent.com`, `api.github.com`) is needed only for
+>     skill discovery (`finding-google-skills`). `curl` is needed for that, the
+>     REST fallback in `retrieving-developer-knowledge`, and the REST calls in
+>     `cloud-operator-setup` and `cloud-operator-admin-setup`.
 > -   Skills found that way may need more CLI tools or endpoints.
 
 ### 1. Required Outbound URL Allowlist
@@ -292,9 +296,9 @@ In a sandbox or behind a firewall or proxy, allow these URLs and commands.
 | Domain / Endpoint | Used By | Purpose |
 | :--- | :--- | :--- |
 | `https://developerknowledge.googleapis.com` | `developer-knowledge` MCP, `retrieving-developer-knowledge` | The MCP server (`/mcp`) and its REST fallback (`/v1/documents:*`, `/v1:answerQuery`). |
-| `https://geminicloudassist.googleapis.com` | `autocloud` MCP, `cloud-operator`, `cloud-operator-setup`, `cloud-operator-share-context` | The Autocloud MCP server (`/mcp/autocloud`). |
+| `https://geminicloudassist.googleapis.com` | `autocloud` MCP, `cloud-operator`, `cloud-operator-setup`, `cloud-operator-admin-setup`, `cloud-operator-share-context` | The Autocloud MCP server (`/mcp/autocloud`), and the REST calls `:getOrgEnablement` (setup) and `agentAdminSettings` (admin setup). |
 | `https://oauth2.googleapis.com` | Both MCP servers, `gcloud` | Refreshes your Google credentials. |
-| `https://*.googleapis.com` | `gcloud`, `google-cloud-recipe-auth`, `google-cloud-recipe-onboarding`, `cloud-operator` | `gcloud` commands against Google Cloud APIs. |
+| `https://*.googleapis.com` | `gcloud`, `google-cloud-recipe-auth`, `google-cloud-recipe-onboarding`, `cloud-operator`, `cloud-operator-admin-setup` | `gcloud` commands against Google Cloud APIs. |
 | `https://docs.cloud.google.com`, `https://developers.google.com` | `gcloud`, `google-cloud-recipe-auth`, `google-cloud-recipe-onboarding`, `cloud-operator` | Official documentation (`*.md.txt`). |
 | `https://raw.githubusercontent.com` | `finding-google-skills` | The `index.json` skill catalog and on-demand `SKILL.md` and reference files from `google/skills`. |
 | `https://github.com`, `https://api.github.com` | Installation, `finding-google-skills`, `google-cloud-discovery` | Installs the plugin, and lists `google/skills` when the catalog isn't available (`/repos/google/skills/git/trees/main`). |
@@ -320,13 +324,17 @@ In a sandbox or behind a firewall or proxy, allow these URLs and commands.
     `com.google.codex-config/setup` (`setup.cmd` on Windows) runs
     `codex app-server`.
 -   **Cloud Operator** (`cloud-operator`, `cloud-operator-setup`,
-    `cloud-operator-share-context`):
+    `cloud-operator-admin-setup`, `cloud-operator-share-context`):
     -   `gcloud projects get-ancestors`: finds the organization of the project
         a request is about.
     -   `gcloud organizations list`: when that fails.
     -   `gcloud config get-value project`: only to suggest a project.
     -   `gcloud auth application-default print-access-token`: checks your
-        credentials when a call fails to sign in.
+        credentials when a call fails to sign in, and signs the REST calls.
+    -   `gcloud organizations describe`, `gcloud config get-value account`:
+        tell whether the organization is your own (admin setup).
+    -   `curl`: read-only REST calls (`:getOrgEnablement`, `agentAdminSettings`
+        reads, `:testIamPermissions`).
 -   **Developer Knowledge REST fallback** (`retrieving-developer-knowledge`):
     `gcloud auth print-access-token`, or
     `gcloud auth application-default print-access-token`, and
@@ -337,7 +345,9 @@ In a sandbox or behind a firewall or proxy, allow these URLs and commands.
     `gcloud auth application-default login`,
     `gcloud auth application-default set-quota-project`, `gcloud config set`,
     `gcloud projects create`, `gcloud billing projects link`,
-    `gcloud services enable`. Don't auto-allow these: keep them behind
+    `gcloud services enable`, and for `cloud-operator-admin-setup`,
+    `gcloud organizations add-iam-policy-binding` and the `curl -X PATCH` that
+    changes `agentAdminSettings`. Don't auto-allow these: keep them behind
     confirmation (**Ask**), or run them yourself first.
 
 --------------------------------------------------------------------------------

@@ -176,6 +176,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Google Cloud CI/CD Pipeline Design**](./skills/cloud/google-cicd-pipeline-design)
   - [**Google Cloud Release Radar**](./skills/cloud/google-cloud-release-radar)
   - [**Google Developer Knowledge**](./skills/developers/retrieving-developer-knowledge)
+  - [**Set up Cloud Operator for an organization**](./skills/cloud/cloud-operator-admin-setup)
   - [**Set up the operator agent**](./skills/cloud/cloud-operator-setup)
   - [**Share existing Google Cloud context with the operator agent**](./skills/cloud/cloud-operator-share-context)
   - [**Terraform GCP Skill**](./skills/cloud/google-cicd-terraform)

@@ -1,7 +1,7 @@
 ---
 name: cloud-operator
 metadata:
-  version: "1.3.0"
+  version: "1.4.0"
   category: CloudInfrastructureAndServices
 description: >-
   Google Cloud (GCP) assistant and operator via the `autocloud` MCP server. Use
@@ -28,6 +28,11 @@ Operator is disconnected and how to sign in again
 retry after that or answer now without it. The steps are in
 [Server not connected](#server-not-connected).
 
+**Remembering:** where this skill says to remember something, keep it for the
+rest of this conversation. Don't create or edit any file to remember it. If
+your client has a built-in memory feature, you can also save it there for later
+conversations; without one, asking again in a new conversation is fine.
+
 ## Usage Attribution
 
 **MUST READ**: Before executing any `gcloud`, REST API, or MCP command, you
@@ -46,44 +51,68 @@ At the start of each conversation, before the first call (these steps are part
 of calling the operator: do them before any documentation search, and don't
 search for the answer meanwhile):
 
-1. **Find the project the request is about:** one the user named, or one saved
-   in local memory. If there's none, ask which project it's about, or whether
-   they want an answer without Cloud Operator. You can suggest a project that
-   the workspace names or their default gcloud project, but don't use it
-   without asking. If local memory notes that Cloud Operator can't be used for
-   that project, its organization or the user's account, see
+1. **Find the organization ID.** Every call needs the numeric organization ID
+   (`organizations/{org_id}`); never send a domain, a name or a project in its
+   place. If the user named one, or you remember one (for the project they
+   named, or the one they usually work in), use it. If you remember that
+   Cloud Operator can't be used for that project, its organization or the
+   user's account, see
    [When Cloud Operator can't be used](#when-cloud-operator-cant-be-used).
+   Otherwise check whether gcloud is installed and signed in (gcloud and
+   Application Default Credentials):
+   - **Without gcloud** (for example in a web client): ask for the numeric
+     organization ID (the console's project picker shows it), or whether they
+     want an answer without Cloud Operator.
+   - **Installed but not signed in:** ask them to run `gcloud auth login` and
+     `gcloud auth application-default login`, to give the organization ID, or
+     whether they want an answer without Cloud Operator.
+   - **Signed in:** if the request names a project, use that project's
+     organization and say so. Otherwise ask which organization (its ID, its
+     domain such as `acme.com`, or a project in it), or whether they want an
+     answer without Cloud Operator. You can suggest a project that the
+     workspace names or their default gcloud project, but don't use it without
+     asking. For a domain, run
+     `gcloud organizations list --filter="displayName={domain}" --format=json`
+     and use the result if there's exactly one. For a project, run
+     `gcloud projects get-ancestors {project_id} --format=json`, which only
+     reads the project's parents, and use the `id` of the entry whose `type`
+     is `organization`. If there's none, Cloud Operator doesn't support
+     projects outside an organization yet: tell the user, save it in local
+     memory (see
+     [When Cloud Operator can't be used](#when-cloud-operator-cant-be-used)),
+     and offer to answer with the other available tools and skills.
+
+   If a lookup fails, ask for the organization ID. Don't guess it: a wrong
+   organization reaches a different agent, or none.
+
+   When you ask, they may also choose one of these:
    - **They ask to set up or check Cloud Operator:** use the
      `cloud-operator-setup` skill (it checks or creates their agent and offers
      to share their existing Google Cloud context), then return to their
-     request.
+     request (if setup already sent it, don't send it again). An administrator
+     who wants to turn it on or off or configure it for the organization uses
+     the `cloud-operator-admin-setup` skill.
    - **Not now:** answer with the other available tools and skills, and don't
      ask again in this conversation.
-2. **Find the project's organization.** If the user named an organization, or
-   local memory has one saved for that project, use it. Otherwise run
-   `gcloud projects get-ancestors {project_id} --format=json`, which only reads
-   the project's parents, and use the `id` of the entry whose `type` is
-   `organization`. If the command fails, ask the user for the organization ID
-   (`gcloud organizations list` shows the ones they can see). Don't guess it: a
-   wrong organization reaches a different agent, or none.
-   - **No organization in the list:** Cloud Operator doesn't support projects
-     outside an organization yet. Tell the user, save it in local memory (see
-     [When Cloud Operator can't be used](#when-cloud-operator-cant-be-used)),
-     and offer to answer with the other available tools and skills.
-3. **Tell the user in one line** which organization and project you're using,
-   for example "Using your operator agent in organization `123456789012`, for
-   project `acme-prod`."
-4. **After the first call that works**, save the project and its organization
-   in local memory for next time, and the agent too, with that organization,
-   if it isn't their personal agent. Use a saved agent only for calls to the
-   organization it was saved with; otherwise leave out `agentId`. If a call
-   with an organization from memory fails with a permission or not-found
-   error, look the organization up again before anything else. Don't save a
-   "not now". A memory entry from before, such as "Cloud
-   Operator project" or "operator project", names a project the user works in:
-   find its organization as above.
+2. **Find the project, only if the request needs one.** Calls name only the
+   organization; the project goes in `userQuery`. Use the project the request
+   names, or the one saved for that organization, or ask. Don't ask for
+   requests that don't depend on a project (such as how-to or design
+   questions).
+3. **Tell the user in one line** which organization (and project, if any)
+   you're using, for example "Using your operator agent in organization
+   `123456789012`, for project `acme-prod`."
+4. **After the first call that works**, remember the organization, with the
+   project if there is one, and the agent too, with
+   that organization, if it isn't their personal agent. Use a saved agent only
+   for calls to the organization it was saved with; otherwise leave out
+   `agentId`. If a call with an organization you remembered fails with a
+   permission or not-found error, look the organization up again before
+   anything else. Don't remember a "not now". A memory entry from before, such
+   as "Cloud Operator project" or "operator project", names a project the user
+   works in: find its organization as above.
 5. **Once, after answering that first request:** if the
-   `cloud-operator-share-context` skill is available, local memory has no
+   `cloud-operator-share-context` skill is available, you don't remember a
    "Cloud Operator context: shared on" or "declined on" note, and
    `cloud-operator-setup` hasn't already offered in this conversation, offer to
    scan local memory, agent instruction files, skills and workflows, and the
@@ -91,9 +120,9 @@ search for the answer meanwhile):
    operating in Google Cloud — environments, projects, product preferences,
    best practices, architecture guidance, runbooks — and share it with the
    operator's memory. Say that they can also ask for it later. If they agree,
-   use the `cloud-operator-share-context` skill. If they decline, note "Cloud
-   Operator context: declined on {date}" in local memory. If they don't
-   answer, note nothing, so that you offer again in a later conversation.
+   use the `cloud-operator-share-context` skill. If they decline, remember
+   "Cloud Operator context: declined on {date}". If they don't answer,
+   remember nothing, so that you offer again in a later conversation.
 
 A user can use only agents they own; there are no shared or team agents. If
 they name another agent they own, take `locations/{location}/agents/{agent_id}`
@@ -106,31 +135,34 @@ send the request to their own agent.
 
 Some answers mean that calling again won't help: the project has no
 organization, `RUN_NOT_ALLOWED` on all 3 attempts, `ORG_DISABLED` or
-`AGENTS_DISABLED`, or a personal Google Account (see
+`AGENTS_DISABLED` that stays off, or a personal Google Account (see
 [Organization and agent errors](#organization-and-agent-errors)). When you get
-one, save it in local memory with what it applies to and the date, for example
+one, remember it with what it applies to and the date, for example
 "Cloud Operator: not available for organization 123456789012
 (RUN_NOT_ALLOWED), 2026-11-19", "Cloud Operator: project hobby-site-42 has no
 organization", or "Cloud Operator: personal account alex@gmail.com not
 supported".
 
-When local memory has such a note for the project, its organization, or the
+When you remember such a note for the project, its organization, or the
 account the user signs in with, don't look up the organization or call the
 operator. Tell the user in one line that Cloud Operator wasn't available there
 (with the reason and date) and that they can ask you to try again, and answer
 with the other available tools and skills. If they ask to try again, or to set
-up Cloud Operator, remove the note and go on as usual. Remove it too when a
+up Cloud Operator, forget the note and go on as usual. Forget it too when a
 call there works.
 
 ### If the user has no operator agent yet
 
 A call fails with "personal operator agent … has not been initialized yet", or,
 for a call without an `agentId`, with `agent "…/agents/{id}" not found`, when
-the user has no operator agent in that organization. Tell them so, and use the
-`cloud-operator-setup` skill from its create step, with the project and
-organization you already have: it creates the agent, checks it, and handles
-errors while creating it. Don't create the agent any other way. Once it works,
-send the request that failed again yourself.
+the user has no operator agent in that organization, and also when Cloud
+Operator is turned off there (the error doesn't say which). Tell them they have
+no operator agent there, and ask whether to set one up there or use another
+organization where they have one. To set one up, use the `cloud-operator-setup`
+skill with the organization you already have, telling it the user chose this
+organization: it checks whether the organization is turned off, creates the
+agent, checks it, handles errors, and sends the request that failed again
+(don't send it again yourself). Don't create the agent any other way.
 
 ## Local context
 
@@ -160,16 +192,16 @@ Make one call per logical request. If a call fails, see
 [Troubleshooting](#troubleshooting).
 
 - `organization`: `organizations/{org_id}`, from
-  [Organization and agent](#organization-and-agent). Pass exactly one of
-  `organization` and `project`: use `project` (`projects/{project_id}`) only
-  for an agent the user names under a project (see `agentId`).
+  [Organization and agent](#organization-and-agent). Always set it, and never
+  set `project`.
 - `userQuery`: the operator sees nothing of this conversation, the workspace,
   or links except this text. Send the user's prompt **as-is** (with secrets
   redacted, see below). Don't reword it or add your own steps (such as which
   logs or metrics to check): the operator plans the work. Then add what the
   request depends on:
-  - **Project:** the call names only the organization. If the user's prompt
-    doesn't name the project it's about, add `Project: {project_id}`.
+  - **Project:** the call names only the organization. If the request is
+    about a project and the user's prompt doesn't name it, add
+    `Project: {project_id}`.
   - **Preferences:** if the user stated, changed, or asked to save a lasting
     GCP preference, add it (see
     [Keep the user in control](#keep-the-user-in-control)).
@@ -199,13 +231,12 @@ Make one call per logical request. If a call fails, see
   of your own about the operator's memory or tools: the service's safety filter
   can reject instruction-like text, and a rejected call can leave a stuck
   session.
-- `agentId`: omit unless the user names one, or local memory has one saved for
-  that organization (short ID,
+- `agentId`: omit unless the user names one, or you remember one for that
+  organization (short ID,
   `locations/{location}/agents/{agent_id}`, or a full resource name). A full
-  resource name must be under the call's scope: `organizations/{org_id}/...`
-  with that `organization`, or `projects/{project_id}/...` with `project` set
-  to `projects/{project_id}` instead of `organization`. For an agent in another
-  organization, omit it and tell the user the request went to their own agent
+  resource name must be under the call's organization:
+  `organizations/{org_id}/...`. For an agent in another organization, or under
+  a project, omit it and tell the user the request went to their own agent
   in that organization.
 - `contextId`: the `context_id` from the previous response, for follow-ups
   (pass the same `agentId` too). Send only files that changed since the last
@@ -272,7 +303,9 @@ Make one call per logical request. If a call fails, see
   `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.mcp.json`, `opencode.json`,
   `opencode.jsonc`, `.claude/`, `.codex/`, `.gemini/`, `.agents/`,
   `.opencode/`, `.pi/`). Run Terraform, `gcloud`, `kubectl` or deploys only
-  after the user approves exactly what will run.
+  after the user approves exactly what will run. The read-only `gcloud` checks
+  this skill gives (sign-in status, the access token, finding the
+  organization) need no approval.
 - If the user states, changes, or removes a lasting preference ("always use
   us-east1"), tell the operator via `ask_cloud_operator` right away ("Remember
   this preference for future sessions: …") so its memory has it, and relay its
@@ -291,13 +324,22 @@ credentials", "Incompatible auth server", or "Authentication required"):
    chooses (step 4).
 2. Tell the user in one line that Cloud Operator is disconnected, and why if
    you know (for example, their sign-in expired).
-3. Give both fix steps, in order:
+3. Give both fix steps, in order (but check the sign-in first if you can):
+   - **If the sign-in works** (`gcloud auth application-default
+     print-access-token` prints a token; you can run it yourself), don't tell
+     them to sign in again. First check the organization with the
+     `cloud-operator-setup` skill (its **Check the organization** step): if
+     it's turned off or they have no access, follow that instead. If it's on,
+     or you can't run the check (for example, gcloud doesn't run in your
+     sandbox), give the reconnect step, and say the organization wasn't
+     checked if you couldn't.
+   - **If you can't check the sign-in** (for example, gcloud doesn't run in
+     your sandbox), give both steps below: sign in again, then reconnect.
    - **Sign in again.** The user runs `gcloud auth application-default login`
-     (you can't: it opens a browser). If the user has already confirmed that
-     `gcloud auth application-default print-access-token` works, skip this
-     step: the sign-in is fine. If a call failed, see the errors below; if
-     `autocloud` offers no tools, still reconnect. If the server instead signs
-     in through your own MCP settings (OAuth), the user signs in again there.
+     (you can't: it opens a browser). If a call failed, see the errors below;
+     if `autocloud` offers no tools, still reconnect. If the server instead
+     signs in through your own MCP settings (OAuth), the user signs in again
+     there.
    - **Reconnect the server.** In Claude Code: `/mcp`, select `autocloud`,
      **Reconnect** (for ADC servers, **Authenticate** doesn't work). In other
      agents, the user restarts the agent. Don't name a command or menu you
@@ -306,31 +348,34 @@ credentials", "Incompatible auth server", or "Authentication required"):
    other available tools and skills. If the user chooses to answer now, say in
    that answer that it doesn't come from Cloud Operator, and don't ask again in
    this conversation unless the user asks to retry. If it still fails after the
-   user reconnects, don't repeat these steps: say it's still disconnected, check
-   the errors below, and offer to answer now without Cloud Operator.
+   user reconnects, don't repeat these steps: say their sign-in and the
+   organization look fine, suggest quitting and restarting the agent once (not
+   another Reconnect), and offer
+   to answer now without Cloud Operator.
 
 For example: "Cloud Operator is disconnected: your Google sign-in may have
 expired. To fix it, run `gcloud auth application-default login`, then run
 `/mcp`, select `autocloud`, and choose **Reconnect**. Should I retry after
 that, or answer now without Cloud Operator?"
 
-If `gcloud auth application-default print-access-token` works but the server
-still fails, the problem isn't the sign-in: see the errors below. Some agents
-also report any 403 as a sign-in error, including when Cloud Operator isn't
-available for the organization.
+Some agents report any 403 as a sign-in error, including when Cloud Operator
+isn't available for the organization, is turned off there, or the user has no
+access there: that's why step 3 checks the organization first.
 
 ### Organization and agent errors
 
 | Error | Likely cause | What to do |
 |---|---|---|
-| "personal operator agent … has not been initialized yet", or `agent "…/agents/{id}" not found` for a call without an `agentId` | The user has no operator agent in that organization | Help them create one ([If the user has no operator agent yet](#if-the-user-has-no-operator-agent-yet)), then retry. |
+| "personal operator agent … has not been initialized yet", or `agent "…/agents/{id}" not found` for a call without an `agentId` | The user has no operator agent in that organization, or Cloud Operator is turned off there | Offer to set one up or use another organization ([If the user has no operator agent yet](#if-the-user-has-no-operator-agent-yet)). |
 | `agent "…/agents/{id}" not found` for a call with an `agentId` | That agent isn't in that organization, or the ID is wrong | Check the agent ID and the organization with the user. |
 | "agent … is not ready to serve yet" | The agent was just created | Wait about a minute and retry, up to 3 times. |
-| "This method is not available in this project." (`RUN_NOT_ALLOWED`) | Cloud Operator isn't available for that organization yet | This check can fail intermittently, especially just after the agent is created, so retry up to 2 more times, about 30 seconds apart (3 attempts in all). If all 3 fail, tell the user Cloud Operator isn't available for that organization yet, save that in local memory ([When Cloud Operator can't be used](#when-cloud-operator-cant-be-used)), and offer to handle the request with the other available skills. Don't retry beyond that, and don't send them to create an agent: neither helps. |
-| "AutoCloud is disabled for organization …" (`ORG_DISABLED`), or "… agents are disabled …" (`AGENTS_DISABLED`) | An administrator turned Cloud Operator off for the organization, or hasn't turned it on | Tell the user to ask an administrator of the organization, and save it in local memory ([When Cloud Operator can't be used](#when-cloud-operator-cant-be-used)). Meanwhile, offer to handle the request with the other available skills. |
+| "This method is not available in this project." (`RUN_NOT_ALLOWED`) | Cloud Operator isn't available for that organization yet | This check can fail intermittently, especially just after the agent is created, so retry up to 2 more times, about 30 seconds apart (3 attempts in all). If all 3 fail, tell the user Cloud Operator isn't available for that organization yet, remember that ([When Cloud Operator can't be used](#when-cloud-operator-cant-be-used)), and offer to handle the request with the other available skills. Don't retry beyond that, and don't send them to create an agent: neither helps. |
+| "AutoCloud is disabled for organization …" (`ORG_DISABLED`), or "… agents are disabled …" (`AGENTS_DISABLED`) | An administrator turned Cloud Operator off for the organization, or hasn't turned it on | Tell the user, and use the `cloud-operator-admin-setup` skill's "Coming from setup" section if it's installed (case: turned off) (an administrator can turn it on; anyone else gets a message for their administrator). Without it, an administrator turns it on at `https://console.cloud.google.com/gemini/admin/onboarding?organizationId={org_id}`. Meanwhile, offer another organization or the other available skills. When it's on, wait about a minute and retry the request. If it stays off, remember it ([When Cloud Operator can't be used](#when-cloud-operator-cant-be-used)). |
 | "agent_id must be explicitly specified when authenticating as a service account" | The credentials belong to a service account, not to the user | The user signs in with their own account: `gcloud auth application-default login`. If `GOOGLE_APPLICATION_CREDENTIALS` points to a key file, they unset it, because it overrides that sign-in. Don't offer an agent ID instead: their personal operator agent needs their own sign-in. |
-| "The caller does not have permission" | The account can't use Cloud Operator in that organization | Tell the user, and that an administrator of the organization controls access; don't name a role to request. Meanwhile, offer to handle the request with the other available skills. |
-| An error that personal accounts aren't supported, or the user signs in with a personal Google Account (for example @gmail.com) | Cloud Operator doesn't support personal Google Accounts yet | Tell the user, save it in local memory for that account ([When Cloud Operator can't be used](#when-cloud-operator-cant-be-used)), and offer the other available skills. |
+| `Permission 'geminicloudassist.agents.invoke' denied`, or "The caller does not have permission" | No access to Cloud Operator in that organization: users get it automatically only in their own (home) organization; elsewhere an administrator grants `roles/geminicloudassist.user` | Tell the user, and use the `cloud-operator-admin-setup` skill's "Coming from setup" section if it's installed (case: no access). Without it, tell them an administrator of that organization grants `roles/geminicloudassist.user`. Meanwhile, offer another organization or the other available skills. When access is granted, wait a few minutes and retry the request. |
+| `Permission 'aiplatform.agents.get' denied` on a call with an `agentId` | That agent isn't theirs, or the ID is wrong | Omit `agentId` to use their own agent, and tell the user. |
+| "Consumer 'organizations/{id}' is invalid: Full ancestry … could not be found" | The organization ID is wrong | Ask the user for the numeric organization ID; if they confirm the same one, Cloud Operator can't reach that organization: tell them, answer with the other available tools and skills, and remember it ([When Cloud Operator can't be used](#when-cloud-operator-cant-be-used)). |
+| An error that personal accounts aren't supported, or the user signs in with a personal Google Account (for example @gmail.com) | Cloud Operator doesn't support personal Google Accounts yet | Tell the user, remember it for that account ([When Cloud Operator can't be used](#when-cloud-operator-cant-be-used)), and offer the other available skills. |
 | "Permission denied on resource project {id}" | If `{id}` is the organization ID, `organization` was sent without the `organizations/` prefix. Otherwise the project ID is wrong, or the account can't see the project | Send `organizations/{org_id}`, or check the project ID with the user. |
 | A permission error, or `RUN_NOT_ALLOWED`, from `fetch_operator_session` or `search_operator_sessions` when `ask_cloud_operator` works | Usually a wrong session ID, or a different `organization` or `agentId` than the session's | Check the session ID, `organization` and `agentId`. Don't send the user to an administrator for this. |
 | "… has not been used in project {project} before or it is disabled" | The API is off in that project, usually the quota project | With the user's permission, run `gcloud services enable geminicloudassist.googleapis.com --project {project}`, or set a quota project where it's on. |
