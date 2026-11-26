@@ -160,9 +160,9 @@ tell the user to follow the instructions in that section.
   Logging ("Accessing your logs", "Understanding your logs", "Resource types",
   "System logs", "Kubernetes Event logs", "Application logs", "Control plane
   component logs"):
-  [Monitor GKE control plane metrics](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/control-plane-metrics.md.txt)
+  [Collect and view control plane metrics](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/control-plane-metrics.md.txt)
   and
   [View GKE logs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/view-logs.md.txt).
 - Escalating Kueue defects or persistent GKE infrastructure issues: "Before you
   contact support" and "Recommendations for efficient support" in
-  [Getting support for GKE](https://docs.cloud.google.com/kubernetes-engine/docs/getting-support.md.txt).
+  [Get support](https://docs.cloud.google.com/kubernetes-engine/docs/getting-support.md.txt).

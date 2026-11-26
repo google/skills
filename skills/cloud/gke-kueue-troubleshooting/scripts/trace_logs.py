@@ -12,17 +12,16 @@ compresses them into a milestone timeline and emits mechanically derived facts:
     audit `apiVersion`s), so clusterless diagnosis still uses version-exact
     fields;
   * `derived_log_diagnostics.derived_log_facts` — neutral facts (audit-logged
-    deletions, strict decoding errors, TAS domain errors, resources missing from
-    a
-    ClusterQueue) with at most one sentence of version-independent Kueue
-    semantics
-    each. The script never ranks causes or prescribes report content.
+    deletions, configuration unknown-field errors, TAS domain errors, resources
+    missing from a ClusterQueue) with at most one sentence of
+    version-independent Kueue semantics each. The script never ranks causes or
+    prescribes report content.
 
 Input sources (`--mode`):
   live          `kubectl logs` of the Kueue controller deployment.
   offline_data  a support-bundle directory (manifests + `logs/`).
-  logs_archive  a file or directory of exported logs (or `-` for stdin) in any
-                supported shape (see `log_envelopes.py`): raw controller output,
+  logs_archive  a file or directory of exported logs in any supported shape
+                (see `log_envelopes.py`): raw controller output,
                 `audit.k8s.io/v1` events, Kubernetes Events, or collector /
                 cloud-logging envelopes.
 
@@ -38,6 +37,7 @@ append and the stdout digest cap.
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 import dataclasses
 import json
 import os
@@ -134,7 +134,7 @@ def _is_noise(line: str) -> bool:
     return False
   try:
     d = json.loads(stripped)
-  except (ValueError, TypeError):
+  except (ValueError, TypeError, RecursionError):
     return False
   if not isinstance(d, dict):
     return False
@@ -155,56 +155,203 @@ def _filter_lines(lines: list[str], workload_filter: str) -> list[str]:
   return out
 
 
+_KUBECTL_LOGS_TIMEOUT_SECONDS = 120
+_MAX_KUBECTL_ERROR_CHARS = 600
+
+
+def _kubectl_logs(
+    kueue_namespace: str, tail_lines: int, previous: bool
+) -> tuple[str, str]:
+  """`(stdout, error)` of one `kubectl logs` call on the controller deployment; `error` is '' on success."""
+  cmd = [
+      "kubectl",
+      "logs",
+      "-n",
+      kueue_namespace,
+      "deployment/kueue-controller-manager",
+      f"--tail={tail_lines}",
+  ]
+  if previous:
+    cmd.append("--previous")
+  try:
+    res = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+        timeout=_KUBECTL_LOGS_TIMEOUT_SECONDS,
+    )
+  except (OSError, subprocess.SubprocessError) as exc:
+    return "", f"{type(exc).__name__}: {exc}"[:_MAX_KUBECTL_ERROR_CHARS]
+  if res.returncode != 0:
+    detail = (res.stderr or "").strip() or f"exit status {res.returncode}"
+    return "", detail[:_MAX_KUBECTL_ERROR_CHARS]
+  return res.stdout or "", ""
+
+
+def _live_log_lines(
+    tail_lines: int, kueue_namespace: str
+) -> tuple[list[str], str]:
+  """Normalised controller log lines, oldest first, and kubectl's error for the running container.
+
+  The terminated container (`--previous`) is read before the running one, so
+  that scanners which keep the latest value see the lines in the order they
+  were written. A failing `--previous` call is expected when the container
+  never restarted and is not reported.
+
+  Args:
+    tail_lines: Max lines to read per container.
+    kueue_namespace: Namespace of the Kueue controller deployment.
+
+  Returns:
+    `(lines, error)`; `error` is '' when the running container was read.
+  """
+  lines: list[str] = []
+  error = ""
+  for previous in (True, False):
+    out, err = _kubectl_logs(kueue_namespace, tail_lines, previous)
+    lines.extend(log_envelopes.normalize_line(ln) for ln in out.splitlines())
+    if not previous:
+      error = err
+  return lines, error
+
+
 def extract_lines_from_live(
     workload_filter: str, tail_lines: int, kueue_namespace: str = "kueue-system"
 ) -> list[str]:
-  """Reads controller logs (current and previous container) from the live cluster via kubectl."""
-  lines: list[str] = []
-  for extra_flag in ([], ["--previous"]):
-    cmd = [
-        "kubectl",
-        "logs",
-        "-n",
-        kueue_namespace,
-        "deployment/kueue-controller-manager",
-        f"--tail={tail_lines}",
-        *extra_flag,
-    ]
-    res = subprocess.run(cmd, capture_output=True, text=True, check=False)
-    if res.returncode == 0 and res.stdout:
-      lines.extend(
-          log_envelopes.normalize_line(ln) for ln in res.stdout.splitlines()
-      )
+  """Reads controller logs (previous container, then the running one) from the live cluster via kubectl."""
+  lines, _ = _live_log_lines(tail_lines, kueue_namespace)
   return _filter_lines(lines, workload_filter)
 
 
-def _is_log_file(fname: str) -> bool:
+_LOG_EXTENSIONS = (".log", ".txt", ".jsonl", ".ndjson", ".json")
+# Manifests, ledger side files and compressed archives are never log text.
+_NON_LOG_EXTENSIONS = (
+    ".yaml",
+    ".yml",
+    ".lock",
+    ".tmp",
+    ".gz",
+    ".tgz",
+    ".zip",
+    ".tar",
+    ".bz2",
+    ".xz",
+    ".zst",
+)
+_LOG_DIR_NAMES = ("log", "logs")
+# `log` / `logs` as a whole token of the file name (`controller-log`,
+# `kueue_logs.1`), not as a substring (`catalog`, `topologies`).
+_LOG_TOKEN_RE = re.compile(r"(?:^|[^a-z0-9])logs?(?:[^a-z0-9]|$)")
+
+
+def _is_log_file(fname: str, in_logs_dir: bool = False) -> bool:
+  """Checks whether a bundle file should be read as logs.
+
+  Args:
+    fname: File name without its directory.
+    in_logs_dir: Whether the file sits under a `logs/` directory, where files
+      without an extension (one per pod) are log files as well.
+
+  Returns:
+    True when `fname` should be parsed as a log file.
+  """
   low = fname.lower()
+  if low.startswith(".") or low.endswith(_NON_LOG_EXTENSIONS):
+    return False
   return (
-      low.endswith((".log", ".txt", ".jsonl", ".ndjson", ".json"))
-      or "log" in low
+      in_logs_dir
+      or low.endswith(_LOG_EXTENSIONS)
+      or bool(_LOG_TOKEN_RE.search(low))
   )
 
 
-def extract_lines_from_bundle(
-    data_path: str, workload_filter: str
+def _bundle_log_candidates(
+    data_path: str, exclude_paths: frozenset[str] = frozenset()
 ) -> list[str]:
-  """Reads and normalises log records from a file or directory of exported logs.
+  """Log-named entries and symlinked subdirs under `data_path`, in stable order."""
+  top = os.path.abspath(data_path)
+  found: list[str] = []
+  for root, dirs, files in os.walk(top):
+    kept_dirs: list[str] = []
+    for dname in sorted(dirs):
+      if dname == report_output.REPORT_DIR_NAME:
+        continue
+      full_dir = os.path.join(root, dname)
+      if os.path.islink(full_dir):
+        found.append(full_dir)
+      else:
+        kept_dirs.append(dname)
+    dirs[:] = kept_dirs
+    rel_dirs = os.path.relpath(root, os.path.dirname(top)).lower().split(os.sep)
+    in_logs_dir = any(part in _LOG_DIR_NAMES for part in rel_dirs)
+    for fname in sorted(files):
+      if not _is_log_file(fname, in_logs_dir):
+        continue
+      full_path = os.path.join(root, fname)
+      if os.path.abspath(full_path) in exclude_paths:
+        continue
+      found.append(full_path)
+  return found
 
-  Every file is passed through `log_envelopes.iter_records`, so raw controller
-  output, `audit.k8s.io/v1` events, Kubernetes Events and collector /
+
+def _bundle_log_files(
+    data_path: str, exclude_paths: frozenset[str] = frozenset()
+) -> list[str]:
+  """Regular log files under `data_path` (or explicit file path), in stable order."""
+  if os.path.isfile(data_path):
+    # Operator named this path explicitly: follow a symlink to a regular file.
+    return [os.path.realpath(data_path)]
+  if not os.path.isdir(data_path):
+    return []
+  return [
+      p
+      for p in _bundle_log_candidates(data_path, exclude_paths)
+      if report_output.is_regular_file(p)
+  ]
+
+
+def skipped_log_inputs(
+    data_path: str, exclude_paths: frozenset[str] = frozenset()
+) -> list[str]:
+  """Log-named entries or symlinked subdirs skipped because they are non-regular."""
+  if not data_path or data_path == "-" or not os.path.isdir(data_path):
+    return []
+  top = os.path.abspath(data_path)
+  return [
+      os.path.relpath(p, top)
+      for p in _bundle_log_candidates(data_path, exclude_paths)
+      if not report_output.is_regular_file(p)
+  ]
+
+
+def extract_bundle_records(
+    data_path: str,
+    workload_filter: str,
+    exclude_paths: frozenset[str] = frozenset(),
+) -> tuple[list[str], list[str]]:
+  """Reads and normalises log records and reports unreadable JSON inputs.
+
+  Every file is passed through `log_envelopes.extract_file_records`, so raw
+  controller output, `audit.k8s.io/v1` events, Kubernetes Events and collector /
   cloud-logging envelopes (JSON array, JSONL or plain lines) all yield the same
-  record model.
+  record model. Files that only yield dropped JSON fragments (such as truncated
+  or concatenated pretty-printed JSON arrays) are returned in `unreadable` with
+  zero lines counted.
 
   Args:
-    data_path: File or directory path containing exported log files, or `-` to
-      read exported log records from standard input.
+    data_path: File or directory path containing exported log files (`-` is
+      accepted as a legacy stdin fallback).
     workload_filter: Optional substring filter for non-milestone lines.
+    exclude_paths: Absolute file paths (such as the active ledger) to skip.
 
   Returns:
-    Filtered, normalised log record strings.
+    `(filtered_lines, unreadable_inputs)`.
   """
   lines: list[str] = []
+  unreadable: list[str] = []
   if data_path == "-":
     raw_in = getattr(sys.stdin, "buffer", None)
     body = (
@@ -212,27 +359,42 @@ def extract_lines_from_bundle(
         if raw_in is not None
         else sys.stdin.read()
     )
-    lines.extend(log_envelopes.iter_records(body))
-    return _filter_lines(lines, workload_filter)
+    recs, is_unreadable = log_envelopes.extract_file_records(body)
+    lines.extend(recs)
+    if is_unreadable:
+      unreadable.append("<stdin>")
+    return _filter_lines(lines, workload_filter), unreadable
   if not os.path.exists(data_path):
-    return lines
-  if os.path.isfile(data_path):
-    files_to_read = [data_path]
-  else:
-    files_to_read = []
-    for root, dirs, files in os.walk(data_path):
-      dirs.sort()
-      for fname in sorted(files):
-        if _is_log_file(fname):
-          files_to_read.append(os.path.join(root, fname))
-  for fpath in files_to_read:
+    return lines, unreadable
+  is_dir = os.path.isdir(data_path)
+  top = os.path.abspath(data_path) if is_dir else ""
+  for fpath in _bundle_log_files(data_path, exclude_paths):
+    if not report_output.is_regular_file(fpath):
+      continue
     try:
       with open(fpath, "r", encoding="utf-8", errors="replace") as f:
         body = f.read()
     except OSError:
       continue
-    lines.extend(log_envelopes.iter_records(body))
-  return _filter_lines(lines, workload_filter)
+    recs, is_unreadable = log_envelopes.extract_file_records(body)
+    if is_unreadable:
+      label = (
+          os.path.relpath(fpath, top) if is_dir else os.path.basename(data_path)
+      )
+      unreadable.append(label)
+      continue
+    lines.extend(recs)
+  return _filter_lines(lines, workload_filter), unreadable
+
+
+def extract_lines_from_bundle(
+    data_path: str,
+    workload_filter: str,
+    exclude_paths: frozenset[str] = frozenset(),
+) -> list[str]:
+  """Reads and normalises log records from a file or directory of exported logs."""
+  lines, _ = extract_bundle_records(data_path, workload_filter, exclude_paths)
+  return lines
 
 
 _LOG_FACT_PRIORITY = {"logfact": 0, "logerr": 1, "audit": 2}
@@ -304,11 +466,6 @@ class LedgerEntry:
     return combined[:250000]
 
 
-def _load_ledger_lenient(ledger_path: str) -> dict[str, Any]:
-  """The ledger as stored, or a fresh one when the file is missing or unreadable."""
-  return report_output.load_ledger(ledger_path, strict=False)
-
-
 def _merge_discovered_entities(ledger: dict[str, Any], out_json: str) -> None:
   """Marks ClusterQueues / ResourceFlavors named in the logs as referenced and inspected."""
   try:
@@ -335,22 +492,31 @@ def _merge_discovered_entities(ledger: dict[str, Any], out_json: str) -> None:
 
 
 def append_to_ledger(ledger_path: str | None, entry: LedgerEntry) -> None:
-  """Appends trace_logs output and raw log excerpts to the coverage ledger."""
+  """Appends trace_logs output and raw log excerpts to the coverage ledger.
+
+  The read-modify-write runs under the ledger lock
+  (`report_output.mutate_ledger`), so a snapshot run that writes the same
+  ledger at the same time loses no entry.
+
+  Args:
+    ledger_path: Path to the coverage ledger JSON file; falsy skips the write.
+    entry: Output of this run.
+  """
   if not ledger_path:
     return
-  ledger = _load_ledger_lenient(ledger_path)
-  _merge_discovered_entities(ledger, entry.out_json)
-  outputs = ledger.get("tool_outputs", [])
-  outputs.append(entry.tool_output())
-  ledger["tool_outputs"] = outputs[-50:]
-  ledger["raw_bytes_ingested"] = ledger.get("raw_bytes_ingested", 0) + len(
-      entry.out_json.encode("utf-8")
-  )
-  os.makedirs(os.path.dirname(os.path.abspath(ledger_path)), exist_ok=True)
-  tmp_path = f"{ledger_path}.tmp"
-  with open(tmp_path, "w", encoding="utf-8") as f:
-    json.dump(ledger, f, indent=2)
-  os.replace(tmp_path, ledger_path)
+
+  def mutate(ledger: dict[str, Any]) -> None:
+    _merge_discovered_entities(ledger, entry.out_json)
+    outputs = ledger.get("tool_outputs")
+    outputs = list(outputs) if isinstance(outputs, list) else []
+    outputs.append(entry.tool_output())
+    ledger["tool_outputs"] = outputs[-50:]
+    ingested = ledger.get("raw_bytes_ingested")
+    ledger["raw_bytes_ingested"] = (
+        ingested if isinstance(ingested, int) else 0
+    ) + len(entry.out_json.encode("utf-8"))
+
+  report_output.mutate_ledger(ledger_path, mutate, strict=False)
 
 
 # ---------------------------------------------------------------------------
@@ -481,8 +647,46 @@ def _untagged_step(
   return step
 
 
+_MAX_REPORTED_INPUT_WARNINGS = 20
+
+
+def _cap_input_list(
+    items: Sequence[str], limit: int = _MAX_REPORTED_INPUT_WARNINGS
+) -> list[str]:
+  """Bounds `skipped_inputs` / `unreadable_inputs` with an accurate omitted marker."""
+  if len(items) <= limit:
+    return list(items)
+  return list(items[:limit]) + [f"... {len(items) - limit} more omitted"]
+
+
+def _input_warning_step(
+    trim: _DigestTrim,
+    holder: dict[str, Any],
+    key: str,
+    full_items: Sequence[str],
+) -> report_output.TrimStep:
+  """Halves a capped warning list (never below 2) while preserving the omitted count."""
+  state = {"keep": min(len(full_items), _MAX_REPORTED_INPUT_WARNINGS)}
+  total = len(full_items)
+
+  def step(unused_payload: dict[str, Any]) -> bool:
+    if key not in holder or state["keep"] <= 2:
+      return False
+    next_keep = max(2, state["keep"] // 2)
+    if next_keep == state["keep"]:
+      return False
+    state["keep"] = next_keep
+    holder[key] = _cap_input_list(full_items, next_keep)
+    trim.dropped[key] = total - next_keep
+    return True
+
+  return step
+
+
 def _digest_trim_steps(
-    result: dict[str, Any], trim: _DigestTrim
+    result: dict[str, Any],
+    trim: _DigestTrim,
+    raw_inputs: dict[str, list[str]],
 ) -> list[report_output.TrimStep]:
   """Trim steps in shrink order (see `_apply_output_cap`)."""
   diag = trim.diag
@@ -492,6 +696,15 @@ def _digest_trim_steps(
       _schema_step(trim),
       _section_step(trim, "high_priority_verbatim_log_excerpts", result),
       _section_step(trim, "audit_resource_actions", diag),
+      _input_warning_step(
+          trim, result, "skipped_inputs", raw_inputs.get("skipped_inputs", [])
+      ),
+      _input_warning_step(
+          trim,
+          result,
+          "unreadable_inputs",
+          raw_inputs.get("unreadable_inputs", []),
+      ),
   ]
   entities = diag.get("discovered_entities") or {}
   for key in sorted(
@@ -545,11 +758,16 @@ def _apply_output_cap(
   """
   if full_report_file:
     result = {"full_report_file": full_report_file, **result}
+  raw_inputs: dict[str, list[str]] = {}
+  for key in ("skipped_inputs", "unreadable_inputs"):
+    if isinstance(result.get(key), list):
+      raw_inputs[key] = list(result[key])
+      result[key] = _cap_input_list(raw_inputs[key])
   trim = _DigestTrim(diag=result.get("derived_log_diagnostics") or {})
   return report_output.apply_output_cap(
       result,
       max_bytes,
-      _digest_trim_steps(result, trim),
+      _digest_trim_steps(result, trim, raw_inputs),
       note=lambda: _digest_truncation_note(trim, full_report_file, max_bytes),
   )
 
@@ -597,10 +815,7 @@ def _add_source_arguments(parser: argparse.ArgumentParser) -> None:
       default=report_output._env(  # pylint: disable=protected-access
           "GKE_KUEUE_TROUBLESHOOTING_DATA_PATH", "KUEUE_DIAGNOSE_DATA_PATH"
       ),
-      help=(
-          "File or directory with manifests/logs (offline_data, logs_archive),"
-          " or '-' to read exported logs from stdin in logs_archive mode"
-      ),
+      help="File or directory with manifests/logs (offline_data, logs_archive)",
   )
 
 
@@ -659,63 +874,142 @@ def _read_live_lines(
     args: argparse.Namespace,
 ) -> tuple[list[str], ReadError | None]:
   """Reads live controller logs via kubectl or returns a ReadError."""
-  lines = extract_lines_from_live(
-      args.workload, args.tail, args.kueue_namespace
+  raw_lines, kubectl_error = _live_log_lines(args.tail, args.kueue_namespace)
+  lines = _filter_lines(raw_lines, args.workload)
+  if lines:
+    return lines, None
+  namespace_hint = (
+      "Check `kubectl get deploy -A | grep kueue` and pass"
+      " --kueue-namespace; or export logs to a file and use --mode"
+      " logs_archive."
   )
-  if not lines:
+  if not kubectl_error:
     return [], (
         (
             "no controller log lines read from"
             " deployment/kueue-controller-manager in namespace"
             f" {args.kueue_namespace!r}"
         ),
-        (
-            "Check `kubectl get deploy -A | grep kueue` and pass"
-            " --kueue-namespace; or export logs to a file and use --mode"
-            " logs_archive."
-        ),
+        namespace_hint,
     )
-  return lines, None
+  access_hint = (
+      "Check that kubectl is installed, that `kubectl config current-context`"
+      " is reachable and that the account may read pods/log in that"
+      " namespace; or export logs to a file and pass --mode logs_archive."
+  )
+  return [], (
+      (
+          "kubectl logs deployment/kueue-controller-manager in namespace"
+          f" {args.kueue_namespace!r} failed: {kubectl_error}"
+      ),
+      namespace_hint if "(NotFound)" in kubectl_error else access_hint,
+  )
 
 
 def _is_static_bundle(mode: str, data_path: str) -> bool:
   """An offline bundle made of manifests only (no logs to read is not an error)."""
-  return (
-      mode == "offline_data"
-      and os.path.isdir(data_path)
-      and any(
-          fn.endswith((".yaml", ".yml", ".json"))
-          for fn in os.listdir(data_path)
+  if mode != "offline_data" or not os.path.isdir(data_path):
+    return False
+  for _, _, files in os.walk(data_path):
+    if any(fn.lower().endswith((".yaml", ".yml", ".json")) for fn in files):
+      return True
+  return False
+
+
+def _exclude_paths_for(args: argparse.Namespace) -> frozenset[str]:
+  """Paths owned by the script itself (such as the active ledger) to skip."""
+  ledger_path = getattr(args, "ledger_path", "")
+  if not ledger_path:
+    return frozenset()
+  return frozenset({os.path.abspath(ledger_path)})
+
+
+@dataclasses.dataclass(frozen=True)
+class _ArchiveReadResult:
+  lines: list[str]
+  error: ReadError | None = None
+  skipped: tuple[str, ...] = ()
+  unreadable: tuple[str, ...] = ()
+
+
+def _warn_unread_inputs(
+    data_path: str, skipped: list[str], unreadable: list[str]
+) -> None:
+  """Logs actionable warnings to stderr for skipped symlinks or unreadable JSON files."""
+  if skipped:
+    sys.stderr.write(
+        f"warning: {len(skipped)} log input(s) under {data_path!r} are"
+        " symlinks or not regular files and were not read:"
+        f" {', '.join(skipped[:5])}. Verify their targets before passing a"
+        " trusted regular log file via --data-path or re-exporting them as"
+        " regular files.\n"
+    )
+  if unreadable:
+    sys.stderr.write(
+        f"warning: {len(unreadable)} log input(s) under {data_path!r} could"
+        " not be parsed as valid JSON/log records (for example truncated or"
+        f" concatenated JSON arrays): {', '.join(unreadable[:5])}. Write each"
+        " export to its own file in the directory and pass the directory via"
+        " --data-path.\n"
+    )
+
+
+def _read_archive_result(args: argparse.Namespace) -> _ArchiveReadResult:
+  """Reads exported or bundled log records plus skipped/unreadable diagnostics."""
+  data_path = args.data_path
+  is_stdin = args.mode == "logs_archive" and data_path == "-"
+  if not data_path or (not is_stdin and not os.path.exists(data_path)):
+    return _ArchiveReadResult(
+        [],
+        (
+            f"data path not found: {data_path!r}",
+            (
+                "Pass --data-path <file or directory with exported logs> (see"
+                " references/log-sources.md)."
+            ),
+        ),
+    )
+  exclude = _exclude_paths_for(args)
+  lines, unreadable = extract_bundle_records(data_path, args.workload, exclude)
+  skipped = [] if is_stdin else skipped_log_inputs(data_path, exclude)
+  _warn_unread_inputs(data_path, skipped, unreadable)
+  if not lines and (is_stdin or not _is_static_bundle(args.mode, data_path)):
+    notes: list[str] = []
+    if skipped:
+      notes.append(f"{len(skipped)} symlinked or non-regular input(s) skipped")
+    if unreadable:
+      notes.append(
+          f"{len(unreadable)} unreadable JSON input(s): "
+          + ", ".join(unreadable[:5])
       )
-  )
+    suffix = f" ({'; '.join(notes)})" if notes else ""
+    next_step = (
+        "Supported shapes: Kueue controller JSON lines, audit.k8s.io/v1"
+        " events, Kubernetes Events, cloud-logging / collector envelopes"
+        " (JSON array or JSONL). Check the export is not empty."
+    )
+    if unreadable:
+      next_step = (
+          "One or more files contained broken or concatenated JSON exports."
+          " Write each export to its own file in a directory (never append"
+          " JSON arrays into one file) and pass the directory via --data-path"
+          " (see references/log-sources.md)."
+      )
+    return _ArchiveReadResult(
+        [],
+        (f"no log records recognised under {data_path!r}{suffix}", next_step),
+        tuple(skipped),
+        tuple(unreadable),
+    )
+  return _ArchiveReadResult(lines, None, tuple(skipped), tuple(unreadable))
 
 
 def _read_archive_lines(
     args: argparse.Namespace,
 ) -> tuple[list[str], ReadError | None]:
-  """Reads exported or bundled log records from `--data-path` (or `-` stdin)."""
-  data_path = args.data_path
-  is_stdin = args.mode == "logs_archive" and data_path == "-"
-  if not data_path or (not is_stdin and not os.path.exists(data_path)):
-    return [], (
-        f"data path not found: {data_path!r}",
-        (
-            "Pass --data-path <file or directory with exported logs> (or"
-            " --data-path - in logs_archive mode; see"
-            " references/log-sources.md)."
-        ),
-    )
-  lines = extract_lines_from_bundle(data_path, args.workload)
-  if not lines and (is_stdin or not _is_static_bundle(args.mode, data_path)):
-    return [], (
-        f"no log records recognised under {data_path!r}",
-        (
-            "Supported shapes: Kueue controller JSON lines, audit.k8s.io/v1"
-            " events, Kubernetes Events, cloud-logging / collector envelopes"
-            " (JSON array or JSONL). Check the export is not empty."
-        ),
-    )
-  return lines, None
+  """Reads exported or bundled log records from `--data-path`."""
+  res = _read_archive_result(args)
+  return res.lines, res.error
 
 
 def read_lines(args: argparse.Namespace) -> tuple[list[str], ReadError | None]:
@@ -733,16 +1027,61 @@ def read_lines(args: argparse.Namespace) -> tuple[list[str], ReadError | None]:
   return _read_archive_lines(args)
 
 
+def _empty_bundle_payload(
+    skipped: Sequence[str], unreadable: Sequence[str], max_bytes: int = 0
+) -> dict[str, Any]:
+  """Builds the empty-bundle JSON payload, keeping warning lists within `max_bytes`."""
+  empty = dict(_EMPTY_BUNDLE_RESULT)
+  reasons: list[str] = []
+  if skipped:
+    reasons.append(
+        f"{len(skipped)} log input(s) are symlinks or not regular files"
+    )
+  if unreadable:
+    reasons.append(
+        f"{len(unreadable)} log input(s) could not be parsed as valid"
+        " JSON/log records"
+    )
+  if reasons:
+    empty["note"] = (
+        "; ".join(reasons)
+        + " and were not read, so log evidence is not determinable from this"
+        " run; verify symlink targets or re-export each filter to its own"
+        " regular file before rerunning."
+    )
+  limit = _MAX_REPORTED_INPUT_WARNINGS
+  while True:
+    if skipped:
+      empty["skipped_inputs"] = _cap_input_list(skipped, limit)
+    if unreadable:
+      empty["unreadable_inputs"] = _cap_input_list(unreadable, limit)
+    if (
+        max_bytes <= 0
+        or limit <= 2
+        or len(json.dumps(empty, indent=2).encode("utf-8")) <= max_bytes
+    ):
+      return empty
+    limit = max(2, limit // 2)
+
+
 def run(args: argparse.Namespace) -> int:
   """Executes `trace_logs` end-to-end for parsed CLI arguments."""
   report_output.apply_ignore_namespaces(args)
   report_output.apply_no_remote_schema(args)
   report_output.apply_kueue_namespace(args)
-  lines, error = read_lines(args)
+  if args.mode == "live":
+    lines, error = _read_live_lines(args)
+    skipped: Sequence[str] = ()
+    unreadable: Sequence[str] = ()
+  else:
+    archive = _read_archive_result(args)
+    lines, error = archive.lines, archive.error
+    skipped, unreadable = archive.skipped, archive.unreadable
   if error:
     return _emit_error(*error)
   if not lines:
-    print(json.dumps(_EMPTY_BUNDLE_RESULT, indent=2))
+    empty = _empty_bundle_payload(skipped, unreadable, args.max_output_bytes)
+    print(json.dumps(empty, indent=2))
     return 0
   vinfo = kueue_schema.detect_target_kueue_version(
       mode=args.mode,
@@ -753,6 +1092,10 @@ def run(args: argparse.Namespace) -> int:
       kueue_namespace=args.kueue_namespace,
   )
   full_result = compress_timeline(lines, version_info=vinfo)
+  if skipped:
+    full_result["skipped_inputs"] = list(skipped)
+  if unreadable:
+    full_result["unreadable_inputs"] = list(unreadable)
   tag_log_facts(full_result, args.ledger_path)
   full_json = json.dumps(full_result, indent=2)
   report_file = report_output.write_full_report(

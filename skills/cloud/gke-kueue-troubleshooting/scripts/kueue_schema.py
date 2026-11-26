@@ -17,8 +17,9 @@ Loads the schema for the exact detected version from the first available source:
   1. `CustomResourceDefinition` objects shipped inside the support bundle
   (`offline_data`).
   2. The live cluster's CRDs (`kubectl get crd`) — default in `live` mode; the
-  cluster
-     is the authoritative schema for the release it runs, nothing is downloaded.
+     cluster is the authoritative CRD schema for the release it runs (while
+     `KueueConfiguration` is fetched from its reference docs unless cached or
+     `--no-remote-schema` is set).
   3. A local Kueue checkout, when present (`git archive <tag>` via
      `GKE_KUEUE_TROUBLESHOOTING_KUEUE_REPO`).
   4. The upstream GitHub release (`releases/download/<tag>/manifests.yaml`),
@@ -64,7 +65,7 @@ import re
 import subprocess
 import sys
 import tarfile
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 import urllib.request
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -232,15 +233,17 @@ def _storage_version(crd_docs: list[dict[str, Any]], kind: str) -> str:
 
 
 def _load_schema_from_git_tag(
-    git_tag: str, preferred_short_ver: str = ""
+    git_tag: str, preferred_short_ver: str = "", config_short_ver: str = ""
 ) -> tuple[dict[str, Any] | None, str]:
   """Extracts CRDs for `git_tag` from a local Kueue checkout (cached)."""
   if not git_tag or not _SAFE_RELEASE_TAG_RE.fullmatch(git_tag):
     return None, ""
   eff_ver = preferred_short_ver or "auto"
+  cfg_ver = registry.safe_tag(config_short_ver or eff_ver)
   cache_file = os.path.join(
       schema_cache_dir(),
-      f"crd_schema_checkout_{registry.safe_tag(git_tag)}_{eff_ver}.json",
+      f"crd_schema_checkout_{registry.safe_tag(git_tag)}_{eff_ver}"
+      f"_cfg-{cfg_ver}.json",
   )
   cached = registry.read_cached_registry(cache_file)
   if cached is not None:
@@ -262,7 +265,9 @@ def _load_schema_from_git_tag(
       or _storage_version(crd_docs, "ClusterQueue")
       or "v1beta2"
   )
-  compiled = registry.compile_crd_docs(crd_docs, target_ver, kcfg_by_ver)
+  compiled = registry.compile_crd_docs(
+      crd_docs, target_ver, kcfg_by_ver, config_short_ver
+  )
   compiled["_config_schema_source"] = "builtin_defaults"
   registry.write_cached_registry(cache_file, compiled, target_ver)
   return compiled, f"local_checkout:{git_tag}"
@@ -439,6 +444,8 @@ def _write_cached_kcfg(
       )
     os.replace(tmp_path, cache_file)
   except OSError:
+    # The cache only saves a download: an unwritable cache directory must not
+    # fail the run, and the tree is fetched again next time.
     pass
 
 
@@ -507,14 +514,55 @@ def _schema_adapters(
   )
 
 
+def _env_mode() -> str:
+  """Data mode set in the environment (`GKE_KUEUE_TROUBLESHOOTING_MODE`), or empty."""
+  return report_output._env(  # pylint: disable=protected-access
+      "GKE_KUEUE_TROUBLESHOOTING_MODE", "KUEUE_DIAGNOSE_MODE"
+  )
+
+
+def _make_kcfg_compiler(
+    release_ver: str, cfg_short: str, short_api: str, allow_remote_fetch: bool
+) -> Callable[[list[dict[str, Any]]], dict[str, Any]]:
+  """Builds a callback that compiles CRD docs together with `KueueConfiguration`."""
+
+  def _with_kcfg(crds: list[dict[str, Any]]) -> dict[str, Any]:
+    kcfg, kcfg_src = load_kcfg_for_release(
+        release_ver, cfg_short, allow_remote_fetch
+    )
+    compiled = registry.compile_crd_docs(
+        crds, short_api, {cfg_short: kcfg} if kcfg else None, cfg_short
+    )
+    compiled["_config_schema_source"] = kcfg_src or "builtin_defaults"
+    return compiled
+
+  return _with_kcfg
+
+
 def load_schema_for_version(
     version_info: dict[str, Any] | None = None,
     raw_items: list[dict[str, Any]] | None = None,
     load_live_crds: bool | None = None,
     allow_remote_fetch: bool | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-  """Loads the CRD and `KueueConfiguration` schema matching `version_info`."""
-  vinfo = dict(version_info or detect_target_kueue_version(raw_items=raw_items))
+  """Loads the CRD and `KueueConfiguration` schema matching `version_info`.
+
+  Args:
+    version_info: Optional pre-detected Kueue version metadata mapping.
+    raw_items: Optional Kubernetes object list used when detecting the version.
+    load_live_crds: Whether to query live cluster CRDs; defaults from mode.
+    allow_remote_fetch: Whether remote release fetching is allowed.
+
+  Returns:
+    `(schema_dict, version_info_dict)` for the resolved Kueue release.
+  """
+  env_mode = _env_mode()
+  vinfo = dict(
+      version_info
+      or detect_target_kueue_version(
+          mode=env_mode or "live", raw_items=raw_items
+      )
+  )
   short_api = vinfo.get("short_api_version") or _normalize_short_api_version(
       vinfo.get("api_version", "v1beta2")
   )
@@ -523,32 +571,22 @@ def load_schema_for_version(
       or short_api
   )
   release_ver = str(vinfo.get("release_version") or "").strip()
-  env_mode = report_output._env(  # pylint: disable=protected-access
-      "GKE_KUEUE_TROUBLESHOOTING_MODE", "KUEUE_DIAGNOSE_MODE"
-  )
   mode = str(vinfo.get("mode") or env_mode or "")
   if load_live_crds is None:
     load_live_crds = mode == "live"
   if allow_remote_fetch is None:
     allow_remote_fetch = remote_schema_allowed()
-
-  def _with_kcfg(crds: list[dict[str, Any]]) -> dict[str, Any]:
-    kcfg, kcfg_src = load_kcfg_for_release(
-        release_ver, cfg_short, allow_remote_fetch
-    )
-    compiled = registry.compile_crd_docs(
-        crds, short_api, {cfg_short: kcfg} if kcfg else None
-    )
-    compiled["_config_schema_source"] = kcfg_src or "builtin_defaults"
-    return compiled
-
+  with_kcfg = _make_kcfg_compiler(
+      release_ver, cfg_short, short_api, allow_remote_fetch
+  )
   request = sources.SchemaRequest(
       short_api=short_api,
       release_ver=release_ver,
       raw_items=[it for it in raw_items or [] if isinstance(it, dict)],
       load_live_crds=load_live_crds,
       allow_remote_fetch=allow_remote_fetch,
-      adapters=_schema_adapters(_with_kcfg),
+      adapters=_schema_adapters(with_kcfg),
+      config_short=cfg_short,
   )
   result = sources.resolve_schema(request)
   vinfo["schema_source"] = result.source
@@ -611,7 +649,7 @@ def _explain_kind(
     root_key: str, kind_entry: dict[str, Any], resolved_vinfo: dict[str, Any]
 ) -> dict[str, Any]:
   """Formats the top-level schema explanation dict for `root_key`."""
-  return {
+  out = {
       "detected_kueue_version": resolved_vinfo,
       "kind": root_key,
       "apiVersion": kind_entry.get("apiVersion"),
@@ -619,18 +657,104 @@ def _explain_kind(
       "top_level_spec_fields": kind_entry.get("top_level_spec_fields"),
       "spec_schema": kind_entry.get("spec_schema", {}),
   }
+  if "nested_fields" in kind_entry:
+    out["nested_fields"] = kind_entry["nested_fields"]
+  return out
 
 
-def _walk_spec_schema(spec_schema: Any, segments: list[str]) -> tuple[Any, str]:
-  """Descends `segments` through a compiled spec tree."""
-  curr = spec_schema
+def _field_tree(kind_entry: dict[str, Any]) -> dict[str, Any]:
+  """The entry's fields as a `{name: {"fields": ...}}` tree.
+
+  A CRD entry already carries that shape in `spec_schema`. `KueueConfiguration`
+  has no `spec`: its top-level names and the `nested_fields` tree (plain nested
+  dicts, `{}` for a leaf or an unexpanded type) are converted here.
+
+  Args:
+    kind_entry: Compiled registry entry of one Kind.
+
+  Returns:
+    The field tree `_walk_spec_schema` descends.
+  """
+  if "nested_fields" not in kind_entry:
+    return kind_entry.get("spec_schema") or {}
+
+  def _convert(plain: Any) -> dict[str, Any]:
+    if not isinstance(plain, dict):
+      return {}
+    return {
+        name: {"fields": _convert(sub)} if sub else {}
+        for name, sub in plain.items()
+    }
+
+  tree = _convert(kind_entry.get("nested_fields"))
+  for name in kind_entry.get("top_level_spec_fields") or []:
+    tree.setdefault(name, {})
+  return tree
+
+
+def _walk_spec_schema(
+    spec_schema: Any, segments: list[str]
+) -> tuple[Any, str, str]:
+  """Descends `segments` through the `fields` / `item_fields` of a field tree.
+
+  Only those two keys hold child fields; `type`, `summary`, `enum` and
+  `depth_limited` describe the field itself and are never treated as children.
+
+  Args:
+    spec_schema: Field tree as returned by `_field_tree`.
+    segments: Field names below the Kind (without `spec`).
+
+  Returns:
+    `(node, missing, reason)`. On success `node` is the entry of the last
+    segment and `missing` is empty. Otherwise `missing` is the first segment
+    that could not be resolved and `reason` is `not_found` (`node` is the dict
+    of its valid siblings), `depth_limited` (the parent has sub-fields the
+    compiled tree does not keep) or `no_sub_fields` (the parent is a scalar, a
+    map or an unexpanded type; `node` is the parent's entry in both cases).
+  """
+  node: Any = {"fields": spec_schema if isinstance(spec_schema, dict) else {}}
   for seg in segments:
-    if isinstance(curr, dict) and seg in curr:
-      node = curr[seg]
-      curr = node.get("fields") or node.get("item_fields") or node
-    else:
-      return curr, seg
-  return curr, ""
+    children = node.get("fields") or node.get("item_fields")
+    if not isinstance(children, dict) or not children:
+      reason = "depth_limited" if node.get("depth_limited") else "no_sub_fields"
+      return node, seg, reason
+    if not isinstance(children.get(seg), dict):
+      return children, seg, "not_found"
+    node = children[seg]
+  return node, "", ""
+
+
+def _unresolved_field(
+    node: Any, missing: str, reason: str, where: str
+) -> dict[str, Any]:
+  """Error keys for a path segment `_walk_spec_schema` could not resolve."""
+  if reason == "not_found":
+    return {
+        "error": f"Field '{missing}' not found under {where}",
+        "valid_sibling_fields": sorted(node),
+    }
+  if reason == "depth_limited":
+    return {
+        "error": (
+            f"Field '{missing}' is below the compiled schema depth"
+            f" ({registry.SPEC_TREE_DEPTH} levels under spec) for {where};"
+            " it is neither confirmed nor ruled out"
+        ),
+        "depth_limited": True,
+        "next_step": (
+            "Read the field from the CustomResourceDefinition itself"
+            " (`kubectl explain <resource>.spec.<path>` on the cluster, or the"
+            " release's CRD manifest)."
+        ),
+    }
+  return {
+      "error": (
+          f"Field '{missing}' cannot be resolved under {where}: its parent"
+          f" (type {node.get('type') or 'not expanded'}) has no named"
+          " sub-fields in the schema"
+      ),
+      "valid_sibling_fields": [],
+  }
 
 
 def _explain_path(
@@ -642,8 +766,8 @@ def _explain_path(
   """Resolves a dotted field path under `root_key` in `kind_entry`."""
   parts = [p for p in query.strip().split(".") if p]
   search_parts = parts[2:] if parts[1] == "spec" else parts[1:]
-  node, missing = _walk_spec_schema(
-      kind_entry.get("spec_schema", {}), search_parts
+  node, missing, reason = _walk_spec_schema(
+      _field_tree(kind_entry), search_parts
   )
   out: dict[str, Any] = {
       "detected_kueue_version": resolved_vinfo,
@@ -651,17 +775,14 @@ def _explain_path(
       "apiVersion": kind_entry.get("apiVersion"),
       "queried_path": query,
   }
-  if missing:
-    out["error"] = (
-        f"Field '{missing}' not found under {root_key} in"
-        f" {kind_entry.get('apiVersion')} (release"
-        f" {resolved_vinfo.get('release_version')})"
-    )
-    out["valid_sibling_fields"] = (
-        sorted(node.keys()) if isinstance(node, dict) else []
-    )
-  else:
+  if not missing:
     out["schema"] = node
+    return out
+  where = (
+      f"{root_key} in {kind_entry.get('apiVersion')} (release"
+      f" {resolved_vinfo.get('release_version')})"
+  )
+  out.update(_unresolved_field(node, missing, reason, where))
   return out
 
 
@@ -689,6 +810,9 @@ def explain_schema_path(
         "available_kinds": available_kinds,
     }
   kind_lookup = {k.lower(): k for k in available_kinds}
+  if "KueueConfiguration" in schema:
+    # The document's own `kind:` is `Configuration`.
+    kind_lookup.setdefault("configuration", "KueueConfiguration")
   root_key = kind_lookup.get(parts[0].lower())
   if not root_key:
     return {

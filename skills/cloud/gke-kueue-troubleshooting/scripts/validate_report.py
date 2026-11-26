@@ -4,8 +4,10 @@
 Audits a draft '### Diagnostic Summary' against the coverage ledger written by
 `snapshot.py` / `trace_logs.py` and the schema of the detected Kueue release
 (`kueue_schema.py`):
-  1. All required sections exist (`### Diagnostic Summary`, `#### Observations`,
-     `#### Root Cause`, `#### Ruled Out`, `#### Remediation`).
+  1. All required sections exist and are not empty (`### Diagnostic Summary`,
+     `#### Scope`, `#### Observations`, `#### Root Cause`, `#### Ruled Out`,
+     `#### Remediation`). Titles are matched after normalisation (case, a
+     trailing `:`, singular/plural), by the same parser every gate uses.
   2. All referenced Kueue graph objects (`Cohort`, `ClusterQueue`,
      `ResourceFlavor`, `AdmissionCheck`) were inspected or named.
   3. Quoted evidence in `#### Observations` matches actual tool outputs (zero
@@ -17,13 +19,18 @@ Audits a draft '### Diagnostic Summary' against the coverage ledger written by
      (`remediation_gaps`).
      A report with no RC must open at least one `OQ<n>` under `#### Open
      Questions`.
-  5. Open Questions follow a fixed grammar — `Basis:` (missing data |
-     indistinguishable hypotheses | owner intent), `Candidates:`,
-     `Discriminator:`, read-only `Collect:` (`open_question_gaps`).
-  6. `kubectl` commands in `#### Remediation` target resource kinds that exist
+  5. Open Questions (`OQ<n>`) keep read-only commands in every `Collect:` part
+     (`open_question_gaps`); a conditional fix under its own
+     `Conditional remediation:` / `Fix:` label is not part of `Collect:`.
+  6. Controller configuration remediations use `kind: Configuration` and avoid
+     partial `kubectl patch` of `controller_manager_config.yaml`
+     (`config_remediation_errors`).
+  7. `kubectl` commands in `#### Remediation` target resource kinds that exist
      (`unknown_kubectl_resources`).
-  7. YAML manifests in `#### Remediation` conform to the detected API version's
+  8. YAML manifests in `#### Remediation` conform to the detected API version's
      field names (`schema_warnings`).
+  9. Advisory only (does not fail `passed`): root causes without a rejection or
+     terminal signal in `#### Observations` (`unsupported_root_causes`).
 
 All checks are structural: the validator never judges whether a conclusion is
 right, only whether the report is complete, traceable and executable.
@@ -66,7 +73,9 @@ _OPEN_QUESTION_HINT = (
     " by indented `Basis: missing data | indistinguishable hypotheses | owner"
     " intent — <specifics>`, `Candidates: (a) ... (b) ...`, `Discriminator:"
     " <observation that decides>`, `Collect: <read-only commands / data /"
-    " question to the owner>`."
+    " question to the owner>`. `Collect:` holds read-only commands only: put"
+    " a fix that depends on the answer with its candidate, or on its own"
+    " `Conditional remediation:` line."
 )
 _WEAK_RULED_OUT_HINT = (
     "A Ruled Out bullet must state why the fact cannot be blocking this"

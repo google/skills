@@ -31,6 +31,7 @@ import dataclasses
 import json
 import os
 import re
+import stat
 import subprocess
 from typing import Any, Callable
 
@@ -41,7 +42,7 @@ _SEMVER_SUFFIX = (
     r"(?:\+[a-zA-Z0-9_]+(?:[.-][a-zA-Z0-9_]+)*)?"
 )
 _IMAGE_TAG_RE = re.compile(
-    rf"kueue[^:]*:(v[0-9]+\.[0-9]+\.[0-9]+{_SEMVER_SUFFIX})"
+    rf"kueue[^:\s]{{0,128}}:(v[0-9]+\.[0-9]+\.[0-9]+{_SEMVER_SUFFIX})"
 )
 _LABEL_VERSION_RE = re.compile(
     rf"^v?[0-9]+\.[0-9]+(?:\.[0-9]+)?{_SEMVER_SUFFIX}$"
@@ -53,7 +54,7 @@ _CONFIGMAP_API_RE = re.compile(
     r"apiVersion:\s*config\.kueue\.x-k8s\.io/(v1(?:alpha|beta)[0-9]+)"
 )
 _GIT_VERSION_RE = re.compile(
-    r'"gitVersion"\s*:\s*"(v[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9._]+)?)"'
+    rf'"gitVersion"\s*:\s*"(v[0-9]+\.[0-9]+\.[0-9]+{_SEMVER_SUFFIX})"'
 )
 _LOG_API_RE = re.compile(
     r"(?:(?<!config\.)kueue\.x-k8s\.io/|io\.x-k8s\.kueue\.)(v1beta[12])\b"
@@ -111,9 +112,17 @@ def _label_release(labels: dict[str, Any], *keys: str) -> str:
 def _container_images(pod_spec: dict[str, Any]) -> list[str]:
   return [
       str(c.get("image") or "")
-      for c in pod_spec.get("containers") or []
-      if isinstance(c, dict)
+      for c in k8s_objects.dict_items(pod_spec.get("containers"))
   ]
+
+
+def _pod_spec(item: dict[str, Any], kind: str) -> dict[str, Any]:
+  """Pod spec of a Deployment (`spec.template.spec`) or a Pod (`spec`); `{}` for any other shape."""
+  spec = k8s_objects.spec(item)
+  if kind != "Deployment":
+    return spec
+  template = k8s_objects.as_dict(spec.get("template"))
+  return k8s_objects.as_dict(template.get("spec"))
 
 
 @dataclasses.dataclass(frozen=True)
@@ -192,10 +201,9 @@ def _controller_workload_clues(
     item: dict[str, Any], kind: str
 ) -> list[VersionClue]:
   """Label then image-tag clues from a `kueue-controller-manager` Deployment or Pod."""
-  meta = item.get("metadata") or {}
   clues: list[VersionClue] = []
   lbl_release = _label_release(
-      meta.get("labels") or {}, "app.kubernetes.io/version", "version"
+      k8s_objects.labels(item), "app.kubernetes.io/version", "version"
   )
   if lbl_release:
     clues.append(
@@ -203,13 +211,7 @@ def _controller_workload_clues(
             RELEASE_VERSION, lbl_release, f"{kind.lower()}_label:{lbl_release}"
         )
     )
-  if kind == "Deployment":
-    pod_spec = ((item.get("spec") or {}).get("template") or {}).get(
-        "spec"
-    ) or {}
-  else:
-    pod_spec = item.get("spec") or {}
-  for img in _container_images(pod_spec):
+  for img in _container_images(_pod_spec(item, kind)):
     m_img = _IMAGE_TAG_RE.search(img)
     if m_img:
       clues.append(
@@ -224,7 +226,8 @@ def _controller_workload_clues(
 
 def _configmap_clue(item: dict[str, Any]) -> list[VersionClue]:
   cfg_text = str(
-      (item.get("data") or {}).get(k8s_objects.KUEUE_CONFIG_KEY) or ""
+      k8s_objects.as_dict(item.get("data")).get(k8s_objects.KUEUE_CONFIG_KEY)
+      or ""
   )
   m_cfg = _CONFIGMAP_API_RE.search(cfg_text)
   if not m_cfg:
@@ -279,10 +282,18 @@ def detect_from_objects(ctx: VersionDetection) -> list[VersionClue]:
       continue
     kind = str(it.get("kind") or "")
     api_ver = str(it.get("apiVersion") or "")
-    name = str((it.get("metadata") or {}).get("name") or "")
+    name = str(k8s_objects.metadata(it).get("name") or "")
     if kind in ("Deployment", "Pod") and "kueue-controller-manager" in name:
       clues.extend(_controller_workload_clues(it, kind))
-    if kind in _KUEUE_OBJECT_KINDS and "kueue.x-k8s.io/" in api_ver:
+    api_group, api_sep, _ = api_ver.partition("/")
+    if (
+        kind in _KUEUE_OBJECT_KINDS
+        and api_sep
+        and (
+            api_group == "kueue.x-k8s.io"
+            or api_group.endswith(".kueue.x-k8s.io")
+        )
+    ):
       tally.observe(it, kind, api_ver)
     if kind == "ConfigMap" and name == "kueue-manager-config":
       clues.extend(_configmap_clue(it))
@@ -293,12 +304,22 @@ def detect_from_objects(ctx: VersionDetection) -> list[VersionClue]:
 def _bundle_log_head(data_path: str) -> list[str]:
   """The first lines of the controller log files a bundle may ship, in the fixed candidate order."""
   lines: list[str] = []
-  for candidate_log in (
-      os.path.join(data_path, "logs", "kueue-controller-manager.log"),
+  root_real = os.path.realpath(data_path)
+  logs_dir = os.path.join(data_path, "logs")
+  candidates = [
       os.path.join(data_path, "kueue-controller-manager.log"),
       os.path.join(data_path, "kueue_logs.jsonl"),
-  ):
-    if not os.path.isfile(candidate_log):
+  ]
+  if not os.path.islink(logs_dir):
+    candidates.insert(0, os.path.join(logs_dir, "kueue-controller-manager.log"))
+  for candidate_log in candidates:
+    try:
+      if not stat.S_ISREG(os.lstat(candidate_log).st_mode):
+        continue
+      cand_real = os.path.realpath(candidate_log)
+      if os.path.commonpath([root_real, cand_real]) != root_real:
+        continue
+    except (OSError, ValueError):
       continue
     try:
       with open(candidate_log, "r", encoding="utf-8", errors="replace") as f:
@@ -308,6 +329,7 @@ def _bundle_log_head(data_path: str) -> list[str]:
             break
           lines.append(ln)
     except OSError:
+      # An unreadable candidate is skipped; the next one may still be readable.
       pass
   return lines
 
@@ -337,7 +359,7 @@ def detect_from_logs(ctx: VersionDetection) -> list[VersionClue]:
                 f"controller_log:gitVersion={m_git.group(1)}",
             )
         )
-    if not seen_config and "config.kueue.x-k8s.io/" in ln:
+    if not seen_config:
       m_c = _CONFIG_API_RE.search(ln)
       if m_c:
         seen_config = True
@@ -373,12 +395,17 @@ def _live_controller_deployment(namespace: str) -> dict[str, Any] | None:
         ],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         check=False,
         timeout=_LIVE_DEPLOYMENT_TIMEOUT_SECONDS,
     )
     if res.returncode == 0 and res.stdout.strip():
-      return json.loads(res.stdout)
-  except (OSError, subprocess.SubprocessError, json.JSONDecodeError):
+      dep = json.loads(res.stdout)
+      return dep if isinstance(dep, dict) else None
+  except (OSError, subprocess.SubprocessError, ValueError):
+    # No kubectl, no access or no JSON (`json.JSONDecodeError` is a
+    # ValueError): the live Deployment is not a source.
     pass
   return None
 
@@ -392,8 +419,7 @@ def detect_from_live_deployment(ctx: VersionDetection) -> list[VersionClue]:
     return []
   clues: list[VersionClue] = []
   lbl_release = _label_release(
-      (dep.get("metadata") or {}).get("labels") or {},
-      "app.kubernetes.io/version",
+      k8s_objects.labels(dep), "app.kubernetes.io/version"
   )
   if lbl_release:
     clues.append(
@@ -401,8 +427,7 @@ def detect_from_live_deployment(ctx: VersionDetection) -> list[VersionClue]:
             RELEASE_VERSION, lbl_release, f"live_deployment_label:{lbl_release}"
         )
     )
-  pod_spec = ((dep.get("spec") or {}).get("template") or {}).get("spec") or {}
-  for img in _container_images(pod_spec):
+  for img in _container_images(_pod_spec(dep, "Deployment")):
     m_img = _IMAGE_TAG_RE.search(img)
     if m_img:
       clues.append(
@@ -490,7 +515,8 @@ def detect_target_kueue_version(
       kueue_namespace=(
           kueue_namespace
           or os.getenv("GKE_KUEUE_TROUBLESHOOTING_NAMESPACE", "").strip()
-          or os.getenv("KUEUE_DIAGNOSE_NAMESPACE", "kueue-system")
+          or os.getenv("KUEUE_DIAGNOSE_NAMESPACE", "").strip()
+          or "kueue-system"
       ),
   )
   return run_version_detection(inputs)

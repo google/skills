@@ -32,11 +32,12 @@ MILESTONE_RE = re.compile(
 
 HIGH_PRIORITY_RE = re.compile(
     r"strict decoding error|unknown field|backoffBaseSeconds"
-    r"|ProvisioningRequest.*(?:not"
+    r"|ProvisioningRequest.{0,400}(?:not"
     r" found|retry|fail|exhausted|expired|reached|not ready)"
     r"|EvictedDueToAdmissionCheck|AdmissionCheckUpdated|UpdatedAdmissionCheck"
     r"|inadmissible|StrictFIFO"
-    r"|insufficient.*quota|couldn't assign flavors|localQueue doesn't exist"
+    r"|insufficient.{0,400}quota|couldn't assign flavors"
+    r"|localQueue doesn't exist"
     r"|PodsReadyTimeout|EvictedDueToPodsReadyTimeout"
     r"|FailedScheduling|Insufficient cpu|no topology"
     r" domains|TopologyAwareScheduling"
@@ -83,7 +84,7 @@ def _milestone_message(msg: str) -> str:
     return msg
   try:
     parsed = json.loads(msg)
-  except json.JSONDecodeError:
+  except (json.JSONDecodeError, RecursionError):
     return msg
   ts = _first_truthy(parsed, ("timestamp", "time", "ts"))
   body = _first_truthy(parsed, ("message", "msg", "textPayload"), default=msg)
@@ -100,7 +101,7 @@ def _milestone_message(msg: str) -> str:
     wl = wl.get("name", "")
   wl_str = f" | workload={wl}" if wl else ""
   reason_str = f" | reason={reason}" if reason else ""
-  note_str = f" | note={note}" if (note and note not in str(body)) else ""
+  note_str = f" | note={note}" if (note and str(note) not in str(body)) else ""
   err_str = f" | error={err}" if err else ""
   return f"{ts} | {body}{reason_str}{wl_str}{note_str}{err_str}"
 
