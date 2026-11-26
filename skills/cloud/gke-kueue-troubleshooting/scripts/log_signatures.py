@@ -37,6 +37,7 @@ class LogSignature:
   mechanism: str  # what the message states, in the documentation's own terms
   next_check: str  # the one read-only check that discriminates the cause
   doc: str = ""  # official upstream documentation page
+  doc_section: str = ""  # exact section title on `doc` (no #anchors)
   src_only: bool = False
 
 
@@ -69,7 +70,8 @@ SIGNATURES: tuple[LogSignature, ...] = (
             " resource requests with ResourceFlavor.spec.nodeLabels and"
             " topologyName of every flavor in the ClusterQueue's resourceGroups"
         ),
-        doc=f"{_DOCS}/concepts/cluster_queue/#resource-groups",
+        doc=f"{_DOCS}/concepts/cluster_queue/",
+        doc_section="Resource Groups",
     ),
     LogSignature(
         key="quota-exceeds-maximum-capacity",
@@ -87,7 +89,8 @@ SIGNATURES: tuple[LogSignature, ...] = (
             "sum the pod sets' requests × count for that resource and compare"
             " with nominalQuota + borrowable cohort quota for the flavor"
         ),
-        doc=f"{_DOCS}/concepts/cluster_queue/#flavors-and-borrowing-semantics",
+        doc=f"{_DOCS}/concepts/cluster_queue/",
+        doc_section="Flavors and borrowing semantics",
     ),
     LogSignature(
         key="quota-temporarily-unavailable",
@@ -108,7 +111,8 @@ SIGNATURES: tuple[LogSignature, ...] = (
             " that flavor and check the preemption policy that would reclaim"
             " quota"
         ),
-        doc=f"{_DOCS}/concepts/cluster_queue/#flavors-and-borrowing-semantics",
+        doc=f"{_DOCS}/concepts/cluster_queue/",
+        doc_section="Flavors and borrowing semantics",
     ),
     LogSignature(
         key="tas-no-fit",
@@ -347,7 +351,11 @@ def scan_signature_text(
 
 
 def _citation(sig: LogSignature) -> str:
-  return f"doc: {sig.doc}" if sig.doc else f"doc: {_DOCS}/concepts/"
+  if not sig.doc:
+    return f"doc: {_DOCS}/concepts/"
+  if sig.doc_section:
+    return f'doc: {sig.doc} (section "{sig.doc_section}")'
+  return f"doc: {sig.doc}"
 
 
 def emit_signature_facts(

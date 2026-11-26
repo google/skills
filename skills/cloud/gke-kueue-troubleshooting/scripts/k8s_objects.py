@@ -3,7 +3,8 @@
 Snapshot objects come from `kubectl -o json` or hand-written bundle manifests
 and may be partial or malformed. Every accessor returns an empty container
 when the field is missing or has the wrong shape, so callers can chain them
-without `isinstance` / `(x or {})` guards. Stdlib only; no project imports.
+without `isinstance` / `(x or {})` guards; `as_text` and `as_int` do the same
+for scalar fields. Stdlib only; no project imports.
 """
 
 from __future__ import annotations
@@ -40,8 +41,34 @@ def dict_items(value: Any) -> list[dict[str, Any]]:
   return [x for x in value if isinstance(x, dict)]
 
 
+def as_text(value: Any) -> str:
+  """Returns `str(value)`, or '' when the value is missing (None); `0` stays '0'."""
+  return "" if value is None else str(value)
+
+
+def as_int(value: Any, default: int = 0) -> int:
+  """Integer value of a count-like field.
+
+  Returns `default` only when the field is missing (None) or is not a number
+  (`"two"`, a list, a boolean), so an explicit `0` stays `0`.
+
+  Args:
+    value: Raw field value as loaded from JSON or YAML.
+    default: Value returned for a missing or non-numeric field.
+
+  Returns:
+    The field as an int, or `default`.
+  """
+  if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+    return default
+  try:
+    return int(value)
+  except (ValueError, OverflowError):
+    return default
+
+
 def kind(obj: Any) -> str:
-  return str(as_dict(obj).get("kind", ""))
+  return as_text(as_dict(obj).get("kind"))
 
 
 def metadata(obj: Any) -> dict[str, Any]:
@@ -49,11 +76,11 @@ def metadata(obj: Any) -> dict[str, Any]:
 
 
 def name(obj: Any) -> str:
-  return str(metadata(obj).get("name", ""))
+  return as_text(metadata(obj).get("name"))
 
 
 def namespace(obj: Any) -> str:
-  return str(metadata(obj).get("namespace", ""))
+  return as_text(metadata(obj).get("namespace"))
 
 
 def ref(obj: Any) -> str:
@@ -121,9 +148,21 @@ def condition_status(obj: Any, type_: str) -> str | None:
 
 
 def has_condition(obj: Any, type_: str, status_value: str = "True") -> bool:
-  """True when any condition of `type_` carries `status_value` (duplicates included)."""
+  """True when any condition of `type_` carries `status_value` (duplicates included).
+
+  The status is compared as text, so an unquoted YAML `status: True` (a
+  boolean after loading) matches `"True"`, as in `condition_status`.
+
+  Args:
+    obj: Kubernetes object mapping.
+    type_: Condition type to look for.
+    status_value: Expected status text.
+
+  Returns:
+    Whether a matching condition exists.
+  """
   return any(
-      c.get("type") == type_ and c.get("status") == status_value
+      c.get("type") == type_ and as_text(c.get("status")) == status_value
       for c in conditions(obj)
   )
 
@@ -154,9 +193,7 @@ def container_statuses(pod: Any) -> list[tuple[str, dict[str, Any]]]:
 def compact_managed_fields(mf_list: Any) -> list[str]:
   """Compacts verbose managedFields into a 1-line attribution summary per manager."""
   summary: list[str] = []
-  for entry in mf_list or []:
-    if not isinstance(entry, dict):
-      continue
+  for entry in dict_items(mf_list):
     manager = entry.get("manager", "unknown")
     operation = entry.get("operation", "Update")
     subresource = entry.get("subresource", "")

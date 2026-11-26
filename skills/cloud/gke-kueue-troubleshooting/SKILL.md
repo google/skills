@@ -2,7 +2,7 @@
 name: gke-kueue-troubleshooting
 description: Diagnose a GKE batch or AI workload (Job, JobSet, LeaderWorkerSet, RayJob, Kubeflow training jobs, or plain Pods) that is pending, suspended, stuck, evicted or misconfigured when Kueue manages it - from a live GKE cluster, a support bundle or exported controller/audit logs. Load it as soon as the investigation shows a Kueue footprint, even if the user never said "Kueue" - anything under kueue.x-k8s.io (labels, Pod scheduling gates, Workload/LocalQueue/ClusterQueue objects and their conditions), kueue-controller-manager events or logs, or a Job with spec.suspend=true together with a Workload object in its namespace. Scripts compact cluster state and logs into verifiable facts and validate the report, while the agent classifies the cause as Kueue configuration, Kueue defect, or outside Kueue. Don't use for workloads with no Kueue footprint (use gke-node-notready, gke-workload-scaling-troubleshooting, gke-ai-troubleshooting-tpu-reservation-stockout, or gke-ai-troubleshooting-jobset-interruption).
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
   category: Containers
 ---
 
@@ -28,19 +28,22 @@ MUST read and follow the instructions in
 ## Prerequisites
 
 - **Tools and cluster access**: Python 3.10+ with `PyYAML` (all diagnostic
-  scripts live in `scripts/` next to this file and require no cloud SDKs). In
-  `live` mode, follow "Before you begin" in
+  scripts live in `scripts/` next to this file and require no cloud SDKs); if
+  `python3 -c "import yaml"` fails, ask the user for approval before running
+  `python3 -m pip install "PyYAML>=6,<7"`, and if the user declines or `pip`
+  fails, stop and tell the user that the scripts require `PyYAML`. In `live`
+  mode, follow "Before you begin" in
   [Deploy a batch system using Kueue](https://docs.cloud.google.com/kubernetes-engine/docs/tutorials/kueue-intro.md.txt)
   to initialize `gcloud` and select the target project, and follow
   [Install kubectl and configure cluster access](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/cluster-access-for-kubectl.md.txt)
   to configure cluster credentials (`offline_data` and `logs_archive` read local
-  files or stdin only).
+  files only).
 - **Cloud Billing and APIs**: For `live` cluster inspection or Cloud Logging
   exports, ensure the project has an active Cloud Billing account and the Google
   Kubernetes Engine API (`container.googleapis.com`) and Cloud Logging API
   (`logging.googleapis.com`) are enabled.
 - **Required IAM roles**: Per
-  [Kubernetes Engine IAM roles and permissions](https://docs.cloud.google.com/iam/docs/roles-permissions/container.md.txt),
+  [Google Kubernetes Engine roles and permissions](https://docs.cloud.google.com/iam/docs/roles-permissions/container.md.txt),
   `live` cluster resource reads require Kubernetes Engine Viewer
   (`roles/container.viewer`), and reading controller pod logs via `kubectl logs`
   (`container.pods.getLogs`) or applying Kueue/cluster fixes requires Kubernetes
@@ -65,18 +68,19 @@ object `apiVersion`s or startup/audit logs, and load the **CRD and
 or confirm the served CRD version before writing remediation YAML.
 
 **Where the schema comes from** (`schema_source` / `config_schema_source`): in
-`live` the cluster's served CRDs are used (`live_cluster_crds`, no downloads);
-in `offline_data` bundled CRD manifests are used if present (`bundled_crds`);
-otherwise release CRDs are read from `GKE_KUEUE_TROUBLESHOOTING_KUEUE_REPO` or
-fetched once from GitHub (`github_release:<tag>`) and cached under
+`live` the cluster's served CRDs are used (`live_cluster_crds`); in
+`offline_data` bundled CRD manifests are used if present (`bundled_crds`);
+otherwise, or if the `live` CRDs cannot be read, release CRDs are read from
+`GKE_KUEUE_TROUBLESHOOTING_KUEUE_REPO` or fetched once from GitHub
+(`github_release:<tag>`) and cached under
 `$XDG_CACHE_HOME/gke-kueue-troubleshooting` (override with
-`GKE_KUEUE_TROUBLESHOOTING_CACHE_DIR`; `--no-remote-schema` or
-`GKE_KUEUE_TROUBLESHOOTING_NO_REMOTE_SCHEMA=1` disables downloads).
-`KueueConfiguration` is not a CRD; its field tree is parsed from the
+`GKE_KUEUE_TROUBLESHOOTING_CACHE_DIR`). `KueueConfiguration` is not a CRD; in
+every mode (`live` included) its field tree is fetched from the
 [KueueConfiguration v1beta2 reference](https://kueue.sigs.k8s.io/docs/reference/kueue-config.v1beta2/)
 or
 [KueueConfiguration v1beta1 reference](https://kueue.sigs.k8s.io/docs/reference/kueue-config.v1beta1/)
-matching `config_api_version` (falling back to `builtin_defaults` offline).
+matching `config_api_version` (else `builtin_defaults`). `--no-remote-schema`
+or `GKE_KUEUE_TROUBLESHOOTING_NO_REMOTE_SCHEMA=1` disables both downloads.
 
 **If `schema_source` is `unavailable`** (`_schema_notice` present): CRD schemas
 are never approximated; only `KueueConfiguration` may fall back to
@@ -95,13 +99,17 @@ Remediation YAML still uses the detected `apiVersion`.
 - `live`: when `kubectl` reaches the cluster.
 - `offline_data`: directory of YAML/JSON manifests (optionally with `logs/`);
   pass `--data-path <dir>`.
-- `logs_archive`: exported logs only (no cluster or manifests); pass
-  `--data-path <file-or-dir>` or pipe a read-only export to `--data-path -`
-  (scoped per [Log sources](references/log-sources.md); never `cat` or page raw
-  log exports into context).
+- `logs_archive`: exported logs only (no cluster or manifests); export to a
+  local file first and pass `--data-path <file-or-dir>` (scoped per
+  [Log sources](references/log-sources.md); never `cat` or page raw log exports
+  into context).
 
-Pass the **same** `--ledger-path <ledger>` to every script call; Step 3
-verifies quotes and schema against it. **Do not read or parse the ledger.**
+Pass the **same** `--ledger-path <ledger>` inside a per-run temporary directory
+to every script call so concurrent runs never collide; Step 3 verifies quotes
+and schema against it. Shell state may not persist between commands: run
+`mktemp -d /tmp/kueue-triage.XXXXXX` once and pass the printed literal absolute
+path (not a shell variable) in every later command. **Do not read or parse the
+ledger.**
 
 **Output contract.** `snapshot.py` and `trace_logs.py` print a **digest ordered
 most-important-first** (`detected_kueue_version`, derived facts,
@@ -112,9 +120,10 @@ for snapshot, 24 KB for logs). The complete output is written to
 saved file, read that saved file once instead of re-running `--action get` or
 `grep`. If the digest ends with `truncated:`, all tagged and coverage facts are
 already above it; to inspect one dropped object, use
-`--action get --kind <kind> --name <name>` (at most **4** `get` calls, never the
-same `kind/name` twice) or read a ≤ 200-line slice of `full_report_file` / raw
-bundle files (at most **twice**). Never read the skill's own Python scripts.
+`--action get --kind <kind> --name <name> --namespace <ns>` (`--namespace` is
+required for namespaced kinds; at most **4** `get` calls, never the same
+`kind/name` twice) or read a ≤ 200-line slice of `full_report_file` / raw bundle
+files (at most **twice**). Never read the skill's own Python scripts.
 
 1. **Step 1 — one-shot snapshot or log timeline (schema attached)**
    - `live` / `offline_data`: run `scripts/snapshot.py` with
@@ -126,12 +135,18 @@ bundle files (at most **twice**). Never read the skill's own Python scripts.
      2 log commands total).
    - `logs_archive`: run
      `scripts/trace_logs.py --mode logs_archive --ledger-path <ledger>` with
-     `--data-path <file-or-dir>` or `--data-path -` first (add
-     `--workload <name>` to focus). Never call `kubectl` in this mode.
+     `--data-path <file-or-dir>` first (add `--workload <name>` to focus).
+     Never call `kubectl` in this mode.
    - **Schema lookup (optional):** `scripts/snapshot.py --action explain` with
      `--kind <Kind[.field.path]> --ledger-path <ledger>`.
-   - **If a script fails:** read the error once, follow `next_step`, and
-     continue with available files without retrying in a loop.
+   - **If a script fails or skips files:** read the error once, follow
+     `next_step`, and continue with available files without retrying in a loop.
+     If `trace_logs.py` reports `skipped_inputs` (symlinks or non-regular files)
+     or `unreadable_inputs` (unparseable or concatenated JSON exports), do not
+     treat those logs as absent from the cluster: tell the user which files were
+     not read (re-export each filter to its own regular file or verify symlink
+     targets per [Log sources](references/log-sources.md)) and record any
+     unresolved gap under `#### Open Questions`.
 
 2. **Step 2 — reason over the facts (the scripts do not reason for you)**
    - Script outputs contain **facts, not conclusions**
@@ -296,7 +311,7 @@ bundle files (at most **twice**). Never read the skill's own Python scripts.
           facts tagged `source side: apiserver` (HTTP 429/503, API Priority and
           Fairness, webhook/etcd timeouts) belong to
           **`Outside Kueue: control plane`** (see
-          [Monitor GKE control plane metrics](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/control-plane-metrics.md.txt)).
+          [Collect and view control plane metrics](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/control-plane-metrics.md.txt)).
      2. **Independent layers → `Mixed`.** If both a Kueue-side blocker and an
         external-layer blocker independently affect the workload(s), set
         `#### Scope` to `Mixed: <layers>`, give each layer its own `RC<n>`, and
@@ -314,9 +329,9 @@ bundle files (at most **twice**). Never read the skill's own Python scripts.
      needed to confirm why a stage failed are absent from both (e.g. a static
      manifest-only bundle or a logs-only archive lacking manifests), do **not**
      assert an unverified guess as a definite `RC<n>`: record `OQ1` under
-     `#### Open Questions` stating what is missing, the candidate explanations,
-     the discriminating observation, the read-only `Collect:` command, and the
-     conditional remediation for each candidate.
+     `#### Open Questions` as `Basis:` (what is missing), `Candidates:` (each
+     with its conditional remediation), `Discriminator:` (the deciding
+     observation), then the read-only `Collect:` command last.
    - **Commit when the evidence decides — do not hedge a decided finding.** When
      runtime evidence (conditions, events, or logs) settles the cause, write a
      definite `RC<n>` under `#### Root Cause` with one concrete fix under
@@ -331,7 +346,7 @@ bundle files (at most **twice**). Never read the skill's own Python scripts.
 3. **Step 3 — evidence and schema validation**
    - Number confirmed root causes `RC1`, `RC2`, … and give a matching
      remediation entry for each `RC<n>` under `#### Remediation` (conditional
-     fixes for unresolved candidates go with their `OQ<n>`):
+     fixes for unresolved candidates go under `Candidates:` of their `OQ<n>`):
      - For a **Kueue configuration** RC: link the official Kueue or GKE
        documentation section from
        [Documentation catalog](references/doc-links.md) alongside the exact
@@ -353,7 +368,7 @@ bundle files (at most **twice**). Never read the skill's own Python scripts.
        controller log evidence, check or file an upstream issue at
        `https://github.com/kubernetes-sigs/kueue/issues` or contact Cloud
        Customer Care per
-       [Getting support for GKE](https://docs.cloud.google.com/kubernetes-engine/docs/getting-support.md.txt),
+       [Get support](https://docs.cloud.google.com/kubernetes-engine/docs/getting-support.md.txt),
        and state the confirmation signal (`Confirm by checking that ...`).
      - For an **Outside Kueue** RC: **never** propose a `ClusterQueue`,
        `ResourceFlavor`, or `KueueConfiguration` patch to mask an external
@@ -366,18 +381,20 @@ bundle files (at most **twice**). Never read the skill's own Python scripts.
        signal** (`Confirm by checking that <object condition> transitions to
        <expected state>`), and for persistent control-plane or hardware issues
        advise contacting Cloud Customer Care per
-       [Getting support for GKE](https://docs.cloud.google.com/kubernetes-engine/docs/getting-support.md.txt).
+       [Get support](https://docs.cloud.google.com/kubernetes-engine/docs/getting-support.md.txt).
    - In `#### Observations`, wrap a multi-word phrase in backticks **only** when
      it is a verbatim substring of tool output (synthesised summaries go in
      plain text).
-   - Save the draft and run `scripts/validate_report.py` with
-     `--draft-file <draft.md> --ledger-path <ledger>`. It checks required
-     headers, `fabricated_quotes`, `remediation_gaps`,
-     `config_remediation_errors`, `unknown_kubectl_resources`, and
-     `schema_warnings`. If it reports an error, fix it and re-run once.
-     `unsupported_root_causes` is advisory: tie any listed `RC<n>` to a
-     rejection/terminal signal in `#### Observations` or move it to
-     `#### Open Questions`; do not re-run the validator for it.
+   - Save the draft beside the ledger and run `scripts/validate_report.py` with
+     `--draft-file <draft.md> --ledger-path <ledger>`. It passes only with
+     `passed: true` (exit 0); exit 2 means `ledger_missing` (wrong ledger path)
+     or a non-empty `missing_headers`, `uninspected_graph_objects`,
+     `fabricated_quotes`, `remediation_gaps`, `open_question_gaps`,
+     `config_remediation_errors`, `unknown_kubectl_resources`, or
+     `schema_warnings`; fix those and re-run once. `unsupported_root_causes` is
+     advisory: tie any listed `RC<n>` to a rejection/terminal signal in
+     `#### Observations` or move it to `#### Open Questions`; do not re-run the
+     validator for it.
    - Finish with:
 
 ```markdown
@@ -392,8 +409,8 @@ bundle files (at most **twice**). Never read the skill's own Python scripts.
 - RC2 (Outside Kueue — <layer>): <if Mixed / external layer, state the external
   root cause>.
 #### Open Questions
-- none (or `OQ1` with missing data, candidates, discriminator, read-only
-  `Collect:` command, and conditional remediation when data is absent).
+- none (or `OQ1` with `Basis:`, `Candidates:` with conditional remediation,
+  `Discriminator:`, then a read-only `Collect:` command, when data is absent).
 #### Ruled Out
 - Brief list of secondary observations, resolved/precursor events, or
   non-blocking settings ruled out as root causes.

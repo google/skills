@@ -23,10 +23,12 @@ one sentence of version-independent Kueue semantics with a source citation.
 from __future__ import annotations
 
 import dataclasses
+import datetime
 import json
 import re
 from typing import Any, Callable
 
+import k8s_objects
 import kueue_schema
 import log_envelopes
 import log_signatures
@@ -216,7 +218,7 @@ _FRAMEWORKS_YAML_RE = re.compile(
     r"integrations:[ \t]*\n(?:[ \t]+(?!frameworks:)\S.*\n)*?[ \t]+frameworks:["
     r" \t]*\n((?:[ \t]+-[ \t]*\S+[ \t]*\n?)+)"
 )
-_FRAMEWORKS_JSON_RE = re.compile(r'"frameworks"\s*:\s*\[([^\]]*)\]')
+_FRAMEWORKS_JSON_RE = re.compile(r'"frameworks"\s*:\s*\[([^\]\[]{0,2000})\]')
 
 
 def frameworks_from_config(config_text: str) -> list[str] | None:
@@ -287,7 +289,10 @@ _ROUTINE_ERROR_MARKERS = (
 #                  API Priority and Fairness shedding).
 #   kueue-leader : controller-runtime leader election outcome.
 # The table is observational: it records what the log said and which component
-# said it; it does not assert why.
+# said it; it does not assert why. A status number counts only next to
+# `code` / `status` / `HTTP`: a bare 429 or 503 is as often part of an object
+# name or a resourceVersion.
+_HTTP_STATUS_CONTEXT = r"(?:code|status|HTTP)[\s:=\"'\\]{0,4}"
 _API_PRESSURE_SIGNALS: tuple[tuple[str, str, str], ...] = (
     (
         "kueue-client",
@@ -300,12 +305,16 @@ _API_PRESSURE_SIGNALS: tuple[tuple[str, str, str], ...] = (
     (
         "apiserver",
         "HTTP 503 / the server is currently unable to handle the request",
-        r"unable to handle the request|\b503\b",
+        (
+            r"unable to handle the request|503 Service Unavailable|"
+            + _HTTP_STATUS_CONTEXT
+            + r"503\b"
+        ),
     ),
     (
         "apiserver",
         "HTTP 429 / too many requests",
-        r"too many requests|\b429\b",
+        r"too many requests|" + _HTTP_STATUS_CONTEXT + r"429\b",
     ),
     (
         "kueue-leader",
@@ -383,6 +392,7 @@ _KEY_EVENT_MARKERS_LOWER = (
 )
 _MAX_KEY_EVENTS = 30
 _MAX_AUDIT_ACTIONS = 35
+_MAX_AUDIT_DELETIONS = 35
 _MAX_AUDIT_ACTIONS_WITH_STATUS = 40
 
 
@@ -400,10 +410,10 @@ def _ref_name(value: Any) -> str:
   return ""
 
 
-def _ref_namespace(value: Any, default: Any = "") -> Any:
+def _ref_namespace(value: Any, default: str = "") -> str:
   """Namespace of a klog ObjectRef dict; `default` for strings and other shapes."""
-  if isinstance(value, dict):
-    return value.get("namespace", default)
+  if isinstance(value, dict) and isinstance(value.get("namespace"), str):
+    return value["namespace"]
   return default
 
 
@@ -445,7 +455,7 @@ class LogRecord:
     wl = d.get("workload")
     wl_full = ""
     if isinstance(wl, dict) and wl.get("name"):
-      wl_full = _qualified(wl.get("namespace", ""), str(wl["name"]))
+      wl_full = _qualified(_ref_namespace(wl), str(wl["name"]))
     elif isinstance(wl, str) and wl:
       wl_full = wl
     # The job reconciler logs with `job=<ns>/<name>` (ReconcileGenericJob),
@@ -455,7 +465,7 @@ class LogRecord:
     if isinstance(job, str):
       job_ref = job
     elif isinstance(job, dict) and job.get("name"):
-      job_ref = _qualified(job.get("namespace", ""), str(job.get("name")))
+      job_ref = _qualified(_ref_namespace(job), str(job.get("name")))
     obj = d.get("object") or d.get("involvedObject")
     return cls(
         raw=d,
@@ -494,8 +504,11 @@ class LogRecord:
 
   @property
   def is_kubernetes_event(self) -> bool:
-    return self.raw.get("kind") == "Event" or bool(
-        self.raw.get("involvedObject") and self.reason
+    """An exported Event object (normalised or raw), not a controller log line about one."""
+    return (
+        self.raw.get("source_kind") == log_envelopes.K8S_EVENT_SOURCE_KIND
+        or self.raw.get("kind") == "Event"
+        or bool(self.raw.get("involvedObject") and self.reason)
     )
 
   @property
@@ -561,6 +574,10 @@ class LogScanState:
       default_factory=set
   )
   pods_ready_true_workloads: set[str] = dataclasses.field(default_factory=set)
+  # Reference -> `reason` of its latest status=False line ('' when not logged).
+  pods_ready_false_reason: dict[str, str] = dataclasses.field(
+      default_factory=dict
+  )
   empty_lq_workloads: set[str] = dataclasses.field(default_factory=set)
   in_cohort_preemptions: list[str] = dataclasses.field(default_factory=list)
   has_insufficient_quota_pending: bool = False
@@ -569,16 +586,31 @@ class LogScanState:
       default_factory=list
   )
   seen_audit: set[str] = dataclasses.field(default_factory=set)
+  audit_non_delete_count: int = 0
+  audit_delete_count: int = 0
   omitted_audit: int = 0
+  omitted_audit_deletions: int = 0
   workload_status_by_name: dict[str, str] = dataclasses.field(
       default_factory=dict
   )
-  audit_namespace_deletions: dict[str, str] = dataclasses.field(
+  # Namespace -> (timestamp, response code as logged or '').
+  audit_namespace_deletions: dict[str, tuple[str, str]] = dataclasses.field(
       default_factory=dict
   )
   audit_cq_quota_patches: list[str] = dataclasses.field(default_factory=list)
-  audit_cq_quota_patch_detail: list[tuple[str, str, str, str]] = (
+  # (timestamp, ClusterQueue, value, principal, verb, confirmed_change).
+  audit_cq_quota_patch_detail: list[tuple[str, str, str, str, str, bool]] = (
       dataclasses.field(default_factory=list)
+  )
+  # Raw CQ quota events buffered during scan, resolved in chronological order
+  # at the end of `scan_lines`: (ts, seq, cq, kind, value, principal, verb).
+  audit_cq_quota_events: list[tuple[str, int, str, str, str, str, str]] = (
+      dataclasses.field(default_factory=list)
+  )
+  audit_cq_quota_seq: int = 0
+  # ClusterQueue -> nominalQuota values of the latest request body seen for it.
+  audit_cq_quota_bodies: dict[str, str] = dataclasses.field(
+      default_factory=dict
   )
   audit_indexed_jobs_no_max_failed: list[str] = dataclasses.field(
       default_factory=list
@@ -594,6 +626,15 @@ class LogScanState:
   strict_unknown_fields: set[str] = dataclasses.field(default_factory=set)
   unavailable_resources: set[str] = dataclasses.field(default_factory=set)
   webhook_timeout_targets: set[str] = dataclasses.field(default_factory=set)
+  # Webhook name -> connection-level causes logged for it (no timeout among
+  # them is implied; see `scan_text_signals`).
+  webhook_connection_errors: dict[str, set[str]] = dataclasses.field(
+      default_factory=dict
+  )
+  # Webhook name -> other logged causes (neither timeout nor connection-level).
+  webhook_other_errors: dict[str, set[str]] = dataclasses.field(
+      default_factory=dict
+  )
   api_pressure_signals: set[tuple[str, str]] = dataclasses.field(
       default_factory=set
   )
@@ -616,11 +657,64 @@ _UNAVAILABLE_RESOURCE_RE = re.compile(
     r"resource\s+([a-z0-9._/-]+)\s+unavailable in ClusterQueue"
 )
 _UNKNOWN_FIELD_RE = re.compile(r'unknown field\s*\\?"([^"\\]+)\\?"')
-_WEBHOOK_TIMEOUT_RE = re.compile(
-    r'failed calling webhook\s+\\?"([^"\\]+)\\?".*?(?:context deadline'
-    r" exceeded|timeout|connection refused|EOF)",
-    re.IGNORECASE,
+_WEBHOOK_FAILURE_RE = re.compile(
+    r'failed calling webhook\s+\\?"([^"\\]+)\\?"', re.IGNORECASE
 )
+# The webhook URL always carries `?timeout=<n>s`; it is not a cause.
+_WEBHOOK_URL_TIMEOUT_RE = re.compile(r"\?timeout=\d+s")
+# Go error texts, matched case-sensitively after the webhook name.
+_WEBHOOK_TIMEOUT_CAUSE_RE = re.compile(
+    r"context deadline exceeded|Client\.Timeout|i/o timeout"
+)
+_WEBHOOK_CONNECTION_CAUSE_RE = re.compile(r"connection refused|\bEOF\b")
+_WEBHOOK_CALL_PREFIX_RE = re.compile(
+    r"^(?:failed to call webhook:\s*)?"
+    r'(?:(?:Post|Get|Put|Patch|Delete)\s+\\?"[^"\\]+\\?":\s*)?'
+)
+_UNESCAPED_JSON_END_RE = re.compile(r'(?<!\\)["}]')
+
+
+def _extract_webhook_other_cause(cause_text: str, *, is_json_line: bool) -> str:
+  """Extracts and redacts the trailing error cause after a webhook name."""
+  text = cause_text.lstrip(" :")
+  if is_json_line:
+    end_m = _UNESCAPED_JSON_END_RE.search(text)
+    if end_m:
+      text = text[: end_m.start()]
+  text = _WEBHOOK_CALL_PREFIX_RE.sub("", text).replace('\\"', '"').strip()
+  text = " ".join(log_envelopes.redact_env_text(text).split())
+  return text[:160]
+
+
+def _scan_webhook_failure(text: str, state: LogScanState) -> None:
+  """Classifies a 'failed calling webhook' line by its stated cause.
+
+  Timeout and connection-level causes are recorded in dedicated sets; any other
+  logged cause (such as missing endpoints or certificate errors) is recorded
+  verbatim under `webhook_other_errors` without calling it a timeout.
+
+  Args:
+    text: Log line text.
+    state: Scan state updated in place.
+  """
+  wh_m = _WEBHOOK_FAILURE_RE.search(text)
+  if not wh_m:
+    return
+  cause_text = _WEBHOOK_URL_TIMEOUT_RE.sub("", text[wh_m.end() :])
+  if _WEBHOOK_TIMEOUT_CAUSE_RE.search(cause_text):
+    state.webhook_timeout_targets.add(wh_m.group(1))
+    return
+  conn_m = _WEBHOOK_CONNECTION_CAUSE_RE.search(cause_text)
+  if conn_m:
+    state.webhook_connection_errors.setdefault(wh_m.group(1), set()).add(
+        conn_m.group(0)
+    )
+    return
+  other = _extract_webhook_other_cause(
+      cause_text, is_json_line=text.lstrip().startswith("{")
+  )
+  if other:
+    state.webhook_other_errors.setdefault(wh_m.group(1), set()).add(other)
 
 
 def scan_text_signals(text: str, state: LogScanState) -> None:
@@ -639,9 +733,7 @@ def scan_text_signals(text: str, state: LogScanState) -> None:
     )
   if "strict decoding error" in text:
     state.strict_unknown_fields.update(_UNKNOWN_FIELD_RE.findall(text))
-  wh_m = _WEBHOOK_TIMEOUT_RE.search(text)
-  if wh_m:
-    state.webhook_timeout_targets.add(wh_m.group(1))
+  _scan_webhook_failure(text, state)
   # API-pressure signals are classified by the side that produced them so the
   # reader can tell a Kueue-side client limiter apart from API-server-side
   # rejection; the two have different owners and different remediations.
@@ -699,10 +791,7 @@ def scan_admission(rec: LogRecord, state: LogScanState) -> None:
   d = rec.raw
   if rec.msg != _ADMISSION_MSG or not isinstance(d.get("assignments"), list):
     return
-  adm_cq = d.get("clusterQueue")
-  adm_cq_name = (
-      str(adm_cq.get("name")) if isinstance(adm_cq, dict) else str(adm_cq or "")
-  )
+  adm_cq_name = _ref_name(d.get("clusterQueue"))
   if not adm_cq_name:
     return
   state.admitted_count_by_cq[adm_cq_name] = (
@@ -741,6 +830,7 @@ def scan_pods_ready(rec: LogRecord, state: LogScanState) -> None:
   status = str(rec.raw.get("status", "")).lower()
   if status == "false":
     state.waiting_pods_ready_workloads.add(ref)
+    state.pods_ready_false_reason[ref] = rec.reason
     state.pods_ready_true_workloads.discard(ref)
   elif status == "true":
     state.pods_ready_true_workloads.add(ref)
@@ -790,7 +880,9 @@ def scan_queues(rec: LogRecord, state: LogScanState) -> None:
   lq = d.get("localQueue") or d.get("queue")
   if isinstance(lq, dict) and lq.get("name"):
     state.local_queues.add(
-        _qualified(lq.get("namespace", d.get("namespace", "")), str(lq["name"]))
+        _qualified(
+            _ref_namespace(lq, _first_str(d, "namespace")), str(lq["name"])
+        )
     )
   elif isinstance(lq, str) and lq:
     state.local_queues.add(lq)
@@ -807,9 +899,12 @@ def scan_entities(rec: LogRecord, state: LogScanState) -> None:
   if "node-reconciler" in rec.logger and d.get("name"):
     state.nodes.add(str(d["name"]))
   obj = rec.named_obj
-  if obj is not None and obj.get("kind", "") == "Workload":
-    wl_ref_obj = _qualified(obj.get("namespace", ""), obj.get("name", ""))
-    state.workloads.add(wl_ref_obj)
+  if (
+      obj is not None
+      and obj.get("kind", "") == "Workload"
+      and isinstance(obj["name"], str)
+  ):
+    state.workloads.add(_qualified(_ref_namespace(obj), obj["name"]))
 
 
 @dataclasses.dataclass(frozen=True)
@@ -818,6 +913,13 @@ class _AuditRef:
   resource: str
   subresource: str
   res_name: str
+  namespace: str = ""
+  name: str = ""
+
+  @property
+  def short_name(self) -> str:
+    """Object name; the last path segment of `resourceName` when no name field is known."""
+    return self.name or self.res_name.rsplit("/", 1)[-1]
 
 
 _AUDIT_MSG_RE = re.compile(
@@ -826,23 +928,32 @@ _AUDIT_MSG_RE = re.compile(
 
 
 def _audit_ref(rec: LogRecord) -> _AuditRef:
-  """Verb / resource / subresource / name of an audit entry from its fields, methodName or `[Audit ...]` prefix."""
+  """Verb / resource / subresource / target of an audit entry from its fields, methodName or `[Audit ...]` prefix."""
   d = rec.raw
   verb = _first_str(d, "verb")
   resource = _first_str(d, "resource")
+  subresource = _first_str(d, "subresource")
   res_name = _first_str(d, "resourceName")
+  namespace = _first_str(d, "namespace")
+  name = _first_str(d, "name")
   if (not verb or not resource) and d.get("methodName"):
-    parts = str(d.get("methodName")).split(".")
-    if len(parts) >= 3:
-      verb = verb or parts[-1]
-      resource = resource or parts[-2]
+    parsed = log_envelopes.gcp_audit_ref(
+        str(d["methodName"]), _first_str(d, "providerResourceName") or res_name
+    )
+    verb = verb or parsed.verb
+    resource = resource or parsed.resource
+    subresource = subresource or parsed.subresource
+    namespace = namespace or parsed.namespace
+    name = name or parsed.name
   if (not verb or not resource) and rec.msg.startswith("[Audit "):
     am = _AUDIT_MSG_RE.match(rec.msg)
     if am:
+      msg_resource, _, msg_subresource = am.group(2).partition("/")
       verb = verb or am.group(1)
-      resource = resource or am.group(2)
+      resource = resource or msg_resource
+      subresource = subresource or msg_subresource
       res_name = res_name or (am.group(3) or "")
-  return _AuditRef(verb, resource, _first_str(d, "subresource"), res_name)
+  return _AuditRef(verb, resource, subresource, res_name, namespace, name)
 
 
 def _audit_principal(d: dict[str, Any]) -> str:
@@ -857,19 +968,230 @@ def _audit_principal(d: dict[str, Any]) -> str:
   )
 
 
-def _record_quota_patches(
-    rec: LogRecord, state: LogScanState, res_name: str
+def _audit_response_code(d: dict[str, Any]) -> int | None:
+  code = d.get("responseCode")
+  if isinstance(code, str) and code.isdigit():
+    return int(code)
+  if isinstance(code, int) and not isinstance(code, bool):
+    return code
+  return None
+
+
+def _audit_rejection(d: dict[str, Any]) -> str:
+  """Formats the rejection code suffix for an audit row, or returns ''.
+
+  `audit.k8s.io` rows carry the HTTP status, which reports a rejection from
+  400 up. Cloud audit rows carry a `google.rpc.Code` instead, where every
+  non-zero value (1-16) is an error; those are printed as `rpc_code=<N>`.
+
+  Args:
+    d: Normalised audit row.
+
+  Returns:
+    `' code=<N>'`, `' rpc_code=<N>'`, or `''`.
+  """
+  code = _audit_response_code(d)
+  if code is None:
+    return ""
+  if code >= 400:
+    return f" code={code}"
+  if 0 < code < 100:
+    return f" rpc_code={code}"
+  return ""
+
+
+def _nominal_quota_values(spec: Any) -> list[str]:
+  """`<flavor>/<resource>=<nominalQuota>` for every quota a ClusterQueue `spec` body sets."""
+  rows: list[str] = []
+  groups = k8s_objects.as_dict(spec).get("resourceGroups")
+  for group in k8s_objects.dict_items(groups):
+    for flavor in k8s_objects.dict_items(group.get("flavors")):
+      for res in k8s_objects.dict_items(flavor.get("resources")):
+        if res.get("nominalQuota") is not None:
+          rows.append(
+              f"{flavor.get('name', '')}/{res.get('name', '')}"
+              f"={res['nominalQuota']}"
+          )
+  return rows
+
+
+_RFC3339_TS_RE = re.compile(
+    r"^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})(?:\.(\d+))?"
+    r"(Z|[+-]\d{2}:?\d{2})?$",
+    re.IGNORECASE,
+)
+_NON_QUOTA_PATCH_LEAVES = (
+    "/borrowingLimit",
+    "/lendingLimit",
+    "/coveredResources",
+)
+
+
+def _ts_sort_key(ts: str) -> tuple[int, int, int, str]:
+  """Chronological sort key handling variable fractional-second RFC3339 strings."""
+  m = _RFC3339_TS_RE.match(ts.strip())
+  if not m:
+    return (1, 0, 0, ts)
+  base, frac, tz = m.groups()
+  tz_iso = "+00:00" if not tz or tz.upper() == "Z" else tz
+  if len(tz_iso) == 5:
+    tz_iso = f"{tz_iso[:3]}:{tz_iso[3:]}"
+  try:
+    dt = datetime.datetime.fromisoformat(f"{base}{tz_iso}")
+  except ValueError:
+    return (1, 0, 0, ts)
+  nanos = int((frac or "0")[:9].ljust(9, "0"))
+  return (0, int(dt.timestamp()), nanos, ts)
+
+
+def _extract_patch_nominal_quotas(val: Any, depth: int = 0) -> list[str]:
+  """Extracts `nominalQuota` summaries from a JSON-patch `value` payload."""
+  if depth > 4:
+    return []
+  if isinstance(val, dict):
+    if "resourceGroups" in val:
+      return _nominal_quota_values(val)
+    if "flavors" in val:
+      return _nominal_quota_values({"resourceGroups": [val]})
+    if "resources" in val:
+      return _nominal_quota_values({"resourceGroups": [{"flavors": [val]}]})
+    if "nominalQuota" in val:
+      rname = str(val.get("name") or "<resource>")
+      return [f"{rname}={val['nominalQuota']}"]
+  elif isinstance(val, list):
+    out: list[str] = []
+    for item in val:
+      out.extend(_extract_patch_nominal_quotas(item, depth + 1))
+    return out
+  return []
+
+
+def _append_quota_event(
+    state: LogScanState,
+    rec: LogRecord,
+    ref: _AuditRef,
+    kind: str,
+    val: str,
+    principal: str,
 ) -> None:
-  """nominalQuota operations of a `clusterqueues.patch` audit entry, with the principal that issued them."""
+  """Appends one sequenced ClusterQueue quota event for chronological sorting."""
+  state.audit_cq_quota_seq += 1
+  state.audit_cq_quota_events.append((
+      rec.ts_field,
+      state.audit_cq_quota_seq,
+      ref.short_name,
+      kind,
+      val,
+      principal,
+      ref.verb,
+  ))
+
+
+def _record_json_patch_op(
+    op: dict[str, Any],
+    rec: LogRecord,
+    state: LogScanState,
+    ref: _AuditRef,
+    principal: str,
+) -> None:
+  """Buffers one RFC 6902 JSON-patch operation affecting ClusterQueue quota."""
+  op_name = str(op.get("op") or "").lower()
+  if op_name == "test":
+    return
+  path = str(op.get("path") or "")
+  if "nominalQuota" in path:
+    if op_name == "remove" and "value" not in op:
+      val = "<removed>"
+    elif op_name in ("move", "copy") and "value" not in op:
+      val = f"<{op_name} from {op.get('from', '')}>"
+    else:
+      val = str(op.get("value"))
+    _append_quota_event(state, rec, ref, "json_patch", val, principal)
+    return
+  if path != "/spec" and not path.startswith("/spec/resourceGroups"):
+    return
+  op_val = op.get("value")
+  if path == "/spec" and isinstance(op_val, dict):
+    body = ", ".join(_nominal_quota_values(op_val))
+    if body:
+      _append_quota_event(state, rec, ref, "body", body, principal)
+    return
+  if path == "/spec/resourceGroups" and isinstance(op_val, list):
+    body = ", ".join(_nominal_quota_values({"resourceGroups": op_val}))
+    if body:
+      _append_quota_event(state, rec, ref, "body", body, principal)
+    return
+  if path.endswith(_NON_QUOTA_PATCH_LEAVES):
+    return
+  extracted = ", ".join(_extract_patch_nominal_quotas(op_val))
+  if (
+      extracted
+      or op_name in ("remove", "move", "copy")
+      or isinstance(op_val, (dict, list))
+  ):
+    kind = "partial_patch" if extracted else "clear_body"
+    _append_quota_event(state, rec, ref, kind, extracted, principal)
+
+
+def _record_quota_patches(
+    rec: LogRecord, state: LogScanState, ref: _AuditRef
+) -> None:
+  """Buffers `clusterqueues` nominalQuota events for chronological resolution.
+
+  Reads JSON-patch operations (`request` list) and create / merge-patch /
+  update bodies (`spec`). Actual earlier-body diffing happens in
+  `_resolve_quota_events` after sorting by parsed timestamp so newest-first log
+  exports do not reverse the diff or misattribute principals.
+
+  Args:
+    rec: Audit record.
+    state: Scan state to extend.
+    ref: Parsed audit reference of `rec`.
+  """
   d = rec.raw
-  cq_short = res_name.rsplit("/", 1)[-1] if res_name else _first_str(d, "name")
   principal = _audit_principal(d)
-  for op in d.get("request") or []:
-    if isinstance(op, dict) and "nominalQuota" in str(op.get("path") or ""):
-      state.audit_cq_quota_patches.append(f"{cq_short}={op.get('value')}")
+  for op in k8s_objects.dict_items(d.get("request")):
+    _record_json_patch_op(op, rec, state, ref, principal)
+  body = ", ".join(_nominal_quota_values(d.get("spec")))
+  if body:
+    _append_quota_event(state, rec, ref, "body", body, principal)
+
+
+def _resolve_quota_events(state: LogScanState) -> None:
+  """Resolves buffered CQ quota events in chronological `(timestamp, seq)` order."""
+  for ts, _, cq, kind, val, principal, verb in sorted(
+      state.audit_cq_quota_events, key=lambda e: (_ts_sort_key(e[0]), e[1])
+  ):
+    if kind == "clear_body":
+      state.audit_cq_quota_bodies.pop(cq, None)
+      continue
+    if kind == "partial_patch":
+      state.audit_cq_quota_bodies.pop(cq, None)
+      summary = f"{{{val}}}"
+      state.audit_cq_quota_patches.append(f"{cq}={summary}")
       state.audit_cq_quota_patch_detail.append(
-          (rec.ts_field, cq_short, str(op.get("value")), principal)
+          (ts, cq, summary, principal, verb, False)
       )
+      continue
+    if kind == "json_patch":
+      state.audit_cq_quota_bodies.pop(cq, None)
+      state.audit_cq_quota_patches.append(f"{cq}={val}")
+      state.audit_cq_quota_patch_detail.append(
+          (ts, cq, val, principal, verb, True)
+      )
+      continue
+    earlier = state.audit_cq_quota_bodies.get(cq)
+    state.audit_cq_quota_bodies[cq] = val
+    if verb == "create" or val == earlier:
+      continue
+    if earlier is None:
+      summary, confirmed = f"{{{val}}}", False
+    else:
+      summary, confirmed = f"{{{val}}} (earlier body: {{{earlier}}})", True
+    state.audit_cq_quota_patches.append(f"{cq}={summary}")
+    state.audit_cq_quota_patch_detail.append(
+        (ts, cq, summary, principal, verb, confirmed)
+    )
 
 
 def _record_indexed_job(
@@ -879,17 +1201,12 @@ def _record_indexed_job(
   spec_d = rec.raw["spec"]
   target = str(res_name or rec.raw.get("name") or "")
   candidates: list[tuple[str, dict[str, Any]]] = [(target, spec_d)]
-  for rj in spec_d.get("replicatedJobs") or []:
-    if isinstance(rj, dict):
-      rj_spec = (
-          (rj.get("template") or {}).get("spec")
-          if isinstance(rj.get("template"), dict)
-          else None
+  for rj in k8s_objects.dict_items(spec_d.get("replicatedJobs")):
+    rj_spec = k8s_objects.as_dict(rj.get("template")).get("spec")
+    if isinstance(rj_spec, dict):
+      candidates.append(
+          (f"{target}:replicatedJob[{rj.get('name', '')}]", rj_spec)
       )
-      if isinstance(rj_spec, dict):
-        candidates.append(
-            (f"{target}:replicatedJob[{rj.get('name', '')}]", rj_spec)
-        )
   for ref_label, sub_spec in candidates:
     if (
         sub_spec.get("backoffLimitPerIndex") is not None
@@ -905,22 +1222,21 @@ def _record_indexed_job(
 def _scan_audit_config_changes(
     rec: LogRecord, state: LogScanState, ref: _AuditRef
 ) -> None:
-  """Namespace deletions, nominalQuota patches and Indexed Job creations seen in the audit trail."""
+  """Namespace deletions, nominalQuota writes and Indexed Job creations seen in the audit trail (rejected calls are skipped)."""
   d = rec.raw
-  if (
-      ref.verb == "delete"
-      and ref.resource == "namespaces"
-      and (d.get("name") or ref.res_name)
-  ):
+  if _audit_rejection(d):
+    return
+  if ref.verb == "delete" and ref.resource == "namespaces" and ref.short_name:
+    code = _audit_response_code(d)
     state.audit_namespace_deletions.setdefault(
-        str(d.get("name") or ref.res_name), rec.ts_field
+        ref.short_name, (rec.ts_field, "" if code is None else str(code))
     )
   if (
-      ref.verb == "patch"
+      ref.verb in ("create", "patch", "update")
       and ref.resource == "clusterqueues"
-      and isinstance(d.get("request"), list)
+      and not ref.subresource
   ):
-    _record_quota_patches(rec, state, ref.res_name)
+    _record_quota_patches(rec, state, ref)
   if (
       ref.verb == "create"
       and ref.resource in ("jobs", "jobsets")
@@ -929,76 +1245,124 @@ def _scan_audit_config_changes(
     _record_indexed_job(rec, state, ref.res_name)
 
 
-_AUDIT_SPEC_SEGMENT_RE = re.compile(
-    r" spec=.*?(?=(?: (?:annotations|labels|status)=|$))"
-)
+_MAX_AUDIT_LINE = 1400
+
+
+def _replace_audit_spec_segment(msg: str, spec_json: str) -> str:
+  """Replaces the first ` spec=...` segment up to the next audit field or end."""
+  start = msg.find(" spec=")
+  if start < 0:
+    return f"{msg} spec={spec_json}"
+  tail_start = start + len(" spec=")
+  end = len(msg)
+  for marker in (" annotations=", " labels=", " status="):
+    pos = msg.find(marker, tail_start)
+    if 0 <= pos < end:
+      end = pos
+  return f"{msg[:start]} spec={spec_json}{msg[end:]}"
+
+
+def _audit_action_suffix(d: dict[str, Any], msg: str) -> str:
+  """Response code of a rejected call, principal and request body, where `msg` does not already carry them."""
+  suffix = _audit_rejection(d)
+  principal = _audit_principal(d)
+  if principal and "principal=" not in msg:
+    suffix += f" principal={principal}"
+  if isinstance(d.get("request"), (dict, list)) and "request=" not in msg:
+    body = json.dumps(log_envelopes.redact_env_values(d["request"]))
+    suffix += f" request={body[:400]}"
+  return suffix
 
 
 def _audit_action_line(rec: LogRecord) -> str:
-  """Audit summary text: message plus full spec / request body / principal when the message lacks or truncates them."""
+  """Builds the audit summary text with spec, status code, principal, and request body.
+
+  Container `env` values are redacted. The message is cut, never the
+  trailing fields.
+
+  Args:
+    rec: Audit record.
+
+  Returns:
+    Redacted, length-bounded audit action summary line.
+  """
   d = rec.raw
   msg = rec.msg
   if isinstance(d.get("spec"), dict):
-    spec_json = json.dumps(d["spec"], sort_keys=True)[:1200]
-    if " spec=" in msg:
-      msg = _AUDIT_SPEC_SEGMENT_RE.sub(
-          lambda _: f" spec={spec_json}", msg, count=1
-      )
-    else:
-      msg = f"{msg} spec={spec_json}"
-  req_extra = ""
-  if isinstance(d.get("request"), (dict, list)) and "request=" not in msg:
-    req_extra = f" request={json.dumps(d['request'])[:400]}"
-  if d.get("principalEmail") and "principal=" not in msg:
-    req_extra = f" principal={d.get('principalEmail')}{req_extra}"
-  return msg + req_extra
+    spec_json = json.dumps(
+        log_envelopes.redact_env_values(d["spec"]), sort_keys=True
+    )[:1200]
+    msg = _replace_audit_spec_segment(msg, spec_json)
+  msg = log_envelopes.redact_env_text(msg)
+  suffix = _audit_action_suffix(d, msg)
+  return msg[: max(0, _MAX_AUDIT_LINE - len(suffix))] + suffix
+
+
+def _is_listed_audit_action(ref: _AuditRef) -> bool:
+  """Mutations of audited resources, minus subresources and add-on / CA-bundle ConfigMaps."""
+  if (
+      ref.verb not in ("create", "delete", "patch", "update")
+      or ref.subresource
+      or ref.resource not in _AUDITED_RESOURCES
+  ):
+    return False
+  return ref.resource != "configmaps" or not (
+      report_output.is_managed_addon_namespace(ref.namespace)
+      or ref.short_name == "kube-root-ca.crt"
+  )
 
 
 def _scan_audit_actions(
     rec: LogRecord, state: LogScanState, ref: _AuditRef
 ) -> None:
-  """Workload status patches and deduplicated, capped audit mutations."""
+  """Workload status patches and deduplicated, capped audit mutations.
+
+  A rejected call is listed with its response code and gets no fact id. A
+  change of the admission graph (a deletion, or any mutation of a
+  `_GRAPH_CONFIG_RESOURCES` object) is listed once per call, so two updates
+  of one object at different times are both kept; other audited mutations
+  (Node, Job, Workload writes) collapse when the same body repeats.
+
+  Args:
+    rec: Audit record.
+    state: Scan state to extend.
+    ref: Parsed audit reference of `rec`.
+  """
   d = rec.raw
+  rejection = _audit_rejection(d)
   if (
       ref.resource == "workloads"
       and ref.subresource == "status"
-      and d.get("status")
+      and (d.get("status") or " status=" in rec.msg)
   ):
-    state.workload_status_by_name[ref.res_name] = str(rec.msg)[:850]
+    if not rejection:
+      state.workload_status_by_name[ref.res_name] = str(rec.msg)[:850]
     return
-  if (
-      ref.verb not in ("create", "delete", "patch", "update")
-      or ref.subresource
-      or ref.resource not in _AUDITED_RESOURCES
-      or (
-          ref.resource == "configmaps"
-          and (
-              report_output.is_managed_addon_namespace(
-                  str(d.get("namespace") or "")
-              )
-              or str(d.get("name") or ref.res_name).rsplit("/", 1)[-1]
-              == "kube-root-ca.crt"
-          )
-      )
-  ):
+  if not _is_listed_audit_action(ref):
     return
+  graph_change = ref.verb == "delete" or ref.resource in _GRAPH_CONFIG_RESOURCES
   line = _audit_action_line(rec)
-  dedup_audit_key = line[:260]
+  ts = rec.ts_field
+  dedup_audit_key = f"{ts if graph_change else ''}{rejection} {line[:260]}"
   if dedup_audit_key in state.seen_audit:
     return
   state.seen_audit.add(dedup_audit_key)
-  if len(state.audit_actions) >= _MAX_AUDIT_ACTIONS:
-    state.omitted_audit += 1
-    return
+  if ref.verb == "delete":
+    if state.audit_delete_count >= _MAX_AUDIT_DELETIONS:
+      state.omitted_audit_deletions += 1
+      return
+    state.audit_delete_count += 1
+  else:
+    if state.audit_non_delete_count >= _MAX_AUDIT_ACTIONS:
+      state.omitted_audit += 1
+      return
+    state.audit_non_delete_count += 1
   audit_key = (
       f"audit:{ref.verb}:{ref.resource}"
-      if (ref.verb == "delete" or ref.resource in _GRAPH_CONFIG_RESOURCES)
+      if graph_change and not rejection
       else None
   )
-  ts = rec.ts_field
-  state.audit_actions.append(
-      (audit_key, (f"{ts} " if ts else "") + line[:1400])
-  )
+  state.audit_actions.append((audit_key, (f"{ts} " if ts else "") + line))
 
 
 def scan_audit(rec: LogRecord, state: LogScanState) -> None:
@@ -1017,7 +1381,7 @@ def _is_housekeeping_event(rec: LogRecord) -> bool:
   if "kueueviz" in noise_probe or "certwatcher" in noise_probe:
     return True
   if rec.obj is not None and report_output.is_managed_addon_namespace(
-      rec.obj.get("namespace")
+      _ref_namespace(rec.obj)
   ):
     return True
   return any(benign in rec.combined_signal for benign in _BENIGN_SIGNALS)
@@ -1054,7 +1418,11 @@ def _key_event_summary(rec: LogRecord) -> tuple[str, str]:
       rec.note
       or rec.err
       or lq_detail
-      or (json.dumps(d.get("spec"))[:500] if d.get("spec") else "")
+      or (
+          json.dumps(log_envelopes.redact_env_values(d["spec"]))[:500]
+          if d.get("spec")
+          else ""
+      )
   )
   emitter_tag = (
       f" (emitter: {event_emitter(d)})" if is_external_emitter(d) else ""
@@ -1190,18 +1558,26 @@ def emit_tas_level(state: LogScanState) -> list[Fact]:
 
 
 def emit_namespace_delete(state: LogScanState) -> list[Fact]:
-  return [
-      (
-          f"logfact:namespace-delete:{ns_name}",
-          "AUDIT_LOG_FACT: the audit log records a `delete namespaces` request"
-          f" for namespace `{ns_name}`"
-          + (f" at {ts}" if ts else "")
-          + " (whether the request succeeded is not determinable from this"
-          " entry). A completed namespace deletion removes every namespaced"
-          " object in it (Jobs, Workloads, LocalQueues, Pods).",
+  """`delete namespaces` requests that the audit log does not show as rejected."""
+  facts: list[Fact] = []
+  for ns_name, (ts, code) in sorted(state.audit_namespace_deletions.items()):
+    ts_part = f" at {ts}" if ts else ""
+    if code:
+      outcome_part = f" (response code {code})"
+    else:
+      outcome_part = (
+          " (whether the request succeeded is not determinable from this entry)"
       )
-      for ns_name, ts in sorted(state.audit_namespace_deletions.items())
-  ]
+    facts.append((
+        f"logfact:namespace-delete:{ns_name}",
+        (
+            "AUDIT_LOG_FACT: the audit log records a `delete namespaces`"
+            f" request for namespace `{ns_name}`{ts_part}{outcome_part}. A"
+            " completed namespace deletion removes every namespaced object in"
+            " it (Jobs, Workloads, LocalQueues, Pods)."
+        ),
+    ))
+  return facts
 
 
 def emit_unknown_field(state: LogScanState) -> list[Fact]:
@@ -1236,7 +1612,8 @@ def emit_unavailable_resource(state: LogScanState) -> list[Fact]:
 
 
 def emit_webhook_timeout(state: LogScanState) -> list[Fact]:
-  return [
+  """Webhook call failures with a logged timeout, connection-level cause, or other logged error."""
+  facts: list[Fact] = [
       (
           f"logfact:webhook-timeout:{wh_target}",
           (
@@ -1248,6 +1625,33 @@ def emit_webhook_timeout(state: LogScanState) -> list[Fact]:
       )
       for wh_target in sorted(state.webhook_timeout_targets)
   ]
+  for wh_target, causes in sorted(state.webhook_connection_errors.items()):
+    if wh_target in state.webhook_timeout_targets:
+      continue
+    facts.append((
+        f"logfact:webhook-timeout:{wh_target}",
+        (
+            "CONTROLLER_LOG_FACT: logs record 'failed calling webhook"
+            f' "{wh_target}"\' with {" / ".join(sorted(causes))} — API server'
+            " calls to the admission webhook endpoint ended with a"
+            " connection-level error; no timeout is logged for them."
+        ),
+    ))
+  for wh_target, causes in sorted(state.webhook_other_errors.items()):
+    if (
+        wh_target in state.webhook_timeout_targets
+        or wh_target in state.webhook_connection_errors
+    ):
+      continue
+    facts.append((
+        f"logfact:webhook-error:{wh_target}",
+        (
+            "CONTROLLER_LOG_FACT: logs record 'failed calling webhook"
+            f' "{wh_target}"\' with logged error:'
+            f" {'; '.join(sorted(causes)[:3])}."
+        ),
+    ))
+  return facts
 
 
 def emit_api_pressure(state: LogScanState) -> list[Fact]:
@@ -1323,67 +1727,142 @@ def emit_jobset_integration(state: LogScanState) -> list[Fact]:
   )]
 
 
+_PODS_READY_REASON_NOTES = {
+    "WaitForStart": (
+        " For eviction metrics,"
+        " https://kueue.sigs.k8s.io/docs/reference/metrics/ defines"
+        ' underlying_cause "WaitForStart" as: "the pods have not been ready'
+        ' since admission, or the workload is not admitted".'
+    ),
+    "WaitForScheduling": (
+        ' Per "Unscheduled timeout" in'
+        " https://kueue.sigs.k8s.io/docs/tasks/manage/setup_wait_for_pods_ready/,"
+        ' "Workloads waiting for scheduling report PodsReady=False with reason'
+        ' WaitForScheduling."'
+    ),
+}
+
+
 def emit_waiting_pods_ready(state: LogScanState) -> list[Fact]:
+  """References whose latest logged PodsReady status is False, with the logged reason."""
   stuck_waiting = sorted(
       state.waiting_pods_ready_workloads - state.pods_ready_true_workloads
   )
-  return [
-      (
-          f"logfact:waiting-pods-ready:{wl_wait}",
-          (
-              "CONTROLLER_LOG_FACT: the job reconciler logged 'Updating the"
-              f" PodsReady condition' with status=False for '{wl_wait}' and no"
-              " later status=True for the same reference"
-              " (https://kueue.sigs.k8s.io/docs/tasks/manage/setup_wait_for_pods_ready/)."
-              " The condition is evaluated after admission, so the blocker is"
-              " in pod scheduling, node readiness/provisioning, or the pods"
-              " themselves — inspect the pods and nodes for that workload."
-          ),
-      )
-      for wl_wait in stuck_waiting
+  facts: list[Fact] = []
+  for wl_wait in stuck_waiting:
+    reason = state.pods_ready_false_reason.get(wl_wait, "")
+    reason_note = _PODS_READY_REASON_NOTES.get(reason, "")
+    facts.append((
+        f"logfact:waiting-pods-ready:{wl_wait}",
+        (
+            "CONTROLLER_LOG_FACT: the job reconciler logged 'Updating the"
+            " PodsReady condition' with status=False"
+            + (f" (reason={reason})" if reason else "")
+            + f" for '{wl_wait}' and no later status=True for the same"
+            " reference"
+            " (https://kueue.sigs.k8s.io/docs/tasks/manage/setup_wait_for_pods_ready/)."
+            + reason_note
+        ),
+    ))
+  return facts
+
+
+def _partition_quota_provenance(
+    details: list[tuple[str, str, str, str, str, bool]],
+) -> tuple[
+    dict[str, tuple[str, str, str]],
+    dict[str, set[str]],
+    dict[str, tuple[str, str, str]],
+]:
+  """Splits audit quota entries into confirmed changes and unconfirmed bodies."""
+  confirmed_by_cq: dict[str, tuple[str, str, str]] = {}
+  principals_by_cq: dict[str, set[str]] = {}
+  unconfirmed_by_cq: dict[str, tuple[str, str, str]] = {}
+  for ts_p, cq_p, val_p, who_p, verb_p, confirmed in sorted(
+      details, key=lambda t: _ts_sort_key(t[0])
+  ):
+    if confirmed:
+      confirmed_by_cq[cq_p] = (ts_p, val_p, verb_p)
+      principals_by_cq[cq_p] = {who_p or "<unknown principal>"}
+      unconfirmed_by_cq.pop(cq_p, None)
+    else:
+      unconfirmed_by_cq[cq_p] = (ts_p, val_p, verb_p)
+  return confirmed_by_cq, principals_by_cq, unconfirmed_by_cq
+
+
+def _format_quota_provenance_lead(
+    confirmed_by_cq: dict[str, tuple[str, str, str]],
+    principals_by_cq: dict[str, set[str]],
+    unconfirmed_by_cq: dict[str, tuple[str, str, str]],
+) -> str:
+  """Formats the lead sentence separating confirmed updates from first-seen bodies."""
+  unconf_rows = [
+      f"{cq_p}: {verb} body carried nominalQuota={val}"
+      + (f" at {ts_p}" if ts_p else "")
+      for cq_p, (ts_p, val, verb) in sorted(unconfirmed_by_cq.items())
   ]
+  if not confirmed_by_cq:
+    verbs = "/".join(
+        sorted({verb for _, _, verb in unconfirmed_by_cq.values()})
+    )
+    return (
+        f"AUDIT_LOG_FACT: audit log records clusterqueues.{verbs} request"
+        " bodies carrying nominalQuota while workloads emit Pending"
+        " ('insufficient unused quota'); no earlier body is in this log, so"
+        " whether nominalQuota changed is not determinable. Per ClusterQueue:"
+        f" {'; '.join(unconf_rows[:8])}. "
+    )
+  verbs = "/".join(sorted({verb for _, _, verb in confirmed_by_cq.values()}))
+  prov_rows = [
+      f"{cq_p}: latest"
+      + (" confirmed" if cq_p in unconfirmed_by_cq else "")
+      + f" nominalQuota {verb}={val}"
+      + (f" at {ts_p}" if ts_p else "")
+      + f" by {sorted(principals_by_cq[cq_p])}"
+      for cq_p, (ts_p, val, verb) in sorted(confirmed_by_cq.items())
+  ]
+  lead = (
+      f"AUDIT_LOG_FACT: audit log records clusterqueues.{verbs} updates to"
+      " nominalQuota while workloads emit Pending ('insufficient unused"
+      f" quota'). Per ClusterQueue: {'; '.join(prov_rows[:8])}. "
+  )
+  if unconf_rows:
+    lead += (
+        "Other clusterqueues writes whose request body carried nominalQuota"
+        " without a comparable earlier body in this log (whether nominalQuota"
+        f" changed is not determinable): {'; '.join(unconf_rows[:8])}. "
+    )
+  return lead
 
 
 def emit_quota_patch_provenance(state: LogScanState) -> list[Fact]:
-  """Per-ClusterQueue provenance: who patched nominalQuota and what the latest patched value was."""
+  """Per-ClusterQueue provenance for confirmed nominalQuota changes and first-seen bodies."""
   if not (
       state.audit_cq_quota_patches and state.has_insufficient_quota_pending
   ):
     return []
-  latest_by_cq: dict[str, tuple[str, str, str]] = {}
-  principals_by_cq: dict[str, set[str]] = {}
-  for ts_p, cq_p, val_p, who_p in sorted(
-      state.audit_cq_quota_patch_detail, key=lambda t: t[0]
-  ):
-    latest_by_cq[cq_p] = (ts_p, val_p, who_p)
-    principals_by_cq.setdefault(cq_p, set()).add(who_p or "<unknown principal>")
-  prov_rows = [
-      f"{cq_p}: latest nominalQuota patch={val}"
-      + (f" at {ts_p}" if ts_p else "")
-      + f" by {sorted(principals_by_cq[cq_p])}"
-      for cq_p, (ts_p, val, _) in sorted(latest_by_cq.items())
-  ]
-  admitted_without_audit = sorted(
-      set(state.admitted_count_by_cq) - set(latest_by_cq)
+  confirmed_by_cq, principals_by_cq, unconfirmed_by_cq = (
+      _partition_quota_provenance(state.audit_cq_quota_patch_detail)
   )
+  lead = _format_quota_provenance_lead(
+      confirmed_by_cq, principals_by_cq, unconfirmed_by_cq
+  )
+  seen_cqs = set(confirmed_by_cq) | set(unconfirmed_by_cq)
+  admitted_without_audit = sorted(set(state.admitted_count_by_cq) - seen_cqs)
   unpatched_note = ""
   if admitted_without_audit:
     unpatched_note = (
         "ClusterQueues that admitted workloads in this log but have no"
-        f" nominalQuota patch in the audit trail: {admitted_without_audit}. "
+        f" nominalQuota write in the audit trail: {admitted_without_audit}. "
     )
   return [(
       "logfact:audit-cq-quota-patch",
-      "AUDIT_LOG_FACT: audit log records clusterqueues.patch updates to"
-      " nominalQuota while workloads emit Pending ('insufficient unused"
-      f" quota'). Per ClusterQueue: {'; '.join(prov_rows[:8])}. "
+      lead
       + unpatched_note
-      + "Kueue treats each ClusterQueue's nominalQuota as guaranteed capacity"
-      " and admits against the cohort's summed nominalQuota, independent of"
-      " node allocatable"
-      " (https://kueue.sigs.k8s.io/docs/concepts/cluster_queue/); compare"
-      " these values with COHORT_RESOURCE_ARITHMETIC when a snapshot is"
-      " available.",
+      + "Per https://kueue.sigs.k8s.io/docs/concepts/cluster_queue/,"
+      " nominalQuota is the quantity of this resource that is available for a"
+      " ClusterQueue at a specific time; compare these values with"
+      " COHORT_RESOURCE_ARITHMETIC when a snapshot is available.",
   )]
 
 
@@ -1482,7 +1961,7 @@ def scan_lines(lines: list[str]) -> LogScanState:
       continue
     try:
       d = json.loads(raw_str)
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, RecursionError):
       state.source_counts["unstructured"] += 1
       continue
     if not isinstance(d, dict):
@@ -1490,15 +1969,17 @@ def scan_lines(lines: list[str]) -> LogScanState:
     rec = LogRecord.from_dict(d)
     for scanner in RECORD_SCANNERS:
       scanner(rec, state)
+  _resolve_quota_events(state)
   return state
 
 
 def _finalize_sections(state: LogScanState) -> None:
   """Appends workload status patches and truncation trailers to capped sections."""
+  status_cap = _MAX_AUDIT_ACTIONS_WITH_STATUS + state.audit_delete_count
   for wl_stat in state.workload_status_by_name.values():
     if (
         wl_stat[:220] not in state.seen_audit
-        and len(state.audit_actions) < _MAX_AUDIT_ACTIONS_WITH_STATUS
+        and len(state.audit_actions) < status_cap
     ):
       state.audit_actions.append((None, wl_stat[:850]))
   # Untagged trailer lines so the reader knows the lists are capped (they
@@ -1516,9 +1997,18 @@ def _finalize_sections(state: LogScanState) -> None:
     state.audit_actions.append((
         None,
         (
-            f"... {state.omitted_audit} more distinct audit entries omitted"
-            f" (first {_MAX_AUDIT_ACTIONS} kept); the complete timeline is in"
-            " full_report_file"
+            f"... {state.omitted_audit} more distinct non-delete audit entries"
+            f" omitted (first {_MAX_AUDIT_ACTIONS} kept); the complete timeline"
+            " is in full_report_file"
+        ),
+    ))
+  if state.omitted_audit_deletions:
+    state.audit_actions.append((
+        None,
+        (
+            f"... {state.omitted_audit_deletions} more distinct audit deletion"
+            f" entries omitted (first {_MAX_AUDIT_DELETIONS} kept); the"
+            " complete timeline is in full_report_file"
         ),
     ))
 

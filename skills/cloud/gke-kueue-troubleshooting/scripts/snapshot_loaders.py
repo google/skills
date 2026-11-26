@@ -2,7 +2,10 @@
 
 Responsibilities:
   * reading objects from a live cluster (`kubectl`) or from an offline bundle of
-    YAML/JSON manifests (`load_items`, `load_static_items`);
+    YAML/JSON manifests (`load_items`, `load_static_items`), recording every
+    source that could not be read (`LoadNotes`) instead of dropping it;
+  * masking Secret payloads and literal container `env[].value` entries
+    (`_mask_in_place` at load, `_masked_copy` when compacting);
   * stripping Kubernetes boilerplate per kind (`sanitize_and_compact_object`);
   * filtering noise and ordering Kueue graph objects first
     (`filter_and_sort_snapshot_items`);
@@ -17,6 +20,7 @@ there.
 from __future__ import annotations
 
 import argparse
+import collections.abc
 import dataclasses
 import json
 import os
@@ -50,7 +54,8 @@ _GRAPH_KINDS = {
 
 # Namespaces of platform add-ons whose Pods are never part of a Kueue admission
 # path: the upstream `kube-*` namespaces plus whatever the operator passes via
-# --ignore-namespaces / KUEUE_DIAGNOSE_IGNORE_NAMESPACES (see report_output).
+# --ignore-namespaces / GKE_KUEUE_TROUBLESHOOTING_IGNORE_NAMESPACES
+# (see report_output).
 _is_managed_addon_namespace = report_output.is_managed_addon_namespace
 
 # Node labels shown in snapshots: anything a ResourceFlavor `nodeLabels`, a
@@ -127,7 +132,8 @@ def _is_scheduling_label(key: str) -> bool:
   """True for node labels that commonly drive Kueue flavor/topology matching."""
   if key in k8s.NODE_POOL_LABELS:
     return True
-  if key.startswith("beta.kubernetes.io/") or key in (
+  prefix, sep, _ = key.partition("/")
+  if (sep and prefix == "beta.kubernetes.io") or key in (
       "kubernetes.io/hostname",
       "kubernetes.io/os",
       "kubernetes.io/arch",
@@ -171,7 +177,7 @@ def _compact_metadata(meta: dict[str, Any], kind: str) -> dict[str, Any]:
       meta["managedFieldsSummary"] = compacted_mf
   for noisy_key in ("uid", "selfLink", "generation", "resourceVersion"):
     meta.pop(noisy_key, None)
-  annotations = dict(meta.get("annotations") or {})
+  annotations = dict(k8s.as_dict(meta.get("annotations")))
   annotations.pop("kubectl.kubernetes.io/last-applied-configuration", None)
   if annotations:
     meta["annotations"] = annotations
@@ -183,8 +189,8 @@ def _compact_metadata(meta: dict[str, Any], kind: str) -> dict[str, Any]:
 def _compact_node(out: dict[str, Any]) -> dict[str, Any]:
   """Strips non-scheduling labels, annotations, and healthy conditions on a Node."""
   meta = out["metadata"]
-  status = dict(out.get("status") or {})
-  all_labels = meta.get("labels") or {}
+  status = k8s.status(out)
+  all_labels = k8s.as_dict(meta.get("labels"))
   labels = {k: v for k, v in all_labels.items() if _is_scheduling_label(k)}
   hidden = len(all_labels) - len(labels)
   if hidden > 0:
@@ -192,12 +198,10 @@ def _compact_node(out: dict[str, Any]) -> dict[str, Any]:
   meta["labels"] = labels
   meta.pop("annotations", None)
   out["metadata"] = meta
-  out["spec"] = {"taints": (out.get("spec") or {}).get("taints") or []}
-  allocatable = status.get("allocatable") or {}
+  out["spec"] = {"taints": k8s.spec(out).get("taints") or []}
+  allocatable = k8s.as_dict(status.get("allocatable"))
   node_conds = []
-  for c in status.get("conditions") or []:
-    if not isinstance(c, dict):
-      continue
+  for c in k8s.dict_items(status.get("conditions")):
     ctype = c.get("type")
     cstatus = c.get("status")
     if ctype == "Ready" or cstatus == "True":
@@ -230,8 +234,7 @@ def _compact_container_statuses(statuses: Any) -> list[dict[str, Any]]:
           "state": cs.get("state"),
           "lastState": cs.get("lastState"),
       }
-      for cs in statuses or []
-      if isinstance(cs, dict)
+      for cs in k8s.dict_items(statuses)
   ]
 
 
@@ -243,8 +246,7 @@ def _compact_pod_spec(spec: dict[str, Any]) -> dict[str, Any]:
           "image": c.get("image"),
           "resources": c.get("resources"),
       }
-      for c in spec.get("containers") or []
-      if isinstance(c, dict)
+      for c in k8s.dict_items(spec.get("containers"))
   ]
   init_containers = [
       {
@@ -253,8 +255,7 @@ def _compact_pod_spec(spec: dict[str, Any]) -> dict[str, Any]:
           "imagePullPolicy": c.get("imagePullPolicy"),
           "resources": c.get("resources"),
       }
-      for c in spec.get("initContainers") or []
-      if isinstance(c, dict)
+      for c in k8s.dict_items(spec.get("initContainers"))
   ]
   pod_spec: dict[str, Any] = {
       "nodeName": spec.get("nodeName"),
@@ -274,15 +275,18 @@ def _compact_pod(out: dict[str, Any]) -> dict[str, Any]:
   meta = out["metadata"]
   meta.pop("annotations", None)
   out["metadata"] = meta
-  out["spec"] = _compact_pod_spec(dict(out.get("spec") or {}))
-  status = dict(out.get("status") or {})
-  pod_status: dict[str, Any] = {
-      "phase": status.get("phase"),
-      "conditions": status.get("conditions"),
-      "containerStatuses": _compact_container_statuses(
-          status.get("containerStatuses")
-      ),
-  }
+  out["spec"] = _compact_pod_spec(k8s.spec(out))
+  status = k8s.status(out)
+  pod_status: dict[str, Any] = {"phase": status.get("phase")}
+  # Pod-level reason/message carry the kubelet verdict (Evicted, NodeShutdown,
+  # ...) that no condition or container status repeats.
+  for field in ("reason", "message"):
+    if status.get(field):
+      pod_status[field] = status.get(field)
+  pod_status["conditions"] = status.get("conditions")
+  pod_status["containerStatuses"] = _compact_container_statuses(
+      status.get("containerStatuses")
+  )
   if status.get("initContainerStatuses"):
     pod_status["initContainerStatuses"] = _compact_container_statuses(
         status.get("initContainerStatuses")
@@ -293,7 +297,7 @@ def _compact_pod(out: dict[str, Any]) -> dict[str, Any]:
 
 def _compact_event(out: dict[str, Any]) -> dict[str, Any]:
   meta = out["metadata"]
-  involved = out.get("involvedObject") or {}
+  involved = k8s.as_dict(out.get("involvedObject"))
   return {
       "kind": "Event",
       "metadata": {
@@ -322,21 +326,183 @@ _KIND_COMPACTORS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Redaction
+# ---------------------------------------------------------------------------
+
+REDACTED = "<REDACTED>"
+_MAX_TREE_DEPTH = 100
+_DEPTH_PLACEHOLDER = f"<nesting below {_MAX_TREE_DEPTH} levels omitted>"
+
+
+class TreeBudgetError(Exception):
+  """A manifest tree is cyclic, too deep, or larger than its budget allows."""
+
+
+def _env_needs_mask(entry: Any) -> bool:
+  return (
+      isinstance(entry, dict)
+      and "value" in entry
+      and entry["value"] != REDACTED
+  )
+
+
+def _mask_secret_payload(secret: dict[str, Any]) -> None:
+  """Masks `data` / `stringData` values of a Secret in place (keys stay)."""
+  for field in ("data", "stringData"):
+    payload = secret.get(field)
+    if isinstance(payload, dict):
+      secret[field] = {k: REDACTED for k in payload}
+    elif payload is not None:
+      secret[field] = REDACTED
+
+
+def _mask_in_place(obj: dict[str, Any]) -> None:
+  """Masks a freshly loaded manifest in place.
+
+  Secret payloads and every literal `env[].value` (whether under `containers`,
+  `initContainers`, `ephemeralContainers`, or CRD fields such as
+  `spec.trainer.env` / `spec.driver.env`) become `<REDACTED>`; `name`,
+  `valueFrom`, `command` and `args` stay. A node shared through YAML aliases
+  is visited once and stays shared.
+
+  Args:
+    obj: A manifest the loader owns (nothing else references it yet).
+  """
+  if obj.get("kind") == "Secret":
+    _mask_secret_payload(obj)
+  seen: set[int] = set()
+  stack: list[Any] = [obj]
+  while stack:
+    node = stack.pop()
+    if not isinstance(node, (dict, list)) or id(node) in seen:
+      continue
+    seen.add(id(node))
+    if isinstance(node, list):
+      stack.extend(node)
+      continue
+    for key, child in node.items():
+      if key == "env":
+        for entry in k8s.dict_items(child):
+          if "value" in entry:
+            entry["value"] = REDACTED
+      stack.append(child)
+
+
+def _masked_env_list(env: Any) -> Any:
+  """An `env` list with literal `value` masked, or the same list when clean."""
+  if not isinstance(env, list) or not any(map(_env_needs_mask, env)):
+    return env
+  return [{**e, "value": REDACTED} if _env_needs_mask(e) else e for e in env]
+
+
+def _masked_copy(value: Any, depth: int = 0) -> Any:
+  """`value` with literal `env[].value` entries masked, copying only what changes.
+
+  A subtree with nothing to mask is returned as the same object, so the
+  caller's input is never modified and objects that share a subtree (YAML
+  aliases in a bundle) keep sharing it.
+
+  Args:
+    value: Any part of a manifest.
+    depth: Nesting level; kubectl JSON deeper than `_MAX_TREE_DEPTH` is cut.
+
+  Returns:
+    `value` itself or a partial copy with the masked entries.
+  """
+  if not isinstance(value, (dict, list)):
+    return value
+  if depth > _MAX_TREE_DEPTH:
+    return _DEPTH_PLACEHOLDER
+  out = value
+  pairs = value.items() if isinstance(value, dict) else enumerate(value)
+  for key, child in pairs:
+    if isinstance(value, dict) and key == "env":
+      new = _masked_env_list(child)
+    else:
+      new = _masked_copy(child, depth + 1)
+    if new is not child:
+      if out is value:
+        out = dict(value) if isinstance(value, dict) else list(value)
+      out[key] = new
+  return out
+
+
+class _TreeMeter:
+  """Measures manifests the way the full report writes them: every YAML alias expanded.
+
+  Through aliases a small file can describe an arbitrarily large or a cyclic
+  tree. The meter counts the nodes of the expanded tree in time proportional
+  to the nodes actually stored, and raises `TreeBudgetError` for a cycle, for
+  nesting deeper than `_MAX_TREE_DEPTH`, and once the manifests charged so far
+  exceed `budget` nodes (no limit when `budget` is None).
+  """
+
+  def __init__(self, budget: int | None = None) -> None:
+    self._left = budget
+    self._known: dict[int, tuple[int, int]] = {}  # id -> (nodes, height)
+    self._open: set[int] = set()
+
+  @property
+  def exhausted(self) -> bool:
+    return self._left is not None and self._left < 0
+
+  def charge(self, obj: Any) -> None:
+    """Counts one manifest against the budget."""
+    self._open = set()
+    nodes, _ = self._measure(obj, 0)
+    if self._left is not None:
+      self._left -= nodes
+      if self._left < 0:
+        raise TreeBudgetError("YAML aliases expand past the size of the file")
+
+  def _measure(self, node: Any, depth: int) -> tuple[int, int]:
+    """Counts nodes and subtree height under `node`, rejecting deep or cyclic trees."""
+    if not isinstance(node, (dict, list)):
+      return 1, 0
+    if depth > _MAX_TREE_DEPTH:
+      raise TreeBudgetError(f"nesting deeper than {_MAX_TREE_DEPTH} levels")
+    known = self._known.get(id(node))
+    if known is None:
+      if id(node) in self._open:
+        raise TreeBudgetError("a YAML alias refers to its own ancestor")
+      self._open.add(id(node))
+      nodes, height = 1, 0
+      for child in node.values() if isinstance(node, dict) else node:
+        child_nodes, child_height = self._measure(child, depth + 1)
+        nodes += child_nodes
+        height = max(height, child_height + 1)
+      self._open.discard(id(node))
+      known = self._known[id(node)] = (nodes, height)
+    if depth + known[1] > _MAX_TREE_DEPTH:
+      raise TreeBudgetError(f"nesting deeper than {_MAX_TREE_DEPTH} levels")
+    return known
+
+
 def sanitize_and_compact_object(obj: dict[str, Any]) -> dict[str, Any]:
-  """Strips Kubernetes boilerplate while preserving diagnostic signal and field attribution."""
+  """Strips Kubernetes boilerplate while preserving diagnostic signal and field attribution.
+
+  Secret payloads and literal container `env[].value` entries are masked in
+  the result; the input object is not modified.
+
+  Args:
+    obj: A raw Kubernetes object mapping.
+
+  Returns:
+    The compacted, masked object (non-mapping input is returned unchanged).
+  """
   if not isinstance(obj, dict):
     return obj
   out = dict(obj)
   out.pop("_yaml_duplicate_keys", None)
   kind = str(out.get("kind", ""))
-  if kind == "Secret":
-    if "data" in out:
-      out["data"] = {k: "<REDACTED>" for k in out["data"]}
-    if "stringData" in out:
-      out["stringData"] = {k: "<REDACTED>" for k in out["stringData"]}
-  out["metadata"] = _compact_metadata(dict(out.get("metadata") or {}), kind)
+  out["metadata"] = _compact_metadata(dict(k8s.metadata(out)), kind)
   compactor = _KIND_COMPACTORS.get(kind)
-  return compactor(out) if compactor else out
+  if compactor:
+    out = compactor(out)
+  if kind == "Secret":
+    _mask_secret_payload(out)
+  return _masked_copy(out)
 
 
 # ---------------------------------------------------------------------------
@@ -383,6 +549,7 @@ def _strip_volatile(value: Any) -> Any:
 
 def _pod_failure_signature(status: dict[str, Any]) -> dict[str, Any]:
   return _strip_volatile({
+      "reason": status.get("reason"),
       "conditions": status.get("conditions") or [],
       "containerStatuses": status.get("containerStatuses") or [],
       "initContainerStatuses": status.get("initContainerStatuses") or [],
@@ -547,7 +714,7 @@ def sample_bulk_groups(
 
 
 def _event_is_relevant(it: dict[str, Any]) -> bool:
-  involved = it.get("involvedObject") or {}
+  involved = k8s.as_dict(it.get("involvedObject"))
   inv_kind = str(involved.get("kind", "")).lower()
   inv_name = str(involved.get("name", "")).lower()
   msg = str(it.get("message", "")).lower()
@@ -572,7 +739,7 @@ def _keep_snapshot_item(it: dict[str, Any]) -> bool:
     has_fail = _pod_has_failure(it)
     if _is_managed_addon_namespace(ns) and not has_fail:
       return False
-    phase = str(((it.get("status") or {}).get("phase")) or "")
+    phase = str(k8s.status(it).get("phase") or "")
     if (
         phase in ("Running", "Succeeded")
         and "kueue" not in name
@@ -617,84 +784,92 @@ class LedgerInputs:
   detected_version: dict[str, Any] | None = None
 
 
-def _read_ledger(ledger_path: str) -> dict[str, Any]:
-  return report_output.load_ledger(ledger_path, strict=False)
-
-
 def _ledger_items(obj_or_list: Any) -> list[dict[str, Any]]:
   if isinstance(obj_or_list, dict):
     if obj_or_list.get("kind") == "List":
-      return obj_or_list.get("items", [])
+      return k8s.dict_items(obj_or_list.get("items"))
     return [obj_or_list]
-  if isinstance(obj_or_list, list):
-    return [x for x in obj_or_list if isinstance(x, dict)]
-  return []
+  return k8s.dict_items(obj_or_list)
 
 
 def _record_item_refs(
     item: dict[str, Any], action: str, referenced: set[str], inspected: set[str]
 ) -> None:
   """Adds the item and the graph objects it points at to the referenced/inspected sets."""
-  kind = str(item.get("kind", "")).lower()
-  meta = item.get("metadata") or {}
-  name = meta.get("name", "")
-  ns = meta.get("namespace", "")
+  kind = k8s.kind(item).lower()
+  meta = k8s.metadata(item)
+  name = meta.get("name") or ""
+  ns = meta.get("namespace") or ""
   ref_id = f"{kind}/{ns}/{name}" if ns else f"{kind}/{name}"
   if kind in _GRAPH_KINDS and name:
     referenced.add(ref_id)
     if action == "get":
       inspected.add(ref_id)
-  spec = item.get("spec") or {}
   if kind != "clusterqueue":
     return
+  spec = k8s.spec(item)
   cohort = spec.get("cohort") or spec.get("cohortName")
-  if cohort:
+  if isinstance(cohort, str) and cohort:
     referenced.add(f"cohort/{cohort}")
     if action == "get":
       inspected.add(f"cohort/{cohort}")
-  for rg in spec.get("resourceGroups") or []:
-    for fl in rg.get("flavors") or []:
-      fl_name = fl.get("name")
-      if fl_name:
-        referenced.add(f"resourceflavor/{fl_name}")
-  for ac in (spec.get("admissionChecksStrategy") or {}).get(
-      "admissionChecks", []
-  ):
-    ac_name = ac.get("name")
-    if ac_name:
-      referenced.add(f"admissioncheck/{ac_name}")
-  for ac_name in spec.get("admissionChecks") or []:
+  for rg in k8s.resource_groups(item):
+    for fl in k8s.dict_items(rg.get("flavors")):
+      if fl.get("name"):
+        referenced.add(f"resourceflavor/{fl.get('name')}")
+  strategy = k8s.as_dict(spec.get("admissionChecksStrategy"))
+  for ac in k8s.dict_items(strategy.get("admissionChecks")):
+    if ac.get("name"):
+      referenced.add(f"admissioncheck/{ac.get('name')}")
+  for ac_name in k8s.as_list(spec.get("admissionChecks")):
     if isinstance(ac_name, str):
       referenced.add(f"admissioncheck/{ac_name}")
 
 
-def update_ledger(inputs: LedgerInputs) -> None:
-  """Updates the coverage ledger with discovered and inspected Kueue graph objects and detected Kueue version."""
-  if not inputs.ledger_path:
-    return
-  ledger = _read_ledger(inputs.ledger_path)
+_LEDGER_CHUNK_CHARS = 120000
+_LEDGER_MAX_CHUNKS = 50
+
+
+def _ledger_strings(value: Any) -> list[str]:
+  return [x for x in k8s.as_list(value) if isinstance(x, str)]
+
+
+def _apply_ledger_update(ledger: dict[str, Any], inputs: LedgerInputs) -> None:
+  """Merges one script run into the loaded ledger mapping in place."""
   if inputs.detected_version:
     ledger["detected_kueue_version"] = inputs.detected_version
-  referenced = set(ledger.get("referenced", []))
-  inspected = set(ledger.get("inspected", []))
+  referenced = set(_ledger_strings(ledger.get("referenced")))
+  inspected = set(_ledger_strings(ledger.get("inspected")))
   for item in _ledger_items(inputs.obj_or_list):
     _record_item_refs(item, inputs.action, referenced, inspected)
-  outputs = ledger.get("tool_outputs", [])
+  outputs = _ledger_strings(ledger.get("tool_outputs"))
   if inputs.raw_output_str:
     # Chunked so that every object name in the full report stays quotable; the
     # validator joins all entries into one corpus.
-    for i in range(0, len(inputs.raw_output_str), 120000):
-      outputs.append(inputs.raw_output_str[i : i + 120000])
+    for i in range(0, len(inputs.raw_output_str), _LEDGER_CHUNK_CHARS):
+      outputs.append(inputs.raw_output_str[i : i + _LEDGER_CHUNK_CHARS])
   ledger["referenced"] = sorted(referenced)
   ledger["inspected"] = sorted(inspected)
-  ledger["tool_outputs"] = outputs[-50:]
-  os.makedirs(
-      os.path.dirname(os.path.abspath(inputs.ledger_path)), exist_ok=True
+  ledger["tool_outputs"] = outputs[-_LEDGER_MAX_CHUNKS:]
+
+
+def update_ledger(inputs: LedgerInputs) -> None:
+  """Updates the coverage ledger with discovered and inspected Kueue graph objects and detected Kueue version.
+
+  The read-modify-write runs under the lock every ledger writer takes
+  (`report_output.mutate_ledger`), so a `trace_logs.py` run in parallel keeps
+  its entries and this one keeps its own.
+
+  Args:
+    inputs: What the current run loaded and printed.
+  """
+  if not inputs.ledger_path:
+    return
+  report_output.mutate_ledger(
+      inputs.ledger_path,
+      lambda ledger: _apply_ledger_update(ledger, inputs),
+      strict=False,
   )
-  tmp_path = f"{inputs.ledger_path}.tmp"
-  with open(tmp_path, "w", encoding="utf-8") as f:
-    json.dump(ledger, f, indent=2)
-  os.replace(tmp_path, inputs.ledger_path)
 
 
 # ---------------------------------------------------------------------------
@@ -702,26 +877,104 @@ def update_ledger(inputs: LedgerInputs) -> None:
 # ---------------------------------------------------------------------------
 
 
+class LoadError(Exception):
+  """Raised when objects cannot be loaded; carries the user-facing message and next step."""
+
+  def __init__(self, message: str, next_step: str) -> None:
+    super().__init__(message)
+    self.message = message
+    self.next_step = next_step
+
+
+_MAX_LOAD_WARNINGS = 30
+
+
+@dataclasses.dataclass
+class LoadNotes:
+  """What a load could not read: full texts for `warnings`, short labels for the coverage line."""
+
+  warnings: list[str] = dataclasses.field(default_factory=list)
+  skipped: list[str] = dataclasses.field(default_factory=list)
+
+  def warn(self, text: str) -> None:
+    self.warnings.append(text)
+
+  def skip(self, source: str, detail: str) -> None:
+    """Records a source (file, document, kind) whose objects are missing from the result."""
+    self.skipped.append(source)
+    self.warnings.append(f"{source} not loaded: {detail}")
+
+  def summary(self) -> str:
+    """Suffix for error messages: how many sources were skipped and the first reason."""
+    if not self.skipped:
+      return ""
+    first = next((w for w in self.warnings if " not loaded: " in w), "")
+    return f" ({len(self.skipped)} source(s) skipped; first: {first[:300]})"
+
+  def attach(self, raw_obj: dict[str, Any]) -> dict[str, Any]:
+    """Stores the notes on a `kind: List` result as `_warnings` / `_skipped_sources`."""
+    if self.warnings:
+      shown = self.warnings[:_MAX_LOAD_WARNINGS]
+      hidden = len(self.warnings) - len(shown)
+      if hidden:
+        shown.append(f"... {hidden} more load warnings")
+      raw_obj.setdefault("_warnings", []).extend(shown)
+    if self.skipped:
+      raw_obj["_skipped_sources"] = list(self.skipped)
+    return raw_obj
+
+
 class _DuplicateKeyTrackingLoader(yaml.SafeLoader):
-  """YAML SafeLoader that records overwritten duplicate keys on mappings."""
+  """YAML SafeLoader that records overwritten duplicate keys on the document root.
+
+  Mappings are built depth-first, so an overwritten value is complete when it
+  is summarised. Only keys written in the mapping itself are compared: a key
+  merged in through `<<` may be overridden without being a duplicate. The
+  findings of a document are stored on its root mapping as
+  `_yaml_duplicate_keys` (dotted key paths), never inside nested mappings.
+  """
+
+  def __init__(self, stream: Any) -> None:
+    super().__init__(stream)
+    self._key_path: list[str] = []
+    self._duplicates: list[str] = []
+
+  def construct_document(self, node: yaml.Node) -> Any:
+    self._key_path, self._duplicates = [], []
+    data = super().construct_document(node)
+    if self._duplicates and isinstance(data, dict):
+      data["_yaml_duplicate_keys"] = self._duplicates
+    return data
 
   def construct_mapping(
       self, node: yaml.MappingNode, deep: bool = False
   ) -> dict[Any, Any]:
+    own_keys = {id(key_node) for key_node, _ in node.value}
     self.flatten_mapping(node)
     mapping: dict[Any, Any] = {}
-    duplicates: list[str] = []
+    seen: set[Any] = set()
     for key_node, value_node in node.value:
-      key = self.construct_object(key_node, deep=deep)
-      val = self.construct_object(value_node, deep=deep)
-      if key in mapping:
-        duplicates.append(
-            f"key {key!r} defined multiple"
-            f" times{_previous_config_summary(mapping[key])}"
+      key = self.construct_object(key_node, deep=True)
+      if not isinstance(key, collections.abc.Hashable):
+        raise yaml.constructor.ConstructorError(
+            "while constructing a mapping",
+            node.start_mark,
+            "found unhashable key",
+            key_node.start_mark,
         )
+      self._key_path.append(str(key))
+      try:
+        val = self.construct_object(value_node, deep=True)
+      finally:
+        self._key_path.pop()
+      if id(key_node) in own_keys:
+        if key in seen:
+          self._duplicates.append(
+              f"key {'.'.join(self._key_path + [str(key)])!r} defined"
+              f" multiple times{_previous_config_summary(mapping.get(key))}"
+          )
+        seen.add(key)
       mapping[key] = val
-    if duplicates:
-      mapping["_yaml_duplicate_keys"] = duplicates
     return mapping
 
 
@@ -745,56 +998,250 @@ def _previous_config_summary(prev: Any) -> str:
 
 
 def _manifest_paths(data_path: str) -> list[str]:
+  """Returns sorted manifest paths and symlinked subdirs; `_read_manifest` skips and records non-regular entries."""
   paths: list[str] = []
   if os.path.isfile(data_path):
-    paths.append(data_path)
+    # Operator named this path explicitly: follow a symlink to a regular file.
+    paths.append(os.path.realpath(data_path))
   elif os.path.isdir(data_path):
     for root, dirs, files in os.walk(data_path):
-      dirs.sort()
+      kept_dirs: list[str] = []
+      for dname in sorted(dirs):
+        if dname == report_output.REPORT_DIR_NAME:
+          continue
+        full_dir = os.path.join(root, dname)
+        if os.path.islink(full_dir):
+          paths.append(full_dir)
+        else:
+          kept_dirs.append(dname)
+      dirs[:] = kept_dirs
       for fname in sorted(files):
         if fname.endswith((".yaml", ".yml", ".json")):
           paths.append(os.path.join(root, fname))
   return paths
 
 
-def _collect_docs(docs: Any, items: list[dict[str, Any]]) -> None:
-  for doc in docs:
-    if isinstance(doc, dict) and doc.get("kind") == "List":
-      items.extend(doc.get("items", []))
-    elif isinstance(doc, dict) and doc.get("kind"):
-      items.append(doc)
+def _load_error_text(exc: Exception, line_offset: int = 0) -> str:
+  """One-line description of a parse error with file-absolute line numbers."""
+  mark = getattr(exc, "problem_mark", None)
+  if mark is None:
+    text = " ".join(str(exc).split())
+    return f"{type(exc).__name__}: {text[:300]}"
+  parts = [getattr(exc, "context", None), getattr(exc, "problem", None)]
+  text = " ".join(str(p) for p in parts if p) or type(exc).__name__
+  line = line_offset + mark.line + 1
+  return f"{text} (line {line}, column {mark.column + 1})"
 
 
-def load_static_items(data_path: str) -> list[dict[str, Any]]:
-  """Loads Kubernetes objects from a file or directory for offline_data."""
-  items: list[dict[str, Any]] = []
-  for p in _manifest_paths(data_path):
+def _split_yaml_documents(text: str) -> list[tuple[int, str]]:
+  """Splits YAML text at `---` markers into `(first line index, document text)` pairs."""
+  lines = text.split("\n")
+  chunks: list[tuple[int, str]] = []
+  start = 0
+  for idx, line in enumerate(lines):
+    if idx and (line.rstrip() == "---" or line.startswith(("--- ", "---\t"))):
+      chunks.append((start, "\n".join(lines[start:idx])))
+      start = idx
+  chunks.append((start, "\n".join(lines[start:])))
+  return [(first, chunk) for first, chunk in chunks if chunk.strip()]
+
+
+def _yaml_documents(text: str, source: str, notes: LoadNotes) -> list[Any]:
+  """Parses every YAML document of a file; a document that fails is recorded and skipped.
+
+  The file is parsed in one pass first. Only when that fails is it split at
+  the `---` markers and parsed document by document, so the documents before
+  and after a broken one are still loaded.
+
+  Args:
+    text: The file content.
+    source: Label of the file for `notes`.
+    notes: Collector for skipped documents.
+
+  Returns:
+    The parsed documents, in file order.
+  """
+  try:
+    return list(yaml.load_all(text, Loader=_DuplicateKeyTrackingLoader))
+  except Exception:  # pylint: disable=broad-exception-caught
+    # Any loader failure (syntax, unacceptable character, nesting depth) is
+    # attributed to its document in the second pass below.
+    pass
+  docs: list[Any] = []
+  for number, (first, chunk) in enumerate(_split_yaml_documents(text), 1):
     try:
-      with open(p, "r", encoding="utf-8") as f:
-        if p.endswith(".json"):
-          _collect_docs([json.load(f)], items)
-        else:
-          _collect_docs(
-              yaml.load_all(f, Loader=_DuplicateKeyTrackingLoader), items
-          )
-    except Exception:  # pylint: disable=broad-exception-caught
-      # Corrupt or unreadable files in a support bundle are skipped.
+      docs.extend(yaml.load_all(chunk, Loader=_DuplicateKeyTrackingLoader))
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+      notes.skip(
+          f"{source} (document {number}, from line {first + 1})",
+          _load_error_text(exc, first),
+      )
+  return docs
+
+
+def _is_json_lines(text: str) -> bool:
+  """True for JSON Lines content (log exports), which is not a manifest file."""
+  head, _, rest = text.lstrip().partition("\n")
+  if not rest.strip():
+    return False
+  try:
+    json.loads(head)
+  except (ValueError, RecursionError):
+    return False
+  return True
+
+
+def _json_documents(text: str, source: str, notes: LoadNotes) -> list[Any]:
+  """Parses a `.json` file; invalid JSON is recorded, JSON Lines logs are left to `trace_logs.py`."""
+  try:
+    return [json.loads(text)]
+  except (ValueError, RecursionError) as exc:
+    if not _is_json_lines(text):
+      notes.skip(source, _load_error_text(exc))
+    return []
+
+
+def _stamped_list_item(
+    member: dict[str, Any], item_kind: str, api_version: Any
+) -> dict[str, Any]:
+  """A typed-list item with the `kind` / `apiVersion` the API server leaves out."""
+  stamp: dict[str, Any] = {}
+  if item_kind and api_version and not member.get("apiVersion"):
+    stamp["apiVersion"] = api_version
+  if item_kind and not member.get("kind"):
+    stamp["kind"] = item_kind
+  if not stamp:
+    return member
+  return {**stamp, **{k: v for k, v in member.items() if k not in stamp}}
+
+
+def _document_objects(doc: Any, depth: int = 0) -> list[dict[str, Any]]:
+  """Kubernetes objects of one parsed document, with `List` and `<Kind>List` documents expanded.
+
+  Items of a typed list (`PodList`, `SecretList`, ...) get the list kind
+  without its `List` suffix and the list `apiVersion` when they carry none.
+  A list whose `items` is null or not a list yields nothing.
+
+  Args:
+    doc: One parsed YAML/JSON document.
+    depth: Nesting level of lists inside lists.
+
+  Returns:
+    The mappings that have a `kind`.
+  """
+  if not isinstance(doc, dict):
+    return []
+  kind = doc.get("kind")
+  if not isinstance(kind, str) or not kind:
+    return []
+  if not (kind.endswith("List") and ("items" in doc or kind == "List")):
+    return [doc]
+  out: list[dict[str, Any]] = []
+  if depth > 2:
+    return out
+  for member in k8s.dict_items(doc.get("items")):
+    member = _stamped_list_item(member, kind[:-4], doc.get("apiVersion"))
+    out.extend(_document_objects(member, depth + 1))
+  return out
+
+
+def _is_kubeconfig(obj: dict[str, Any]) -> bool:
+  return obj.get("kind") == "Config" and any(
+      key in obj for key in ("users", "clusters", "contexts")
+  )
+
+
+def _collect_docs(
+    docs: Any,
+    items: list[dict[str, Any]],
+    source: str = "",
+    notes: LoadNotes | None = None,
+    budget: int | None = None,
+) -> None:
+  """Appends the objects of parsed documents to `items`: lists expanded, secrets masked, kubeconfigs dropped."""
+  notes = notes if notes is not None else LoadNotes()
+  meter = _TreeMeter(budget)
+  for doc in docs:
+    for obj in _document_objects(doc):
+      if _is_kubeconfig(obj):
+        notes.warn(
+            f"{source}: kubeconfig document (kind: Config) holds credentials"
+            " and was left out"
+        )
+        continue
+      try:
+        meter.charge(obj)
+      except TreeBudgetError as exc:
+        notes.skip(f"{source} ({k8s.kind(obj)} {_obj_name(obj)!r})", str(exc))
+        if meter.exhausted:
+          notes.warn(f"{source}: the documents after that object were not read")
+          return
+        continue
+      _mask_in_place(obj)
+      items.append(obj)
+
+
+def _obj_name(obj: Any) -> str:
+  """`metadata.name` as a string; '' when missing or null."""
+  return str(k8s.metadata(obj).get("name") or "")
+
+
+def _obj_namespace(obj: Any) -> str:
+  return str(k8s.metadata(obj).get("namespace") or "")
+
+
+# Node budget of one manifest file relative to its size: a parsed tree has
+# fewer nodes than the file has characters unless YAML aliases multiply it.
+# The full report writes aliases out, so this bounds its size as well.
+_NODES_PER_CHAR = 4
+_MIN_NODE_BUDGET = 100000
+
+
+def _read_manifest(path: str, source: str, notes: LoadNotes) -> str | None:
+  if not report_output.is_regular_file(path):
+    notes.skip(source, "non-regular file or symlink")
+    return None
+  try:
+    with open(path, "r", encoding="utf-8-sig") as f:
+      return f.read()
+  except (OSError, UnicodeError) as exc:
+    notes.skip(source, _load_error_text(exc))
+    return None
+
+
+def load_static_items(
+    data_path: str, notes: LoadNotes | None = None
+) -> list[dict[str, Any]]:
+  """Loads Kubernetes objects from a file or directory for offline_data.
+
+  Unreadable files and unparsable documents are skipped and recorded in
+  `notes`; everything else in the bundle is still loaded.
+
+  Args:
+    data_path: A manifest file or a directory that is walked recursively.
+    notes: Optional collector for skipped sources and warnings.
+
+  Returns:
+    The loaded objects with secrets masked. Subtrees a file shares through
+    YAML aliases stay shared.
+  """
+  notes = notes if notes is not None else LoadNotes()
+  items: list[dict[str, Any]] = []
+  prefix = data_path.rstrip(os.sep) + os.sep
+  for p in _manifest_paths(data_path):
+    source = p[len(prefix) :] if p.startswith(prefix) else os.path.basename(p)
+    text = _read_manifest(p, source, notes)
+    if text is None:
       continue
+    parse = _json_documents if p.endswith(".json") else _yaml_documents
+    budget = max(_MIN_NODE_BUDGET, _NODES_PER_CHAR * len(text))
+    _collect_docs(parse(text, source, notes), items, source, notes, budget)
   return items
 
 
 # ---------------------------------------------------------------------------
 # Live cluster loading
 # ---------------------------------------------------------------------------
-
-
-class LoadError(Exception):
-  """Raised when objects cannot be loaded; carries the user-facing message and next step."""
-
-  def __init__(self, message: str, next_step: str) -> None:
-    super().__init__(message)
-    self.message = message
-    self.next_step = next_step
 
 
 def _served_resource_names() -> tuple[set[str] | None, str]:
@@ -837,16 +1284,59 @@ def _filter_served(kinds_csv: str, served: set[str]) -> tuple[str, list[str]]:
   return ",".join(kept), missing
 
 
-def _kubectl_json(cmd: list[str]) -> tuple[dict[str, Any] | None, str]:
-  res = subprocess.run(cmd, capture_output=True, text=True, check=False)
+# Upper bound for one kubectl call. Listing every Pod of a large cluster takes
+# minutes; a call that exceeds this is reported like any other kubectl error
+# (optional kinds are skipped, required ones end the run).
+_KUBECTL_TIMEOUT_SECONDS = 300
+_KUBECTL_NOT_RUN = "kubectl could not be run"
+
+
+def _kubectl_json(
+    cmd: list[str], timeout: float = _KUBECTL_TIMEOUT_SECONDS
+) -> tuple[dict[str, Any] | None, str]:
+  """Runs a `kubectl ... -o json` command.
+
+  Args:
+    cmd: Full kubectl command argv.
+    timeout: Maximum seconds to wait for kubectl to exit.
+
+  Returns:
+    `(object, "")` on success, or `(None, error text)` on failure.
+  """
+  try:
+    res = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        errors="replace",
+        check=False,
+        timeout=timeout,
+    )
+  except subprocess.TimeoutExpired:
+    return None, f"`{' '.join(cmd[:3])}` did not finish within {timeout:g}s"
+  except (OSError, subprocess.SubprocessError) as exc:
+    return None, f"{_KUBECTL_NOT_RUN}: {type(exc).__name__}: {exc}"
   if res.returncode != 0:
-    return None, res.stderr.strip()
+    return None, res.stderr.strip() or f"kubectl exit code {res.returncode}"
   if not res.stdout.strip():
     return {"kind": "List", "items": []}, ""
   try:
-    return json.loads(res.stdout), ""
-  except json.JSONDecodeError as exc:
+    parsed = json.loads(res.stdout)
+  except ValueError as exc:
     return None, f"kubectl returned non-JSON output: {exc}"
+  if not isinstance(parsed, dict):
+    return None, "kubectl returned JSON that is not an object"
+  return parsed, ""
+
+
+def _kubectl_load_error(what: str, err: str, next_step: str) -> LoadError:
+  """`LoadError` for a failed kubectl call; a missing binary gets its own next step."""
+  if err.startswith(_KUBECTL_NOT_RUN):
+    next_step = (
+        "Verify that kubectl is installed and on PATH; for a saved bundle pass"
+        " --mode offline_data --data-path <directory>."
+    )
+  return LoadError(f"{what}: {err}", next_step)
 
 
 def _served_kind_lists() -> tuple[str, str, list[str], str]:
@@ -881,9 +1371,9 @@ def _missing_kinds_warning(missing_kinds: list[str], served_err: str) -> str:
 
 
 def _append_manager_config(
-    raw_obj: dict[str, Any], kueue_namespace: str
+    raw_obj: dict[str, Any], kueue_namespace: str, notes: LoadNotes
 ) -> None:
-  """Fetches `kueue-manager-config` via kubectl and appends it or a warning."""
+  """Fetches `kueue-manager-config` via kubectl and appends it, or records why it is missing."""
   cm_obj, err = _kubectl_json([
       "kubectl",
       "get",
@@ -897,11 +1387,112 @@ def _append_manager_config(
   ])
   if isinstance(cm_obj, dict) and cm_obj.get("kind") == "ConfigMap":
     raw_obj["items"].append(cm_obj)
-  elif err:
-    raw_obj.setdefault("_warnings", []).append(
-        f"kueue-manager-config not read from namespace {kueue_namespace!r}:"
-        f" {err}. Pass --kueue-namespace if Kueue is installed elsewhere."
+    return
+  # `--ignore-not-found` exits 0 with empty output when the ConfigMap does not
+  # exist, which is what a wrong --kueue-namespace looks like.
+  notes.skip(
+      f"configmap kueue-manager-config (namespace {kueue_namespace!r})",
+      (err or "no ConfigMap of that name exists in that namespace")
+      + ". Pass --kueue-namespace if Kueue is installed elsewhere.",
+  )
+
+
+_CLUSTER_NEXT_STEP = (
+    "Check `kubectl config current-context` and that Kueue CRDs are installed"
+    " (`kubectl api-resources --api-group=kueue.x-k8s.io`)."
+)
+
+
+def _fetch_cluster_scoped_items(
+    cluster_list: str, notes: LoadNotes
+) -> list[dict[str, Any]]:
+  """Fetches cluster-scoped Kueue CRDs and nodes in separate kubectl calls.
+
+  The Kueue kinds are required. Nodes are optional: a role without node list
+  permission still gets a snapshot, with the gap recorded in `notes`.
+
+  Args:
+    cluster_list: Comma-separated served cluster-scoped kinds.
+    notes: Collector for kinds that could not be listed.
+
+  Returns:
+    The fetched objects.
+
+  Raises:
+    LoadError: When the Kueue cluster-scoped kinds cannot be listed.
+  """
+  cluster_kinds = [k for k in cluster_list.split(",") if k]
+  kueue_cluster_kinds = [k for k in cluster_kinds if k != "nodes"]
+  cluster_items: list[dict[str, Any]] = []
+  if kueue_cluster_kinds:
+    cluster_obj, err = _kubectl_json([
+        "kubectl",
+        "get",
+        ",".join(kueue_cluster_kinds),
+        "-o",
+        "json",
+        "--ignore-not-found=true",
+    ])
+    if cluster_obj is None:
+      raise _kubectl_load_error(
+          "kubectl error while listing cluster-scoped Kueue objects",
+          err,
+          _CLUSTER_NEXT_STEP,
+      )
+    cluster_items.extend(k8s.dict_items(cluster_obj.get("items")))
+  if "nodes" in cluster_kinds:
+    nodes_obj, err = _kubectl_json(
+        ["kubectl", "get", "nodes", "-o", "json", "--ignore-not-found=true"]
     )
+    if nodes_obj is None:
+      notes.skip("nodes", f"kubectl: {err[:300]}")
+    else:
+      cluster_items.extend(k8s.dict_items(nodes_obj.get("items")))
+  return cluster_items
+
+
+def _fetch_namespaced_items(
+    ns_list: str, args: argparse.Namespace, notes: LoadNotes
+) -> list[dict[str, Any]]:
+  """Lists the namespaced kinds in one kubectl call, or kind by kind when that call fails.
+
+  One kind the caller may not list (pods, events, ...) fails the combined
+  call as a whole. On the retry only `workloads` is required; every other
+  kind that cannot be listed is recorded in `notes` and left out.
+
+  Args:
+    ns_list: Comma-separated served namespaced kinds.
+    args: Parsed CLI arguments (`namespace` selects one namespace).
+    notes: Collector for kinds that could not be listed.
+
+  Returns:
+    The fetched objects.
+
+  Raises:
+    LoadError: When Workloads cannot be listed.
+  """
+  scope = ["-n", args.namespace] if args.namespace else ["-A"]
+  base = ["kubectl", "get", "-o", "json", "--ignore-not-found=true", *scope]
+  ns_obj, err = _kubectl_json(base[:2] + [ns_list] + base[2:])
+  if ns_obj is not None:
+    return k8s.dict_items(ns_obj.get("items"))
+  kinds = [k for k in ns_list.split(",") if k]
+  items: list[dict[str, Any]] = []
+  for kind in kinds:
+    if len(kinds) > 1:
+      ns_obj, err = _kubectl_json(base[:2] + [kind] + base[2:])
+    if ns_obj is not None:
+      items.extend(k8s.dict_items(ns_obj.get("items")))
+    elif kind.startswith("workloads"):
+      raise _kubectl_load_error(
+          f"kubectl error while listing {kind}",
+          err,
+          "Retry with `--namespace <workload namespace>` to narrow the query,"
+          " or inspect objects with plain kubectl.",
+      )
+    else:
+      notes.skip(kind, f"kubectl: {err[:300]}")
+  return items
 
 
 def _live_snapshot(args: argparse.Namespace) -> dict[str, Any]:
@@ -918,36 +1509,16 @@ def _live_snapshot(args: argparse.Namespace) -> dict[str, Any]:
         "Check `kubectl config current-context` and that Kueue is installed"
         " (`kubectl api-resources --api-group=kueue.x-k8s.io`).",
     )
-  cluster_obj, err = _kubectl_json(
-      ["kubectl", "get", cluster_list, "-o", "json", "--ignore-not-found=true"]
-  )
-  if cluster_obj is None:
-    raise LoadError(
-        f"kubectl error while listing cluster-scoped Kueue objects: {err}",
-        "Check `kubectl config current-context` and that Kueue CRDs are"
-        " installed (`kubectl api-resources --api-group=kueue.x-k8s.io`).",
-    )
-  ns_cmd = ["kubectl", "get", ns_list, "-o", "json", "--ignore-not-found=true"]
-  ns_cmd.extend(["-n", args.namespace] if args.namespace else ["-A"])
-  ns_obj, err = _kubectl_json(ns_cmd)
-  if ns_obj is None:
-    raise LoadError(
-        f"kubectl error while listing namespaced objects: {err}",
-        "Retry with `--namespace <workload namespace>` to narrow the query, or"
-        " inspect objects with plain kubectl.",
-    )
+  notes = LoadNotes()
+  cluster_items = _fetch_cluster_scoped_items(cluster_list, notes)
   raw_obj = {
       "kind": "List",
-      "items": (
-          list(cluster_obj.get("items", [])) + list(ns_obj.get("items", []))
-      ),
+      "items": cluster_items + _fetch_namespaced_items(ns_list, args, notes),
   }
   if missing_kinds:
-    raw_obj.setdefault("_warnings", []).append(
-        _missing_kinds_warning(missing_kinds, served_err)
-    )
-  _append_manager_config(raw_obj, args.kueue_namespace)
-  return raw_obj
+    notes.warn(_missing_kinds_warning(missing_kinds, served_err))
+  _append_manager_config(raw_obj, args.kueue_namespace, notes)
+  return notes.attach(raw_obj)
 
 
 def _live_list(args: argparse.Namespace, action: str) -> dict[str, Any]:
@@ -965,8 +1536,9 @@ def _live_list(args: argparse.Namespace, action: str) -> dict[str, Any]:
     cmd.append("-A")
   raw_obj, err = _kubectl_json(cmd)
   if raw_obj is None:
-    raise LoadError(
-        f"kubectl error: {err}",
+    raise _kubectl_load_error(
+        "kubectl error",
+        err,
         "Verify the kind/namespace, RBAC and the current kube-context.",
     )
   return raw_obj
@@ -984,51 +1556,134 @@ def _live_get(args: argparse.Namespace) -> dict[str, Any]:
     cmd.append("-A")
   raw_obj, err = _kubectl_json(cmd)
   if raw_obj is None:
-    raise LoadError(
-        f"kubectl error: {err}",
+    raise _kubectl_load_error(
+        "kubectl error",
+        err,
         "Verify the kind/name/namespace and the current kube-context.",
     )
   return raw_obj
 
 
+# kubectl short names of the kinds a Kueue investigation looks up, mapped to
+# the lower-case singular kind. Plurals and `<resource>.<group>` forms are
+# resolved by `_kind_candidates`.
+_KIND_SHORT_NAMES = {
+    "ac": "admissioncheck",
+    "co": "cohort",
+    "cq": "clusterqueue",
+    "flavor": "resourceflavor",
+    "rf": "resourceflavor",
+    "kwl": "workload",
+    "kueueworkload": "workload",
+    "wl": "workload",
+    "lq": "localqueue",
+    "queue": "localqueue",
+    "mkc": "multikueuecluster",
+    "mkconf": "multikueueconfig",
+    "prc": "provisioningrequestconfig",
+    "provreq": "provisioningrequest",
+    "wpc": "workloadpriorityclass",
+    "cm": "configmap",
+    "ev": "event",
+    "no": "node",
+    "ns": "namespace",
+    "pc": "priorityclass",
+    "po": "pod",
+    "quota": "resourcequota",
+    "limits": "limitrange",
+}
+
+
+def _kind_candidates(requested: str) -> set[str]:
+  """Lower-case singular kinds a `--kind` value can name.
+
+  Accepts what kubectl accepts: the kind in any case, its plural, a short
+  name, and the `<resource>.<group>` / `<resource>.<version>.<group>` forms.
+
+  Args:
+    requested: The `--kind` value.
+
+  Returns:
+    Candidate kinds, compared against the lower-cased `kind` of each object.
+  """
+  base = requested.strip().lower().split(".", 1)[0]
+  forms = {base}
+  if base.endswith("ies"):
+    forms.add(base[:-3] + "y")
+  if base.endswith("es"):
+    forms.add(base[:-2])
+  if base.endswith("s"):
+    forms.add(base[:-1])
+  return {_KIND_SHORT_NAMES.get(form, form) for form in forms}
+
+
+def _single_offline_match(
+    matched: list[dict[str, Any]], args: argparse.Namespace, context: str
+) -> dict[str, Any]:
+  """The object a named offline `get` selects; a missing or ambiguous name is an error."""
+  where = f" in namespace {args.namespace!r}" if args.namespace else ""
+  if not matched:
+    raise LoadError(
+        f"no object of kind {args.kind!r} named {args.name!r}{where} in"
+        f" {args.data_path!r}{context}",
+        f"Check the name with `--action list --kind {args.kind}`; the kind"
+        " accepts singular, plural and kubectl short forms.",
+    )
+  namespaces = sorted({_obj_namespace(it) for it in matched})
+  if len(namespaces) > 1:
+    raise LoadError(
+        f"{len(matched)} objects of kind {args.kind!r} are named"
+        f" {args.name!r}, in namespaces {namespaces}",
+        "Pass --namespace <namespace> to select one of them.",
+    )
+  return matched[0]
+
+
 def _offline_match(
-    all_items: list[dict[str, Any]], args: argparse.Namespace, action: str
+    all_items: list[dict[str, Any]],
+    args: argparse.Namespace,
+    action: str,
+    notes: LoadNotes,
 ) -> dict[str, Any]:
   """Filters offline bundle items for `get`, `list`, or `events` queries."""
-  target_kind = "event" if action == "events" else args.kind.lower().rstrip("s")
-  matched = []
-  for it in all_items:
-    k = str(it.get("kind", "")).lower().rstrip("s")
-    if k != target_kind:
-      continue
-    meta = it.get("metadata") or {}
-    if (
-        args.namespace
-        and meta.get("namespace")
-        and meta.get("namespace") != args.namespace
-    ):
-      continue
-    if action == "get" and args.name and meta.get("name") != args.name:
-      continue
-    matched.append(it)
-  return (
-      {"kind": "List", "items": matched}
-      if (action != "get" or not args.name)
-      else (matched[0] if matched else {})
-  )
+  wanted = {"event"} if action == "events" else _kind_candidates(args.kind)
+  named = action == "get" and bool(args.name)
+  matched = [
+      it
+      for it in all_items
+      if k8s.kind(it).lower() in wanted
+      and (not args.namespace or _obj_namespace(it) in ("", args.namespace))
+      and (not named or _obj_name(it) == args.name)
+  ]
+  if not named:
+    return notes.attach({"kind": "List", "items": matched})
+  context = ""
+  if not matched:
+    present = sorted({k8s.kind(it) for it in all_items})
+    context = f"; kinds in the bundle: {', '.join(present)}{notes.summary()}"
+  return _single_offline_match(matched, args, context)
 
 
 def _offline_items(args: argparse.Namespace, action: str) -> dict[str, Any]:
+  """Loads static bundle items and filters them for `action`."""
   if not args.data_path or not os.path.exists(args.data_path):
     raise LoadError(
         f"data path not found: {args.data_path!r}",
         "Pass --data-path <directory with YAML/JSON manifests and optional"
         " logs/>, or use --mode live.",
     )
-  all_items = load_static_items(args.data_path)
+  notes = LoadNotes()
+  all_items = load_static_items(args.data_path, notes)
+  if not all_items:
+    raise LoadError(
+        f"no Kubernetes objects were loaded from {args.data_path!r}"
+        f"{notes.summary()}",
+        "Verify that --data-path holds YAML/JSON manifests (documents with a"
+        " `kind`); for a bundle that has only logs pass --mode logs_archive.",
+    )
   if action == "snapshot" or args.kind.lower() == "all":
-    return {"kind": "List", "items": all_items}
-  return _offline_match(all_items, args, action)
+    return notes.attach({"kind": "List", "items": all_items})
+  return _offline_match(all_items, args, action, notes)
 
 
 def load_items(
@@ -1042,7 +1697,8 @@ def load_items(
     action: Resolved action (`"snapshot"`, `"list"`, `"get"`, or `"events"`).
 
   Returns:
-    A `kind: List` mapping (possibly with `_warnings`) or a single object dict.
+    A `kind: List` mapping (possibly with `_warnings` and `_skipped_sources`)
+    or a single object dict.
 
   Raises:
     LoadError: When objects cannot be loaded from the selected source.

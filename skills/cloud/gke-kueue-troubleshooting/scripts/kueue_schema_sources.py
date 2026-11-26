@@ -36,7 +36,9 @@ class SchemaAdapters:
 
   fetch_live_crds: Callable[[], tuple[list[dict[str, Any]], str]]
   resolve_git_tag: Callable[[str], str]
-  load_git_tag_schema: Callable[[str, str], tuple[dict[str, Any] | None, str]]
+  load_git_tag_schema: Callable[
+      [str, str, str], tuple[dict[str, Any] | None, str]
+  ]
   fetch_github_crds: Callable[[str], tuple[list[dict[str, Any]], str]]
   compile_with_kcfg: CompileWithKcfg
   repo_dir: str = ""
@@ -52,11 +54,18 @@ class SchemaRequest:
   load_live_crds: bool
   allow_remote_fetch: bool
   adapters: SchemaAdapters
+  # Detected `config.kueue.x-k8s.io` version; empty means "follows short_api".
+  config_short: str = ""
   live_crds_error: str = dataclasses.field(default="", init=False)
 
   @property
   def has_release(self) -> bool:
     return bool(self.release_ver) and self.release_ver != "unknown"
+
+  @property
+  def version_key(self) -> str:
+    """CRD and configuration API versions, as used in cache file names."""
+    return f"{self.short_api}_cfg-{self.config_short or self.short_api}"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -72,11 +81,10 @@ SchemaSource = Callable[[SchemaRequest], "SchemaResult | None"]
 
 def is_kueue_crd(obj: Any) -> bool:
   """True for a parsed `CustomResourceDefinition` whose group is under `kueue.x-k8s.io`."""
-  return (
-      isinstance(obj, dict)
-      and obj.get("kind") == "CustomResourceDefinition"
-      and "kueue.x-k8s.io" in str(((obj.get("spec") or {}).get("group")) or "")
-  )
+  if not isinstance(obj, dict) or obj.get("kind") != "CustomResourceDefinition":
+    return False
+  group = str(((obj.get("spec") or {}).get("group")) or "")
+  return group == "kueue.x-k8s.io" or group.endswith(".kueue.x-k8s.io")
 
 
 def from_bundle_crds(request: SchemaRequest) -> SchemaResult | None:
@@ -114,7 +122,7 @@ def from_git_tag(request: SchemaRequest) -> SchemaResult | None:
   if not matched_tag:
     return None
   tag_schema, tag_src = request.adapters.load_git_tag_schema(
-      matched_tag, request.short_api
+      matched_tag, request.short_api, request.config_short
   )
   if not tag_schema:
     return None
@@ -122,19 +130,32 @@ def from_git_tag(request: SchemaRequest) -> SchemaResult | None:
 
 
 def from_github_release(request: SchemaRequest) -> SchemaResult | None:
-  """Upstream GitHub release manifests, cached per user under `schema_cache_dir()`."""
-  if not request.has_release or not request.allow_remote_fetch:
+  """Upstream GitHub release manifests, cached per user under `schema_cache_dir()`.
+
+  The cache is keyed by release tag, CRD API version and configuration API
+  version. It is read before the remote-fetch policy is applied, so a release
+  that was downloaded once keeps working with `--no-remote-schema`.
+
+  Args:
+    request: The schema resolution request.
+
+  Returns:
+    The cached or freshly compiled schema, or None when neither is available.
+  """
+  if not request.has_release:
     return None
   tag = kueue_version.normalize_release_tag(request.release_ver)
   cache_file = os.path.join(
       registry.schema_cache_dir(),
-      f"crd_schema_github_{registry.safe_tag(tag)}_{request.short_api}.json",
+      f"crd_schema_github_{registry.safe_tag(tag)}_{request.version_key}.json",
   )
   cached = registry.read_cached_registry(cache_file)
   if cached is not None:
     return SchemaResult(
         cached, f"github_release_cache:{tag}({request.short_api})"
     )
+  if not request.allow_remote_fetch:
+    return None
   remote_crds, used_tag = request.adapters.fetch_github_crds(
       request.release_ver
   )
@@ -175,7 +196,10 @@ def _unavailable_reasons(request: SchemaRequest) -> list[str]:
       )
   )
   if not request.allow_remote_fetch:
-    reasons.append("remote schema download disabled (--no-remote-schema)")
+    reasons.append(
+        "remote schema download disabled (--no-remote-schema) and this"
+        " release is not in the local schema cache"
+    )
   else:
     reasons.append("GitHub release manifests could not be fetched")
   return reasons

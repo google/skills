@@ -13,6 +13,7 @@ never rank causes or prescribe report content.
 from __future__ import annotations
 
 import dataclasses
+import functools
 import re
 from typing import Any, Callable
 
@@ -32,6 +33,36 @@ _TAS_ANNOTATIONS = (
     "kueue.x-k8s.io/podset-preferred-topology",
     "kueue.x-k8s.io/podset-unconstrained-topology",
 )
+# `topologyRequest` fields that opt a pod set into topology-aware scheduling
+# (Kueue `tas.HasTopologyConstraint`). The index labels Kueue derives for every
+# batch Job / JobSet pod set are not a constraint by themselves.
+_TAS_CONSTRAINT_FIELDS = (
+    "required",
+    "preferred",
+    "unconstrained",
+    "podSetSliceRequiredTopology",
+    "podSetSliceSize",
+    "podsetSliceRequiredTopologyConstraints",
+)
+_TAS_INDEX_FIELDS = ("podIndexLabel", "subGroupIndexLabel")
+
+_WORKLOAD_NAME_KEY = "kueue.x-k8s.io/workload"
+_PREBUILT_WORKLOAD_LABEL = "kueue.x-k8s.io/prebuilt-workload-name"
+_JOB_NAME_LABELS = ("batch.kubernetes.io/job-name", "job-name")
+# Workload owner kind -> kinds of the intermediate objects through which that
+# owner creates its Pods; the intermediate's name starts with `<owner name>-`.
+_INTERMEDIATE_OWNER_KINDS = {
+    "JobSet": ("Job",),
+    "LeaderWorkerSet": ("StatefulSet",),
+    "MPIJob": ("Job",),
+    "RayJob": ("RayCluster",),
+    "RayService": ("RayCluster",),
+    "TrainJob": ("Job",),
+}
+_MAX_OWNER_HOPS = 16
+# Resources a pod-level `spec.resources.requests` entry replaces the container
+# aggregate for (plus every `hugepages-*` resource).
+_POD_LEVEL_RESOURCES = ("cpu", "memory")
 
 # Deletion events on these kinds describe routine rollout/pod churn, not Kueue
 # graph objects, and are not listed as deletion facts.
@@ -173,9 +204,11 @@ class FactContext:
       cohort = _cq_cohort(cq)
       if isinstance(cohort, str) and cohort:
         self.cohort_map.setdefault(cohort, []).append(cq)
-    self.pods_by_ns: dict[str, list[dict[str, Any]]] = {}
-    for p in self.pods:
-      self.pods_by_ns.setdefault(k8s.namespace(p), []).append(p)
+
+  @functools.cached_property
+  def pod_index(self) -> "_PodIndex":
+    """Pod lookup tables for the Workload -> Pod correlation (built on first use)."""
+    return _PodIndex.build(self.by_kind)
 
   @classmethod
   def from_items(cls, items: list[dict[str, Any]]) -> "FactContext":
@@ -205,7 +238,8 @@ def _strategy_admission_checks(cq_spec: dict[str, Any]) -> list[str]:
 def _cq_admission_checks(cq: dict[str, Any]) -> list[str]:
   """String AdmissionCheck names from `spec.admissionChecks` and `spec.admissionChecksStrategy`."""
   cq_spec = k8s.spec(cq)
-  out = [n for n in cq_spec.get("admissionChecks") or [] if isinstance(n, str)]
+  names = k8s.as_list(cq_spec.get("admissionChecks"))
+  out = [n for n in names if isinstance(n, str)]
   return out + _strategy_admission_checks(cq_spec)
 
 
@@ -289,7 +323,7 @@ def _resource_quota_summary(cq: dict[str, Any]) -> dict[str, list[str]]:
   """Returns per-resource flavor quota summary strings for one ClusterQueue."""
   out: dict[str, list[str]] = {}
   for _, fl, res in k8s.flavor_quotas(cq):
-    name = str(res.get("name", ""))
+    name = k8s.as_text(res.get("name"))
     if not name:
       continue
     parts = [f"nominalQuota={res.get('nominalQuota')}"]
@@ -321,25 +355,40 @@ def _event_identity(ev: dict[str, Any]) -> tuple[str, str, str]:
         obj.get("uid")
         or f"{obj.get('kind', '')}/{obj.get('namespace', '')}/{obj.get('name', '')}"
     )
-  return (obj_ref, str(ev.get("reason", "")), str(ev.get("message", "")))
+  return (
+      obj_ref,
+      k8s.as_text(ev.get("reason")),
+      k8s.as_text(ev.get("message")),
+  )
 
 
-def _podset_topology_request(ps: dict[str, Any]) -> str:
-  """Returns a short description of a pod set's topology request, or '' if none."""
-  tr = ps.get("topologyRequest")
-  if isinstance(tr, dict) and tr:
-    parts = [
-        f"{k}={v}"
-        for k, v in tr.items()
-        if k in (
-            "required",
-            "preferred",
-            "unconstrained",
-            "podIndexLabel",
-            "subGroupIndexLabel",
-        )
-    ]
-    return "topologyRequest{" + ", ".join(parts) + "}"
+def _podset_topology_request(ps: dict[str, Any]) -> tuple[str, bool]:
+  """Describes a pod set's topology request and tells whether it is a TAS constraint.
+
+  Mirrors Kueue `tas.HasTopologyConstraint`: only the fields in
+  `_TAS_CONSTRAINT_FIELDS` (or, without them, a TAS pod template annotation)
+  make the pod set a topology-aware one. Index labels are shown as text only.
+
+  Args:
+    ps: One `spec.podSets[]` entry of a Workload.
+
+  Returns:
+    `(description, has_constraint)`; the description is `none` when the pod set
+    carries neither a constraint nor index labels.
+  """
+  tr = k8s.as_dict(ps.get("topologyRequest"))
+  set_fields = {
+      k: v
+      for k, v in tr.items()
+      if v is not None and not (isinstance(v, list) and not v)
+  }
+  parts = [
+      f"{k}={v}"
+      for k, v in set_fields.items()
+      if k in _TAS_CONSTRAINT_FIELDS or k in _TAS_INDEX_FIELDS
+  ]
+  if any(k in set_fields for k in _TAS_CONSTRAINT_FIELDS):
+    return "topologyRequest{" + ", ".join(parts) + "}", True
   ann = k8s.annotations(k8s.as_dict(ps.get("template")))
   hits = [
       f"{k.rsplit('/', 1)[-1]}={v}"
@@ -347,29 +396,80 @@ def _podset_topology_request(ps: dict[str, Any]) -> str:
       if k in _TAS_ANNOTATIONS
   ]
   if hits:
-    return "annotations{" + ", ".join(hits) + "}"
-  return ""
+    return "annotations{" + ", ".join(hits) + "}", True
+  if parts:
+    index_only = ", ".join(parts)
+    return f"none (topologyRequest sets index labels only: {index_only})", False
+  return "none", False
+
+
+def _parse_requests(reqs: Any, raw: dict[str, str]) -> dict[str, float]:
+  """Parses a `resource -> quantity` mapping; unparsable values are recorded in `raw`."""
+  out: dict[str, float] = {}
+  for name, val in k8s.as_dict(reqs).items():
+    q = _parse_quantity(val)
+    if q is None:
+      raw[str(name)] = str(val)
+    else:
+      out[str(name)] = q
+  return out
+
+
+def _add_requests(total: dict[str, float], extra: dict[str, float]) -> None:
+  for name, q in extra.items():
+    total[name] = total.get(name, 0.0) + q
+
+
+def _pod_requests(
+    pod_spec: dict[str, Any], raw: dict[str, str]
+) -> dict[str, float]:
+  """Effective requests of one pod, following the Kubernetes `PodRequests` rule Kueue uses.
+
+  Per resource: max(sum of containers + restartable init containers, each
+  regular init container + the restartable init containers declared before
+  it); pod-level `resources.requests` replace that aggregate for cpu, memory
+  and hugepages; `overhead` is added last.
+
+  Args:
+    pod_spec: A pod `spec` mapping (of a Pod or a pod template).
+    raw: Collects `resource -> value` for quantities that do not parse.
+
+  Returns:
+    Parsed per-pod request per resource name.
+  """
+
+  def requests_of(holder: dict[str, Any]) -> dict[str, float]:
+    resources = k8s.as_dict(holder.get("resources"))
+    return _parse_requests(resources.get("requests"), raw)
+
+  total: dict[str, float] = {}
+  for c in k8s.dict_items(pod_spec.get("containers")):
+    _add_requests(total, requests_of(c))
+  sidecars: dict[str, float] = {}
+  init_peak: dict[str, float] = {}
+  for c in k8s.dict_items(pod_spec.get("initContainers")):
+    use = requests_of(c)
+    if c.get("restartPolicy") == "Always":
+      _add_requests(total, use)
+      _add_requests(sidecars, use)
+      use = sidecars
+    else:
+      _add_requests(use, sidecars)
+    for name, q in use.items():
+      init_peak[name] = max(init_peak.get(name, 0.0), q)
+  for name, q in init_peak.items():
+    total[name] = max(total.get(name, 0.0), q)
+  for name, q in requests_of(pod_spec).items():
+    if name in _POD_LEVEL_RESOURCES or name.startswith("hugepages-"):
+      total[name] = q
+  _add_requests(total, _parse_requests(pod_spec.get("overhead"), raw))
+  return total
 
 
 def _podset_requests(ps: dict[str, Any]) -> dict[str, str]:
-  """Aggregates container requests of one pod template (per pod, not multiplied by count)."""
-  tmpl_spec = k8s.spec(k8s.as_dict(ps.get("template")))
-  totals: dict[str, float] = {}
+  """Formatted requests of one pod of a pod template (per pod, not multiplied by count)."""
   raw: dict[str, str] = {}
-  for c in (tmpl_spec.get("containers") or []) + (
-      tmpl_spec.get("initContainers") or []
-  ):
-    if not isinstance(c, dict):
-      continue
-    reqs = (c.get("resources") or {}).get("requests") or {}
-    if not isinstance(reqs, dict):
-      continue
-    for name, val in reqs.items():
-      q = _parse_quantity(val)
-      if q is None:
-        raw[str(name)] = str(val)
-      else:
-        totals[str(name)] = totals.get(str(name), 0.0) + q
+  totals = _pod_requests(k8s.spec(k8s.as_dict(ps.get("template"))), raw)
   out = {k: _fmt_num(v) for k, v in sorted(totals.items())}
   out.update(raw)
   return out
@@ -445,15 +545,15 @@ def emit_status_conditions(ctx: FactContext) -> None:
     for obj in ctx.by_kind.get(kind, []):
       ref = f"{kind}/{k8s.ref(obj)}"
       for cond in k8s.conditions(obj):
-        ctype = str(cond.get("type", ""))
-        cstatus = str(cond.get("status", ""))
+        ctype = k8s.as_text(cond.get("type"))
+        cstatus = k8s.as_text(cond.get("status"))
         if (kind, ctype, cstatus) not in _NEGATIVE_CONDITIONS:
           continue
-        reason = str(cond.get("reason", ""))
+        reason = k8s.as_text(cond.get("reason"))
         ctx.add(
             f"condition:{kind}:{ctype}:{reason}",
             f"STATUS_CONDITION: [{ref}] {ctype}={cstatus} reason={reason}:"
-            f" {str(cond.get('message', ''))[:300]}",
+            f" {k8s.as_text(cond.get('message'))[:300]}",
         )
 
 
@@ -470,10 +570,29 @@ class _FlavorCoverage:
   plain_flavors: list[str]
   tas_res: set[str]
   plain_res: set[str]
+  # Flavors whose ResourceFlavor object is not in the snapshot: whether they
+  # set topologyName is not known, so they belong to neither group.
+  unknown_flavors: list[str] = dataclasses.field(default_factory=list)
 
   @property
   def any(self) -> bool:
-    return bool(self.tas_flavors or self.plain_flavors)
+    return bool(self.tas_flavors or self.plain_flavors or self.unknown_flavors)
+
+  def summary(self) -> str:
+    """Text listing the ClusterQueue's flavors per group."""
+    text = "; ClusterQueue flavors"
+    known = bool(self.tas_flavors or self.plain_flavors)
+    if known or not self.unknown_flavors:
+      text += (
+          f" with topologyName={self.tas_flavors or []},"
+          f" without={self.plain_flavors or []}"
+      )
+    if self.unknown_flavors:
+      text += (
+          f"{',' if known else ''} with no ResourceFlavor object in the"
+          f" snapshot (topologyName not determinable)={self.unknown_flavors}"
+      )
+    return text
 
 
 def _flavor_coverage(
@@ -484,17 +603,20 @@ def _flavor_coverage(
   if cq is None:
     return cov
   for rg in k8s.resource_groups(cq):
-    rg_res = {str(r) for r in rg.get("coveredResources") or [] if r}
-    for fl in rg.get("flavors") or []:
-      if isinstance(fl, dict) and fl.get("name"):
-        rf = ctx.rf_by_name.get(str(fl["name"]))
-        has_topology = bool(k8s.spec(rf).get("topologyName")) if rf else False
-        if has_topology:
-          cov.tas_flavors.append(str(fl["name"]))
-          cov.tas_res.update(rg_res)
-        else:
-          cov.plain_flavors.append(str(fl["name"]))
-          cov.plain_res.update(rg_res)
+    rg_res = {str(r) for r in k8s.as_list(rg.get("coveredResources")) if r}
+    for fl in k8s.dict_items(rg.get("flavors")):
+      if not fl.get("name"):
+        continue
+      fl_name = str(fl["name"])
+      rf = ctx.rf_by_name.get(fl_name)
+      if rf is None:
+        cov.unknown_flavors.append(fl_name)
+      elif k8s.spec(rf).get("topologyName"):
+        cov.tas_flavors.append(fl_name)
+        cov.tas_res.update(rg_res)
+      else:
+        cov.plain_flavors.append(fl_name)
+        cov.plain_res.update(rg_res)
   return cov
 
 
@@ -536,9 +658,12 @@ def _resolve_workload_cq(
 
 
 def _podset_flavor_note(
-    cov: _FlavorCoverage, treq: str, req_keys: set[str], wl_finished: bool
+    cov: _FlavorCoverage, treq: bool, req_keys: set[str], wl_finished: bool
 ) -> tuple[str | None, str]:
   """Returns (key, suffix) describing the TAS / non-TAS flavor fit of one pod set."""
+  if cov.unknown_flavors:
+    # A flavor of unknown kind could belong to either group: no fit statement.
+    return None, ""
   needs_tas_res = bool(req_keys & (cov.tas_res - cov.plain_res))
   needs_plain_res = bool(req_keys & (cov.plain_res - cov.tas_res))
   if treq and not cov.tas_flavors:
@@ -587,30 +712,24 @@ def _emit_podset_facts(
     ctx: FactContext, wl: dict[str, Any], wl_ref: str, cov: _FlavorCoverage
 ) -> None:
   """Emits per-podSet resource, topology, and flavor-compatibility facts."""
-  wl_finished = any(
-      c.get("type") == "Finished" and c.get("status") == "True"
-      for c in k8s.conditions(wl)
-  )
+  wl_finished = k8s.has_condition(wl, "Finished")
   for ps in k8s.dict_items(k8s.spec(wl).get("podSets")):
-    ps_name = str(ps.get("name", ""))
-    treq = _podset_topology_request(ps)
+    ps_name = k8s.as_text(ps.get("name"))
+    treq, has_tas = _podset_topology_request(ps)
     ps_reqs = _podset_requests(ps)
     tmpl_spec = k8s.spec(k8s.as_dict(ps.get("template")))
     line = (
         f"WORKLOAD_PODSET_FACTS: [{wl_ref}] podSet {ps_name!r}:"
         f" count={ps.get('count')}, requests/pod={ps_reqs}, topology"
-        f" request={treq or 'none'},"
-        f" tolerations={len(tmpl_spec.get('tolerations') or [])},"
+        f" request={treq},"
+        f" tolerations={len(k8s.as_list(tmpl_spec.get('tolerations')))},"
         f" nodeSelector={tmpl_spec.get('nodeSelector') or {}}"
     )
     key = None
     if cov.any:
-      line += (
-          f"; ClusterQueue flavors with topologyName={cov.tas_flavors or []},"
-          f" without={cov.plain_flavors or []}"
-      )
+      line += cov.summary()
       marker, suffix = _podset_flavor_note(
-          cov, treq, set(ps_reqs.keys()), wl_finished
+          cov, has_tas, set(ps_reqs.keys()), wl_finished
       )
       if marker:
         key = None if wl_finished else f"podset-flavor:{wl_ref}:{ps_name}"
@@ -645,8 +764,8 @@ def _job_specs_to_check(
     return [(j_ref, j_spec, 1)]
   out: list[tuple[str, dict[str, Any], int]] = []
   for rj in k8s.dict_items(j_spec.get("replicatedJobs")):
-    rj_name = str(rj.get("name", ""))
-    rj_replicas = int(rj.get("replicas") or 1)
+    rj_name = k8s.as_text(rj.get("name"))
+    rj_replicas = k8s.as_int(rj.get("replicas"), 1)
     rj_job_spec = k8s.spec(k8s.as_dict(rj.get("template")))
     out.append((f"{j_ref}:replicatedJob[{rj_name}]", rj_job_spec, rj_replicas))
   return out
@@ -661,7 +780,7 @@ def _emit_job_sub_specs(
     comp_mode = str(sub_spec.get("completionMode") or "")
     blpi = sub_spec.get("backoffLimitPerIndex")
     mfi = sub_spec.get("maxFailedIndexes")
-    parallelism = int(sub_spec.get("parallelism") or 1) * replicas
+    parallelism = k8s.as_int(sub_spec.get("parallelism"), 1) * replicas
     totals.pods += parallelism
     pod_reqs = _podset_requests({"template": sub_spec.get("template") or {}})
     for r_k, r_v in pod_reqs.items():
@@ -676,11 +795,14 @@ def _emit_job_sub_specs(
           f"JOB_SPEC_FACT: [{sub_ref}] has completionMode=Indexed and"
           f" backoffLimitPerIndex={blpi} while "
           "maxFailedIndexes is unset (null). batch/v1 semantics: when a pod for"
-          " an index exhausts backoffLimitPerIndex, "
-          "that index stops retrying; with maxFailedIndexes unset the Job is"
-          " only marked Failed if all indexes fail "
-          "(whereas setting maxFailedIndexes marks the Job Failed once failed"
-          " indexes exceed maxFailedIndexes). "
+          " an index exhausts backoffLimitPerIndex, that index is recorded in"
+          " status.failedIndexes and stops retrying while the other indexes"
+          " keep running; with maxFailedIndexes unset the Job is marked Failed"
+          " once all indexes have finished if at least one index failed"
+          " (whereas with maxFailedIndexes set, once the number of failed"
+          " indexes exceeds it the remaining running pods are terminated and"
+          ' the Job is then marked Failed; "Backoff limit per index" in'
+          " https://kubernetes.io/docs/concepts/workloads/controllers/job/). "
           "Kueue's PodsReady condition for a Job tracks whether the Job's pods"
           " have reached Ready/Succeeded "
           "(https://kueue.sigs.k8s.io/docs/tasks/manage/setup_wait_for_pods_ready/).",
@@ -727,7 +849,7 @@ def _admission_check_details(
       continue
     ac_sp = k8s.spec(ac_obj)
     p_ref = ac_sp.get("parametersRef") or ac_sp.get("parameters") or {}
-    prc_n = str(p_ref.get("name", "")) if isinstance(p_ref, dict) else ""
+    prc_n = k8s.as_text(p_ref.get("name")) if isinstance(p_ref, dict) else ""
     prc_obj = ctx.prc_by_name.get(prc_n)
     if prc_n and prc_obj is None:
       all_acs_present = False
@@ -762,8 +884,8 @@ def _emit_static_queue_chain(
   if cq is not None:
     # Unlike 1d, every `spec.admissionChecks` entry counts here (a non-string
     # entry cannot be resolved and therefore suppresses the static-chain key).
-    cq_acs = list(
-        k8s.spec(cq).get("admissionChecks") or []
+    cq_acs = k8s.as_list(
+        k8s.spec(cq).get("admissionChecks")
     ) + _strategy_admission_checks(k8s.spec(cq))
     cq_quotas, rf_summary, all_rfs_present = _cq_quota_and_flavors(ctx, cq)
     fits_quota = bool(totals.requests) and all(
@@ -850,9 +972,9 @@ def emit_admission_checks(ctx: FactContext) -> None:
     status = k8s.status(wl)
     requeue = k8s.as_dict(status.get("requeueState"))
     for ac_st in k8s.dict_items(status.get("admissionChecks")):
-      ac_name = str(ac_st.get("name", ""))
-      state = str(ac_st.get("state", ""))
-      msg = str(ac_st.get("message", ""))[:300]
+      ac_name = k8s.as_text(ac_st.get("name"))
+      state = k8s.as_text(ac_st.get("state"))
+      msg = k8s.as_text(ac_st.get("message"))[:300]
       retry_count = ac_st.get("retryCount")
       requeue_str = f", requeueState={requeue}" if requeue else ""
       retry_str = (
@@ -885,10 +1007,10 @@ def emit_provisioning_requests(ctx: FactContext) -> None:
     cond_parts: list[str] = []
     bad_reasons: list[str] = []
     for c in k8s.conditions(pr):
-      ct = str(c.get("type", ""))
-      cs = str(c.get("status", ""))
-      cr = str(c.get("reason", ""))
-      cm = str(c.get("message", ""))[:240]
+      ct = k8s.as_text(c.get("type"))
+      cs = k8s.as_text(c.get("status"))
+      cr = k8s.as_text(c.get("reason"))
+      cm = k8s.as_text(c.get("message"))[:240]
       cond_parts.append(
           f"{ct}={cs} (reason={cr}: {cm})" if cm else f"{ct}={cs} (reason={cr})"
       )
@@ -912,37 +1034,152 @@ def emit_provisioning_requests(ctx: FactContext) -> None:
 # ---------------------------------------------------------------------------
 
 
+_OwnerRef = tuple[str, str]  # (kind, name)
+
+
+def _owner_ref_pairs(obj: Any) -> list[_OwnerRef]:
+  return [
+      (k8s.as_text(o.get("kind")), str(o["name"]))
+      for o in k8s.owner_refs(obj)
+      if o.get("name")
+  ]
+
+
+def _pod_ancestry(
+    p: dict[str, Any], objs: dict[tuple[str, str, str], dict[str, Any]]
+) -> tuple[set[str], list[_OwnerRef]]:
+  """Names a pod is owned under, and its owners that are not snapshot objects.
+
+  Walks ownerReferences upward through the objects present in the snapshot
+  (Pod -> Job -> JobSet). A pod without ownerReferences is filed under its
+  job-name label; a pod with neither is its own unresolved owner (kind '').
+
+  Args:
+    p: Pod object.
+    objs: Snapshot objects keyed by `(namespace, kind, name)`.
+
+  Returns:
+    `(names, unresolved)`: the pod's own name plus the name of every owner on
+    the chain, and the `(kind, name)` owners whose object is not in the
+    snapshot (the only ones the name-prefix fallback applies to).
+  """
+  ns, p_labels = k8s.namespace(p), k8s.labels(p)
+  names = {k8s.name(p)}
+  unresolved: list[_OwnerRef] = []
+  frontier = _owner_ref_pairs(p)
+  if not frontier:
+    job = [str(p_labels[k]) for k in _JOB_NAME_LABELS if p_labels.get(k)]
+    if job:
+      frontier = [("Job", job[0])]
+    else:
+      unresolved.append(("", k8s.name(p)))
+  seen: set[_OwnerRef] = set()
+  while frontier and len(seen) < _MAX_OWNER_HOPS:
+    ref = frontier.pop()
+    if ref in seen:
+      continue
+    seen.add(ref)
+    names.add(ref[1])
+    owner = objs.get((ns, *ref))
+    if owner is None:
+      unresolved.append(ref)
+    else:
+      frontier.extend(_owner_ref_pairs(owner))
+  return names, unresolved
+
+
+@dataclasses.dataclass
+class _PodIndex:
+  """Pods keyed by every name a Workload can reference them by (one pass over the Pods)."""
+
+  pods: list[dict[str, Any]]
+  # (tag, namespace, name) -> [(pod position, kind of the unresolved owner)].
+  # Tags: `workload` (label / annotation), `prebuilt` (label), `owner` (own
+  # name or the name of an owner on the chain), `prefix` (dash-prefixes of the
+  # name of an owner whose object is not in the snapshot).
+  table: dict[tuple[str, str, str], list[tuple[int, str]]] = dataclasses.field(
+      default_factory=dict
+  )
+
+  @classmethod
+  def build(cls, by_kind: dict[str, list[dict[str, Any]]]) -> "_PodIndex":
+    index = cls(pods=by_kind.get("Pod", []))
+    objs: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for kind, group in by_kind.items():
+      if kind in ("Event", "Node"):
+        continue
+      for o in group:
+        objs[(k8s.namespace(o), kind, k8s.name(o))] = o
+    for pos, p in enumerate(index.pods):
+      index._add_pod(pos, p, objs)
+    return index
+
+  def _add(
+      self, tag: str, ns: str, name: Any, pos: int, kind: str = ""
+  ) -> None:
+    if name:
+      self.table.setdefault((tag, ns, str(name)), []).append((pos, kind))
+
+  def _add_pod(
+      self,
+      pos: int,
+      p: dict[str, Any],
+      objs: dict[tuple[str, str, str], dict[str, Any]],
+  ) -> None:
+    """Indexes one Pod under its workload labels and owner ancestry keys."""
+    ns, p_labels = k8s.namespace(p), k8s.labels(p)
+    self._add("workload", ns, p_labels.get(_WORKLOAD_NAME_KEY), pos)
+    self._add("workload", ns, k8s.annotations(p).get(_WORKLOAD_NAME_KEY), pos)
+    self._add("prebuilt", ns, p_labels.get(_PREBUILT_WORKLOAD_LABEL), pos)
+    names, unresolved = _pod_ancestry(p, objs)
+    for name in names:
+      self._add("owner", ns, name, pos)
+    for kind, name in unresolved:
+      # `a-b-c` is filed under `a` and `a-b`: the owner names it may extend.
+      for i, ch in enumerate(name):
+        if ch == "-":
+          self._add("prefix", ns, name[:i], pos, kind)
+
+  def get(self, tag: str, ns: str, name: str) -> list[tuple[int, str]]:
+    return self.table.get((tag, ns, name), [])
+
+
 def _pods_of_workload(
     ctx: FactContext, wl: dict[str, Any]
 ) -> list[dict[str, Any]]:
-  """Pods in the workload's namespace that reference it by label, annotation, owner or owner-name prefix."""
-  wl_name = k8s.name(wl)
-  wl_uid = str(k8s.metadata(wl).get("uid", ""))
-  owner_names = k8s.owner_names(wl)
-  matching: list[dict[str, Any]] = []
-  for p in ctx.pods_by_ns.get(k8s.namespace(wl), []):
-    p_name = k8s.name(p)
-    p_labels = k8s.labels(p)
-    if (
-        p_labels.get("kueue.x-k8s.io/workload") == wl_name
-        or k8s.annotations(p).get("kueue.x-k8s.io/workload") == wl_name
-        or (
-            wl_uid
-            and p_labels.get("kueue.x-k8s.io/prebuilt-workload-name") == wl_name
-        )
-        or bool(owner_names & k8s.owner_names(p))
-        or any(
-            on and (p_name == on or p_name.startswith(on + "-"))
-            for on in owner_names
-        )
-    ):
-      matching.append(p)
-  return matching
+  """Pods in the workload's namespace that reference it by label, annotation, owner chain or owner-name prefix.
+
+  The `<owner name>-` prefix fallback applies only to a pod that has neither
+  ownerReferences nor a job-name label, or to an owner on the pod's chain that
+  is absent from the snapshot and of a kind through which the Workload's owner
+  creates Pods (`_INTERMEDIATE_OWNER_KINDS`). Pods of Job `a-b` are therefore
+  not attributed to the Workload of Job `a`.
+
+  Args:
+    ctx: Fact context (its pod index is built on first use).
+    wl: Workload object.
+
+  Returns:
+    Matching Pod objects in snapshot order.
+  """
+  index, ns, wl_name = ctx.pod_index, k8s.namespace(wl), k8s.name(wl)
+  hits = {pos for pos, _ in index.get("workload", ns, wl_name)}
+  if k8s.metadata(wl).get("uid"):
+    hits.update(pos for pos, _ in index.get("prebuilt", ns, wl_name))
+  for o_kind, o_name in _owner_ref_pairs(wl):
+    via = _INTERMEDIATE_OWNER_KINDS.get(o_kind, ())
+    hits.update(pos for pos, _ in index.get("owner", ns, o_name))
+    hits.update(
+        pos
+        for pos, kind in index.get("prefix", ns, o_name)
+        if not kind or kind in via
+    )
+  return [index.pods[pos] for pos in sorted(hits)]
 
 
 def _pod_gates(p: dict[str, Any]) -> list[str]:
   return [
-      str(g.get("name", ""))
+      k8s.as_text(g.get("name"))
       for g in k8s.dict_items(k8s.spec(p).get("schedulingGates"))
       if g.get("name")
   ]
@@ -952,21 +1189,20 @@ def _topology_gate_note(
     ctx: FactContext, status: dict[str, Any], sample_gates: list[str]
 ) -> tuple[bool, str]:
   """(topologyAssignment present, explanatory note when the TAS gate is held without an assignment)."""
-  psa = (status.get("admission") or {}).get("podSetAssignments") or []
-  has_topo_assign = any(
-      isinstance(a, dict) and bool(a.get("topologyAssignment")) for a in psa
+  psa = k8s.dict_items(
+      k8s.as_dict(status.get("admission")).get("podSetAssignments")
   )
+  has_topo_assign = any(bool(a.get("topologyAssignment")) for a in psa)
   assigned_no_topo_rfs: list[str] = []
   for a in psa:
-    if isinstance(a, dict):
-      for fl_v in (a.get("flavors") or {}).values():
-        rf_o = ctx.rf_by_name.get(str(fl_v))
-        if (
-            rf_o is not None
-            and not (k8s.spec(rf_o).get("topologyName"))
-            and str(fl_v) not in assigned_no_topo_rfs
-        ):
-          assigned_no_topo_rfs.append(str(fl_v))
+    for fl_v in k8s.as_dict(a.get("flavors")).values():
+      rf_o = ctx.rf_by_name.get(str(fl_v))
+      if (
+          rf_o is not None
+          and not (k8s.spec(rf_o).get("topologyName"))
+          and str(fl_v) not in assigned_no_topo_rfs
+      ):
+        assigned_no_topo_rfs.append(str(fl_v))
   if "kueue.x-k8s.io/topology" not in sample_gates or has_topo_assign:
     return has_topo_assign, ""
   rf_clause = ""
@@ -987,19 +1223,27 @@ def _topology_gate_note(
 def _emit_workload_pod_correlation(
     ctx: FactContext, wl: dict[str, Any]
 ) -> None:
-  """Emits missing-pod and scheduling-gate facts for an admitted Workload."""
+  """Emits missing-pod and scheduling-gate facts for an admitted Workload.
+
+  Admitted means the `Admitted` condition is True. `status.admission` alone is
+  not used: Kueue fills it at quota reservation, while admission checks may
+  still be pending and the job suspended (the admission-check facts cover
+  that state).
+
+  Args:
+    ctx: Fact context.
+    wl: Workload object.
+  """
   wl_ref = f"Workload/{k8s.namespace(wl)}/{k8s.name(wl)}"
   status = k8s.status(wl)
-  conds = {str(c.get("type")): str(c.get("status")) for c in k8s.conditions(wl)}
-  admitted = conds.get("Admitted") == "True" or bool(status.get("admission"))
   if (
-      not admitted
-      or conds.get("PodsReady") == "True"
-      or conds.get("Finished") == "True"
+      not k8s.has_condition(wl, "Admitted")
+      or k8s.has_condition(wl, "PodsReady")
+      or k8s.has_condition(wl, "Finished")
   ):
     return
   expected_pods = sum(
-      int(ps.get("count") or 0)
+      k8s.as_int(ps.get("count"))
       for ps in k8s.dict_items(k8s.spec(wl).get("podSets"))
   )
   matching_pods = _pods_of_workload(ctx, wl)
@@ -1037,12 +1281,12 @@ def _emit_pod_status_facts(ctx: FactContext, p: dict[str, Any]) -> None:
   p_ref = f"Pod/{p_ns}/{k8s.name(p)}"
   node_name = k8s.spec(p).get("nodeName")
   for field, cs in k8s.container_statuses(p):
-    cname = str(cs.get("name", ""))
+    cname = k8s.as_text(cs.get("name"))
     st = k8s.as_dict(cs.get("state"))
     waiting = k8s.as_dict(st.get("waiting"))
-    w_reason = str(waiting.get("reason", ""))
+    w_reason = k8s.as_text(waiting.get("reason"))
     if w_reason and w_reason not in ("ContainerCreating", "PodInitializing"):
-      w_msg = str(waiting.get("message", ""))[:240]
+      w_msg = k8s.as_text(waiting.get("message"))[:240]
       ctx.add(
           f"pod-status:{p_ns}:{cname}:{w_reason}",
           f"POD_STATUS_FACT: [{p_ref}] (node={node_name}) {field}.{cname}"
@@ -1056,8 +1300,8 @@ def _emit_pod_status_facts(ctx: FactContext, p: dict[str, Any]) -> None:
         ),
     ):
       if isinstance(t_dict, dict) and t_dict.get("exitCode") not in (None, 0):
-        t_reason = str(t_dict.get("reason", ""))
-        t_msg = str(t_dict.get("message", ""))[:200]
+        t_reason = k8s.as_text(t_dict.get("reason"))
+        t_msg = k8s.as_text(t_dict.get("message"))[:200]
         ctx.add(
             f"pod-status:{p_ns}:{cname}:exit-{t_dict.get('exitCode')}",
             f"POD_STATUS_FACT: [{p_ref}] (node={node_name}) {field}.{cname}"
@@ -1085,7 +1329,7 @@ def emit_warning_events(ctx: FactContext) -> None:
   seen_ids: set[tuple[str, str, str]] = set()
   warnings: list[tuple[str, str, str]] = []
   for ev in ctx.events:
-    if str(ev.get("type", "")) != "Warning":
+    if k8s.as_text(ev.get("type")) != "Warning":
       continue
     ident = _event_identity(ev)
     if ident in seen_ids:
@@ -1094,7 +1338,10 @@ def emit_warning_events(ctx: FactContext) -> None:
     # Kind is deliberately left out of the key so the same event seen in the
     # controller log (trace_logs.py) shares the id.
     group = report_output.fact_group_key(
-        "event", "", str(ev.get("reason", "")), str(ev.get("message", ""))
+        "event",
+        "",
+        k8s.as_text(ev.get("reason")),
+        k8s.as_text(ev.get("message")),
     )
     warnings.append((k8s.event_timestamp(ev), _event_summary(ev), group))
   warnings.sort(key=lambda t: t[0], reverse=True)
@@ -1112,10 +1359,10 @@ def emit_deletion_events(ctx: FactContext) -> None:
   """Emits section 3 non-housekeeping object deletion Events newest first."""
   deletions: list[tuple[str, str, str]] = []
   for ev in ctx.events:
-    msg = str(ev.get("message", ""))
-    reason = str(ev.get("reason", ""))
+    msg = k8s.as_text(ev.get("message"))
+    reason = k8s.as_text(ev.get("reason"))
     obj = k8s.as_dict(ev.get("involvedObject"))
-    if str(obj.get("kind", "")) in _HOUSEKEEPING_EVENT_KINDS:
+    if k8s.as_text(obj.get("kind")) in _HOUSEKEEPING_EVENT_KINDS:
       continue
     if re.search(r"\bdelet(?:ed|ing|ion)\b", msg, re.IGNORECASE) or re.search(
         r"(?<![a-z])delet", reason, re.IGNORECASE
@@ -1291,12 +1538,9 @@ def _node_capacity_summary(
   for n in matching_nodes:
     if k8s.spec(n).get("unschedulable"):
       unschedulable += 1
-    if any(
-        c.get("type") == "Ready" and str(c.get("status")) == "True"
-        for c in k8s.conditions(n)
-    ):
+    if k8s.has_condition(n, "Ready"):
       ready += 1
-    for r_name, r_val in (k8s.status(n).get("allocatable") or {}).items():
+    for r_name, r_val in k8s.as_dict(k8s.status(n).get("allocatable")).items():
       if (
           r_name in ("cpu", "memory", "ephemeral-storage")
           or "/" in str(r_name)
@@ -1411,8 +1655,8 @@ class _CohortLayout:
           f" lendingLimit={'unset' if ld_v is None else _fmt_qty(ld_v, r_name)},"
           f" reserved={_fmt_qty(reserved, r_name)},"
           f" borrowed={_fmt_qty(borrowed, r_name)},"
-          f" admitted={int(m_status.get('admittedWorkloads') or 0)},"
-          f" pending={int(m_status.get('pendingWorkloads') or 0)})"
+          f" admitted={k8s.as_int(m_status.get('admittedWorkloads'))},"
+          f" pending={k8s.as_int(m_status.get('pendingWorkloads'))})"
       )
     return out_rows
 
@@ -1438,8 +1682,8 @@ def _borrowing_active(
   for _, s_nom, s_cq in entries:
     s_st = k8s.status(s_cq)
     if s_nom == 0 and (
-        int(s_st.get("admittedWorkloads") or 0) > 0
-        or int(s_st.get("pendingWorkloads") or 0) > 0
+        k8s.as_int(s_st.get("admittedWorkloads")) > 0
+        or k8s.as_int(s_st.get("pendingWorkloads")) > 0
     ):
       return True
     for fr in k8s.dict_items(s_st.get("flavorsReservation")):
@@ -1505,10 +1749,11 @@ def _emit_cohort_node_arithmetic(
     match_note = (
         " (nodeLabels unset: every Node counts)" if not rf_labels else ""
     )
+    allocatable = [
+        k8s.as_dict(k8s.status(n).get("allocatable")) for n in matching_nodes
+    ]
     node_alloc = sum(
-        _parse_quantity((k8s.status(n).get("allocatable") or {}).get(r_name))
-        or 0.0
-        for n in matching_nodes
+        _parse_quantity(alloc.get(r_name)) or 0.0 for alloc in allocatable
     )
     if node_alloc > 0 and total_nom > node_alloc:
       ctx.add(
@@ -1752,9 +1997,9 @@ def _emit_config_transformations(ctx: FactContext, cfg: dict[str, Any]) -> None:
   """Emits resources.transformations facts and missing ClusterQueue outputs."""
   transforms = k8s.as_dict(cfg.get("resources")).get("transformations") or []
   for tr in k8s.dict_items(transforms):
-    inp = tr.get("input", "")
+    inp = k8s.as_text(tr.get("input"))
     strategy = tr.get("strategy", "Retain")
-    outputs = list(k8s.as_dict(tr.get("outputs")).keys())
+    outputs = [str(o) for o in k8s.as_dict(tr.get("outputs"))]
     replace_note = ""
     if strategy == "Replace":
       replace_note = (
@@ -1773,7 +2018,7 @@ def _emit_config_transformations(ctx: FactContext, cfg: dict[str, Any]) -> None:
     for cq in ctx.cqs:
       covered: list[str] = []
       for rg in k8s.resource_groups(cq):
-        covered.extend(str(r) for r in rg.get("coveredResources") or [])
+        covered.extend(str(r) for r in k8s.as_list(rg.get("coveredResources")))
       participates = (
           inp in covered
           or any(o in covered for o in outputs)
@@ -1922,11 +2167,11 @@ def emit_node_taints_and_conditions(ctx: FactContext) -> None:
             " these nodes.",
         )
     for c in k8s.conditions(n):
-      ct = str(c.get("type", ""))
-      cs = str(c.get("status", ""))
+      ct = k8s.as_text(c.get("type"))
+      cs = k8s.as_text(c.get("status"))
       if (ct == "Ready" and cs != "True") or (ct != "Ready" and cs == "True"):
-        cr = str(c.get("reason", ""))
-        cm = str(c.get("message", ""))[:200]
+        cr = k8s.as_text(c.get("reason"))
+        cm = k8s.as_text(c.get("message"))[:200]
         cond_id = f"{pool}|{ct}={cs}|{cr}"
         if cond_id in seen_node_conds:
           continue

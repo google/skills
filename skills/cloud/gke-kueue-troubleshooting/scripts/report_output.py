@@ -19,9 +19,15 @@ import datetime as _dt
 import json
 import os
 import re
+import stat
 import sys
 import tempfile
 from typing import Any, Callable
+
+try:
+  import fcntl  # pylint: disable=g-import-not-at-top
+except ImportError:  # pragma: no cover - non-POSIX fallback
+  fcntl = None  # type: ignore[assignment]
 
 REPORT_DIR_NAME = "gke-kueue-troubleshooting-reports"
 _SCHEMA_META_KEYS = ("_detected_kueue_version",)
@@ -34,6 +40,14 @@ _SCHEMA_META_KEYS = ("_detected_kueue_version",)
 _UPSTREAM_ADDON_NAMESPACES = frozenset(
     {"kube-system", "kube-node-lease", "kube-public"}
 )
+
+
+def is_regular_file(path: str) -> bool:
+  """True only for regular files (rejects symlinks, FIFOs, devices, sockets)."""
+  try:
+    return stat.S_ISREG(os.lstat(path).st_mode)
+  except OSError:
+    return False
 
 
 def _env(primary: str, legacy: str = "", default: str = "") -> str:
@@ -262,7 +276,9 @@ def parse_quantity(value: Any) -> float | None:
   if isinstance(value, (int, float)):
     return float(value)
   s = str(value).strip()
-  m = re.fullmatch(r"([0-9]*\.?[0-9]+)([a-zA-Z]*)", s)
+  if len(s) > 64:
+    return None
+  m = re.fullmatch(r"([0-9]+(?:\.[0-9]+)?|\.[0-9]+)([a-zA-Z]*)", s)
   if not m:
     return None
   num, suffix = m.group(1), m.group(2)
@@ -490,26 +506,68 @@ def untagged_trailer(removed: int, what: str) -> str:
 # Each script tags the facts a report must explicitly classify (status
 # conditions, Warning events, deletions, audit mutations, log-derived facts)
 # with a short id such as ``[S3]`` (snapshot) or ``[L7]`` (trace_logs). The id
-# -> fact mapping is stored in the ledger under ``facts`` so that
-# ``validate_report.py`` can check that every id appears under
-# ``#### Root Cause`` or ``#### Ruled Out``. Ids are stable across re-runs of a
-# script within one investigation: the same ``key`` always maps to the same id.
+# -> fact mapping is stored in the ledger under ``facts`` as a stable reading
+# aid across re-runs of a script within one investigation: the same ``key``
+# always maps to the same id.
 # ---------------------------------------------------------------------------
 
 MAX_TRACKED_FACTS_PER_SOURCE = 18
 MAX_TRACKED_FACTS_TOTAL = 28
 
 
-def _load_ledger(ledger_path: str) -> dict[str, Any]:
-  return load_ledger(ledger_path, strict=True)
+def _atomic_write_json(path: str, payload: Any) -> None:
+  """Writes `payload` as indented JSON via a sibling temp file and atomic replace."""
+  parent = os.path.dirname(os.path.abspath(path))
+  os.makedirs(parent, exist_ok=True)
+  fd, tmp_path = tempfile.mkstemp(prefix=".ledger-", suffix=".tmp", dir=parent)
+  try:
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+      json.dump(payload, f, indent=2)
+    os.replace(tmp_path, path)
+  except BaseException:
+    try:
+      os.unlink(tmp_path)
+    except OSError:
+      pass
+    raise
 
 
-def _save_ledger(ledger_path: str, ledger: dict[str, Any]) -> None:
-  os.makedirs(os.path.dirname(os.path.abspath(ledger_path)), exist_ok=True)
-  tmp_path = f"{ledger_path}.tmp"
-  with open(tmp_path, "w", encoding="utf-8") as f:
-    json.dump(ledger, f, indent=2)
-  os.replace(tmp_path, ledger_path)
+def mutate_ledger(
+    ledger_path: str,
+    mutate: Callable[[dict[str, Any]], Any],
+    *,
+    strict: bool = True,
+) -> dict[str, Any]:
+  """Atomically loads, mutates, and persists `ledger_path` under an exclusive lock.
+
+  If `mutate` returns `False` explicitly, the disk write is skipped while still
+  holding the lock across the read.
+
+  Args:
+    ledger_path: Path to the ledger JSON file.
+    mutate: Callback mutating the loaded ledger dict in place.
+    strict: Passed through to `load_ledger` when reading existing state.
+
+  Returns:
+    The resulting ledger dictionary after `mutate` runs.
+  """
+  abs_path = os.path.abspath(ledger_path)
+  os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+  lock_path = f"{abs_path}.lock"
+  with open(lock_path, "a+", encoding="utf-8") as lock_f:
+    if fcntl is not None:
+      fcntl.flock(lock_f.fileno(), fcntl.LOCK_EX)
+    try:
+      ledger = load_ledger(ledger_path, strict=strict)
+      if not isinstance(ledger, dict):
+        ledger = {"referenced": [], "inspected": [], "tool_outputs": []}
+      mutated = mutate(ledger)
+      if not (isinstance(mutated, bool) and not mutated):
+        _atomic_write_json(ledger_path, ledger)
+      return ledger
+    finally:
+      if fcntl is not None:
+        fcntl.flock(lock_f.fileno(), fcntl.LOCK_UN)
 
 
 def _fact_core(key: str) -> str:
@@ -517,15 +575,14 @@ def _fact_core(key: str) -> str:
   return key.split(":", 1)[1] if ":" in key else key
 
 
-def register_facts(
-    ledger_path: str | None,
+def _apply_register_facts(
+    ledger: dict[str, Any],
     prefix: str,
     facts: list[tuple[str, str]],
-    max_tracked: int = MAX_TRACKED_FACTS_PER_SOURCE,
-    max_total: int = MAX_TRACKED_FACTS_TOTAL,
-) -> dict[str, str]:
-  """Assigns capped, stable ids to `(key, text)` facts in `ledger_path` and returns `{key: id}`."""
-  ledger = _load_ledger(ledger_path) if ledger_path else {}
+    max_tracked: int,
+    max_total: int,
+) -> tuple[dict[str, str], bool]:
+  """Applies capped fact ID registration to `ledger` in place."""
   all_existing = [
       f for f in ledger.get("facts", []) if isinstance(f, dict) and "key" in f
   ]
@@ -557,10 +614,35 @@ def register_facts(
     mapping[key] = fid
     by_core[core] = fid
     new_entries.append({"id": fid, "key": key, "text": text[:600]})
-  if ledger_path and new_entries:
+  if new_entries:
     ledger.setdefault("facts", []).extend(new_entries)
-    _save_ledger(ledger_path, ledger)
-  return mapping
+  return mapping, bool(new_entries)
+
+
+def register_facts(
+    ledger_path: str | None,
+    prefix: str,
+    facts: list[tuple[str, str]],
+    max_tracked: int = MAX_TRACKED_FACTS_PER_SOURCE,
+    max_total: int = MAX_TRACKED_FACTS_TOTAL,
+) -> dict[str, str]:
+  """Assigns capped, stable ids to `(key, text)` facts in `ledger_path` and returns `{key: id}`."""
+  if not ledger_path:
+    mapping, _ = _apply_register_facts(
+        {}, prefix, facts, max_tracked, max_total
+    )
+    return mapping
+  result_holder: dict[str, dict[str, str]] = {}
+
+  def _mutate(ledger: dict[str, Any]) -> bool:
+    mapping, changed = _apply_register_facts(
+        ledger, prefix, facts, max_tracked, max_total
+    )
+    result_holder["mapping"] = mapping
+    return changed
+
+  mutate_ledger(ledger_path, _mutate, strict=True)
+  return result_holder.get("mapping", {})
 
 
 def tag(mapping: dict[str, str], key: str | None, text: str) -> str:
@@ -571,8 +653,13 @@ def tag(mapping: dict[str, str], key: str | None, text: str) -> str:
 
 
 _QUOTED_RE = re.compile(r"\"[^\"]*\"|'[^']*'|`[^`]*`")
-_HEXISH_RE = re.compile(r"\b[a-z0-9]*[0-9][a-z0-9]{4,}\b")
+_ALNUM_TOKEN_RE = re.compile(r"\b[a-z0-9]{5,}\b")
 _NUMBER_RE = re.compile(r"\d+(?:\.\d+)?")
+
+
+def _mask_hexish(match: re.Match[str]) -> str:
+  tok = match.group(0)
+  return "<id>" if any(ch.isdigit() for ch in tok[:-4]) else tok
 
 
 def fact_group_key(
@@ -594,7 +681,7 @@ def fact_group_key(
     The composite `<category>:<kind>:<reason>:<normalised_prefix>` key.
   """
   norm = _QUOTED_RE.sub("<q>", message)
-  norm = _HEXISH_RE.sub("<id>", norm)
+  norm = _ALNUM_TOKEN_RE.sub(_mask_hexish, norm)
   norm = _NUMBER_RE.sub("#", norm)
   norm = re.sub(r"\s+", " ", norm).strip().lower()
   return f"{category}:{kind}:{reason}:{norm[:width]}"

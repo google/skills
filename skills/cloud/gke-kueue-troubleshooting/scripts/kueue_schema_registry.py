@@ -3,13 +3,12 @@
 
 Pure functions only (no network, no git, no kubectl):
 
-  * `compile_crd_docs(crd_docs, target_short_ver, kcfg_fields_by_ver)` turns
-  parsed
-    `CustomResourceDefinition` documents into `{Kind: {apiVersion,
-    kubectl_names,
-    all_versions, top_level_spec_fields, spec_schema}}` plus a
-    synthetic `KueueConfiguration` entry (not a CRD; its fields come from the
-    published `kueue-config.<version>` reference page or the built-in defaults).
+  * `compile_crd_docs(crd_docs, target_short_ver, kcfg_fields_by_ver,
+    config_short_ver)` turns parsed `CustomResourceDefinition` documents into
+    `{Kind: {apiVersion, kubectl_names, all_versions, top_level_spec_fields,
+    spec_schema}}` plus a synthetic `KueueConfiguration` entry for the detected
+    configuration API version (not a CRD; its fields come from the published
+    `kueue-config.<version>` reference page or the built-in defaults).
   * `read_cached_registry` / `write_cached_registry` persist compiled registries
     under `schema_cache_dir()` (`$GKE_KUEUE_TROUBLESHOOTING_CACHE_DIR`, else
     `$XDG_CACHE_HOME/gke-kueue-troubleshooting`).
@@ -138,6 +137,10 @@ def _field_info(
   nested_key, nested = _nested_properties(field_def, ftype, max_depth, depth)
   if nested:
     info[nested_key] = nested
+  elif nested_key and depth + 1 >= max_depth:
+    # The field has sub-fields that the depth limit cut off; `--action explain`
+    # reports them as not compiled instead of as unknown.
+    info["depth_limited"] = True
   return info
 
 
@@ -155,31 +158,47 @@ def _extract_openapi_properties(
   }
 
 
-# Bump when the compiled schema shape changes so cached registries are rebuilt.
-SCHEMA_FORMAT = 7
+# Bump when the compiled schema shape or the cache file naming changes so
+# cached registries are rebuilt.
+SCHEMA_FORMAT = 8
+# Levels below `spec` kept in a compiled CRD entry (`spec.a.b.c`).
+SPEC_TREE_DEPTH = 3
 
 _HTML_HEADING_RE = re.compile(
     r"<h[23]\s+id=[^\s>]*?-([A-Za-z0-9_]+)><code>\1</code>"
 )
 _HTML_TBODY_RE = re.compile(r"<table[^>]*>.*?<tbody>(.*?)</tbody>", re.DOTALL)
+# The scan for `<br>` stops at the end of the cell or at the next row, so a
+# page without closing tags cannot make every row scan to the end of the table.
 _HTML_ROW_RE = re.compile(
-    r"<tr>\s*<td><code>([^<]+)</code>(?:(?!</td).)*?<br>", re.DOTALL
+    r"<tr>\s*<td><code>([^<]+)</code>(?:(?!</td|<tr>).)*?<br>", re.DOTALL
 )
 _HTML_TYPE_LINK_RE = re.compile(r'href=["\']?#[^"\'>\s]*-([A-Za-z0-9_]+)["\']?')
 # Nested-field tree used when the reference page is unavailable
-# (`config_schema_source: builtin_defaults`).
+# (`config_schema_source: builtin_defaults`). Each block is the union of the
+# fields that block had in its config API version up to the release pinned as
+# `kueue_schema.KUEUE_SOURCE_REF`, so a field of an older release is not
+# reported as unknown. Blocks that are not listed are accepted as-is.
+_REQUEUING_STRATEGY_FIELDS: dict[str, Any] = {
+    "timestamp": {},
+    "backoffLimitCount": {},
+    "backoffBaseSeconds": {},
+    "backoffMaxSeconds": {},
+}
 DEFAULT_KCFG_NESTED: dict[str, dict[str, Any]] = {
     "v1beta2": {
         "waitForPodsReady": {
             "timeout": {},
             "blockAdmission": {},
             "recoveryTimeout": {},
-            "requeuingStrategy": {
-                "timestamp": {},
-                "backoffLimitCount": {},
-                "backoffBaseSeconds": {},
-                "backoffMaxSeconds": {},
-            },
+            "unscheduledTimeout": {},
+            "maxTimeoutOnWorkload": {},
+            "requeuingStrategy": dict(_REQUEUING_STRATEGY_FIELDS),
+        },
+        "integrations": {
+            "frameworks": {},
+            "externalFrameworks": {},
+            "labelKeysToCopy": {},
         },
     },
     "v1beta1": {
@@ -188,12 +207,13 @@ DEFAULT_KCFG_NESTED: dict[str, dict[str, Any]] = {
             "timeout": {},
             "blockAdmission": {},
             "recoveryTimeout": {},
-            "requeuingStrategy": {
-                "timestamp": {},
-                "backoffLimitCount": {},
-                "backoffBaseSeconds": {},
-                "backoffMaxSeconds": {},
-            },
+            "requeuingStrategy": dict(_REQUEUING_STRATEGY_FIELDS),
+        },
+        "integrations": {
+            "frameworks": {},
+            "externalFrameworks": {},
+            "podOptions": {},
+            "labelKeysToCopy": {},
         },
     },
 }
@@ -248,12 +268,9 @@ def parse_kcfg_struct_tree_from_html(
       out[fname] = sub
     return out
 
-  tree = _walk(root, 0, ())
-  if isinstance(tree.get("integrations"), dict) and tree["integrations"]:
-    tree["integrations"].setdefault(
-        "podOptions", {"namespaceSelector": {}, "podSelector": {}}
-    )
-  return tree
+  # No field is added here: the page of each config API version lists exactly
+  # the fields that version decodes (`integrations.podOptions` is v1beta1-only).
+  return _walk(root, 0, ())
 
 
 def kcfg_fields_and_tree(html_text: str) -> dict[str, Any]:
@@ -294,20 +311,48 @@ def _compile_crd_entry(
     doc: dict[str, Any], target_short_ver: str
 ) -> tuple[str, dict[str, Any]] | None:
   """Compact registry entry `(Kind, entry)` for one Kueue CRD document, or None when it is not one."""
-  spec = doc.get("spec") or {}
+  spec = doc.get("spec")
+  if not isinstance(spec, dict):
+    return None
   group = spec.get("group", "kueue.x-k8s.io")
-  names = spec.get("names") or {}
+  names = spec.get("names")
+  versions = spec.get("versions")
+  if (
+      not isinstance(group, str)
+      or not isinstance(names, dict)
+      or not isinstance(versions, list)
+  ):
+    return None
   kind = names.get("kind", "")
-  versions = spec.get("versions") or []
-  if "kueue.x-k8s.io" not in group or not kind or not versions:
+  if (
+      "kueue.x-k8s.io" not in group
+      or not isinstance(kind, str)
+      or not kind
+      or not versions
+  ):
     return None
   chosen_ver = _choose_crd_version(versions, target_short_ver)
   if chosen_ver is None:
     return None
-  ver_name = chosen_ver.get("name", target_short_ver)
-  open_api = (chosen_ver.get("schema") or {}).get("openAPIV3Schema") or {}
-  spec_schema = (open_api.get("properties") or {}).get("spec") or {}
-  spec_tree = _extract_openapi_properties(spec_schema, max_depth=3)
+  raw_ver_name = chosen_ver.get("name")
+  ver_name = (
+      raw_ver_name
+      if isinstance(raw_ver_name, str) and raw_ver_name
+      else target_short_ver
+  )
+  raw_schema = chosen_ver.get("schema")
+  open_api = (
+      raw_schema.get("openAPIV3Schema")
+      if isinstance(raw_schema, dict)
+      else None
+  )
+  if not isinstance(open_api, dict):
+    open_api = {}
+  raw_props = open_api.get("properties")
+  spec_schema = raw_props.get("spec") if isinstance(raw_props, dict) else None
+  if not isinstance(spec_schema, dict):
+    spec_schema = {}
+  spec_tree = _extract_openapi_properties(spec_schema, SPEC_TREE_DEPTH)
   return kind, {
       "apiVersion": f"{group}/{ver_name}",
       "kubectl_names": _kubectl_names(names),
@@ -322,7 +367,7 @@ def _compile_crd_entry(
 
 
 def _kueue_configuration_entry(cfg_ver: str, cfg_entry: Any) -> dict[str, Any]:
-  """Synthetic `KueueConfiguration` entry from a parsed Go tree (`{"fields", "tree"}`), a bare field list or the defaults."""
+  """Synthetic `KueueConfiguration` entry from a parsed reference field tree (`{"fields", "tree"}`), a bare field list or the defaults."""
   cfg_tree: dict[str, Any] = {}
   if isinstance(cfg_entry, dict):
     cfg_fields = cfg_entry.get("fields") or []
@@ -347,7 +392,7 @@ def _kueue_configuration_entry(cfg_ver: str, cfg_entry: Any) -> dict[str, Any]:
 
 
 def config_version_for(target_short_ver: str) -> str:
-  """`config.kueue.x-k8s.io` version served by the release whose storage version is `target_short_ver`."""
+  """`config.kueue.x-k8s.io` version assumed for a release whose storage version is `target_short_ver`, when the configuration version itself was not detected."""
   return "v1beta1" if target_short_ver == "v1beta1" else "v1beta2"
 
 
@@ -355,8 +400,22 @@ def compile_crd_docs(
     crd_docs: Iterable[dict[str, Any]],
     target_short_ver: str = "v1beta2",
     kcfg_fields_by_ver: dict[str, Any] | None = None,
+    config_short_ver: str = "",
 ) -> dict[str, Any]:
-  """Compiles a list of parsed CRD YAML documents into a compact schema dict for `target_short_ver`."""
+  """Compiles parsed CRD YAML documents into a compact schema dict.
+
+  Args:
+    crd_docs: Parsed `CustomResourceDefinition` documents.
+    target_short_ver: CRD API version to compile (`v1beta1`, `v1beta2`).
+    kcfg_fields_by_ver: `KueueConfiguration` field trees keyed by config API
+      version; the built-in defaults are used for a missing version.
+    config_short_ver: Detected `config.kueue.x-k8s.io` version. It is
+      independent of the CRD version (a release serving `v1beta2` CRDs can run a
+      `v1beta1` configuration); when empty it follows `target_short_ver`.
+
+  Returns:
+    `{Kind: entry}` for every Kueue CRD plus the `KueueConfiguration` entry.
+  """
   registry: dict[str, Any] = {}
   for doc in crd_docs:
     if not isinstance(doc, dict):
@@ -364,7 +423,7 @@ def compile_crd_docs(
     compiled = _compile_crd_entry(doc, target_short_ver)
     if compiled is not None:
       registry[compiled[0]] = compiled[1]
-  cfg_ver = config_version_for(target_short_ver)
+  cfg_ver = config_short_ver or config_version_for(target_short_ver)
   registry["KueueConfiguration"] = _kueue_configuration_entry(
       cfg_ver, (kcfg_fields_by_ver or {}).get(cfg_ver)
   )
@@ -403,4 +462,6 @@ def write_cached_registry(
       json.dump(payload, f, indent=1)
     os.replace(tmp_path, cache_file)
   except OSError:
+    # The cache only saves recompiling: an unwritable cache directory must not
+    # fail the run, and the registry is rebuilt next time.
     pass
