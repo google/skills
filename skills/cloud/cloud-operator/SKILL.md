@@ -1,7 +1,7 @@
 ---
 name: cloud-operator
 metadata:
-  version: "1.4.0"
+  version: "1.4.1"
   category: CloudInfrastructureAndServices
 description: >-
   Google Cloud (GCP) assistant and operator via the `autocloud` MCP server. Use
@@ -281,11 +281,13 @@ Make one call per logical request. If a call fails, see
 
 ## Keep the user in control
 
-- Operator requests often take minutes. Reply right away that the operator is
-  working on it and end your turn, so the user stays in control. Meanwhile, keep
-  checking the request's session in the background and share the answer as soon
-  as it's ready, without making them ask again. Don't poll inside your reply:
-  that blocks the user until the operator finishes.
+- Operator requests often take minutes. Reply right away and end your turn, so
+  the user stays in control. Tell them only what you know: the operator hasn't
+  started until the call has been sent, which may first need their approval.
+  Meanwhile, keep checking on the request in the background (its session once
+  the call returns a `context_id`) and share the answer as soon as it's ready,
+  without making them ask again. Don't poll inside your reply: that blocks the
+  user until the operator finishes.
 - Relay the operator's results accurately: what was done, what was found,
   resource links. Don't claim actions it didn't report.
 - If the operator reports that it couldn't reach Google Cloud or its tools (for
