@@ -1,7 +1,7 @@
 ---
 name: cloud-operator-setup
 metadata:
-  version: "1.4.0"
+  version: "1.5.0"
   category: CloudInfrastructureAndServices
 description: >-
   Sets up the user's personal operator agent in a Google Cloud organization via
@@ -158,7 +158,25 @@ is optional: use one only to find its organization.
 ## Turned off or no access
 
 Cloud Operator is turned off for the organization, or the user has no access
-there. Only an administrator of the organization can fix either. Use the
+there. Two cases need no administrator:
+
+- **"organization-level agents are not enabled"** (it comes only from creating
+  an agent): Cloud Operator isn't available for that organization yet. Tell
+  the user, remember it (see [Troubleshooting](#troubleshooting)), and don't
+  name a role, retry, or send them to the console to create an agent: none of
+  that helps.
+- **No access in their home organization, just after the first use there:**
+  users get access in their own (home) organization automatically, but only a
+  few minutes after anyone there first uses or creates an operator agent. If
+  the domain of their account (`gcloud config get-value account`) is the
+  organization's display name (`gcloud organizations describe {org_id}
+  --format="value(displayName)"`, its primary domain), or they say the
+  organization is their own company's, tell them, wait about 2 minutes, and
+  repeat the call that failed, for up to about 10 minutes in all. If the
+  organization can't be read and they don't know, repeat it once after about
+  2 minutes. If it still fails, go on below.
+
+Otherwise only an administrator of the organization can fix either. Use the
 `cloud-operator-admin-setup` skill from its "Coming from setup" section, with
 the organization ID and the case (turned off, or no access): it
 checks whether the user is an administrator, lets an administrator turn it on
@@ -169,7 +187,8 @@ at
 or grants them `roles/geminicloudassist.user` on the organization.
 
 Offer another organization meanwhile. When it's fixed, wait about a minute (a
-few minutes after a role grant) and run the check call in step 2 again (they
+few minutes after a role grant, repeating the check call about every 2 minutes
+for up to about 15 minutes) and run the check call in step 2 again (they
 may already have an agent). If it's still turned off (an administrator chose
 **Not now**, or a check after they said it's fixed still shows it off),
 remember it (see [Troubleshooting](#troubleshooting)).
@@ -217,12 +236,12 @@ troubleshooting table if it's installed.
 When an answer below means Cloud Operator can't be used there (a project
 without an organization, `RUN_NOT_ALLOWED` on all 3 attempts with
 `organization`, `ORG_DISABLED` or `AGENTS_DISABLED` (or `getOrgEnablement`
-showing it off) that stays off, or a personal account), remember it with what
-it applies to and the date, so that you don't call it there again until the
-user asks to try again. Write a `RUN_NOT_ALLOWED` note exactly as "Cloud
-Operator: not available for organization {org_id} (RUN_NOT_ALLOWED with
-organization), {date}": the `cloud-operator` skill forgets one that doesn't
-say "with organization".
+showing it off) that stays off, "organization-level agents are not enabled",
+or a personal account), remember it with what it applies to and the date, so
+that you don't call it there again until the user asks to try again. Write a
+`RUN_NOT_ALLOWED` note exactly as "Cloud Operator: not available for
+organization {org_id} (RUN_NOT_ALLOWED with organization), {date}": the
+`cloud-operator` skill forgets one that doesn't say "with organization".
 
 | Error | Likely cause | What to do |
 | --- | --- | --- |

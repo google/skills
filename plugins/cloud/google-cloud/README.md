@@ -460,6 +460,13 @@ else, your agent explains the error and the fix.
 -   **"AutoCloud is disabled for organization ..." (`ORG_DISABLED`), or "The
     caller does not have permission":** an administrator of your organization
     controls access to Cloud Operator. Ask them.
+-   **Permission `geminicloudassist.agents.invoke` or
+    `geminicloudassist.agents.create` denied:** using or creating an operator
+    agent needs access in that organization. You get it automatically in your
+    own organization a few minutes after anyone there first uses Cloud
+    Operator, so your agent waits and tries again. In any other organization,
+    an administrator grants you the Gemini Cloud Assist User role
+    (`roles/geminicloudassist.user`); your agent helps you ask for it.
 -   **You sign in with a personal Google Account (for example, @gmail.com):**
     Cloud Operator doesn't support personal accounts yet. Developer Knowledge
     and the other skills still work.
